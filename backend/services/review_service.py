@@ -1,0 +1,66 @@
+from models import Review
+from database import db
+
+class ReviewService:
+    """Service layer for Review business logic"""
+
+    @staticmethod
+    def create_review(submitter_id, model_type, model_id, rating, review=None):
+        """Create a new review"""
+        if not all([submitter_id, model_type, model_id, rating]):
+            raise ValueError("submitter_id, model_type, model_id, and rating are required")
+        if rating < 1 or rating > 5:
+            raise ValueError("Rating must be between 1 and 5")
+        
+        rev = Review(submitter_id=submitter_id, model_type=model_type, model_id=model_id, rating=rating, review=review)
+        db.session.add(rev)
+        db.session.commit()
+        return rev
+
+    @staticmethod
+    def get_review(review_id):
+        """Get a review by ID"""
+        return Review.query.get(review_id)
+
+    @staticmethod
+    def get_all_reviews():
+        """Get all reviews"""
+        return Review.query.all()
+
+    @staticmethod
+    def get_reviews_for_model(model_type, model_id):
+        """Get all reviews for a specific model"""
+        return Review.query.filter_by(model_type=model_type, model_id=model_id).all()
+
+    @staticmethod
+    def get_reviews_by_submitter(submitter_id):
+        """Get all reviews by a user"""
+        return Review.query.filter_by(submitter_id=submitter_id).all()
+
+    @staticmethod
+    def update_review(review_id, rating=None, review=None):
+        """Update a review"""
+        rev = Review.query.get(review_id)
+        if not rev:
+            raise ValueError("Review not found")
+        
+        if rating:
+            if rating < 1 or rating > 5:
+                raise ValueError("Rating must be between 1 and 5")
+            rev.rating = rating
+        if review is not None:
+            rev.review = review
+        
+        db.session.commit()
+        return rev
+
+    @staticmethod
+    def delete_review(review_id):
+        """Delete a review"""
+        rev = Review.query.get(review_id)
+        if not rev:
+            raise ValueError("Review not found")
+        
+        db.session.delete(rev)
+        db.session.commit()
+        return True

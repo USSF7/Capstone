@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: capstone_db
+      POSTGRES_USER: capstone_user
+      POSTGRES_PASSWORD: capstone_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://capstone_user:capstone_password@db:5432/capstone_db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+
+  frontend-dev:
+    image: node:18
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev"
+
+volumes:
+  postgres_data:
