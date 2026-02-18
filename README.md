@@ -75,13 +75,6 @@ docker-compose up frontend-dev
 ```
 Frontend will be available at http://localhost:5173 with HMR enabled.
 
-**Local development (requires Node.js):**
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
 ## Project Structure
 
 ```
