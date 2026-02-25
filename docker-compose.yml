@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:13
+    image: postgis/postgis:13-3.4
     environment:
       POSTGRES_DB: capstone_db
       POSTGRES_USER: capstone_user
@@ -9,13 +9,20 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U capstone_user -d capstone_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   web:
     build: ./backend
     ports:
       - "5000:5000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://capstone_user:capstone_password@db:5432/capstone_db
 

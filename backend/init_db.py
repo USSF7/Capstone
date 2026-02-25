@@ -5,6 +5,7 @@ Creates all tables from models.
 """
 
 import sys
+from sqlalchemy import text
 from app import create_app, db
 
 def init_db():
@@ -13,6 +14,10 @@ def init_db():
     
     with app.app_context():
         try:
+            print("Enabling PostGIS extension...")
+            db.session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+            db.session.commit()
+
             print("Dropping all tables...")
             db.drop_all()
             
