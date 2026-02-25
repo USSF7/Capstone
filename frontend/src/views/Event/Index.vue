@@ -1,0 +1,1 @@
+<!-- View for person to see all of their events -->

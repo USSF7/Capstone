@@ -1,0 +1,1 @@
+<!-- View of all calendar events for the signed in user's profile -->

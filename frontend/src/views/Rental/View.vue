@@ -1,0 +1,1 @@
+<!-- View a specific rental's details -->

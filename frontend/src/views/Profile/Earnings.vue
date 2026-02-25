@@ -1,0 +1,1 @@
+<!-- Details on a users previous transactions and overall earnings -->

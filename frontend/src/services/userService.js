@@ -9,6 +9,10 @@ class UserService {
     return api.get(`/users/${id}`)
   }
 
+  async getUserMessages(id) {
+    return api.get(`/users/${id}/messages`)
+  }
+
   async createUser(name, email) {
     return api.post('/users', { name, email })
   }

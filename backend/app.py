@@ -7,6 +7,8 @@ from routes import register_blueprints
 def create_app(config_name='development'):
     """Application factory"""
     app = Flask(__name__)
+
+    app.url_map.strict_slashes = False
     
     # Load configuration
     app.config.from_object(config[config_name])
