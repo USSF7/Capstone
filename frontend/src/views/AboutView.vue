@@ -1,11 +1,16 @@
 <template>
-  <div class="max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">About Capstone</h1>
-    <p class="text-gray-600 mb-4">
-      This is a capstone project demonstrating a full-stack web application with Python Flask backend, Vue.js frontend, and Tailwind CSS styling, all containerized with Docker.
-    </p>
-    <p class="text-gray-600">
-      Built with modern technologies for scalable and maintainable web development.
-    </p>
-  </div>
+  <fwb-card href="#" class="w-sm">
+      <div class="p-5">
+        <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+          Noteworthy technology acquisitions 2021
+        </h5>
+        <p class="font-normal text-gray-700 dark:text-gray-400">
+          Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order.
+        </p>
+      </div>
+    </fwb-card>
 </template>
+
+<script setup>
+import { FwbCard} from 'flowbite-vue'
+</script>

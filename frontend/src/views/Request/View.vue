@@ -1,0 +1,1 @@
+<!-- View a specific request details and message with potential vendors (or as a vendor message witht the user about the request) -->

@@ -1,0 +1,1 @@
+<!-- Page for a user to manage their own inventory (My inventory) -->
