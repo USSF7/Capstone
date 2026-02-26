@@ -183,6 +183,7 @@ def seed_requests(users, events, num_requests=20):
             count=randint(1, 10),
             start_date=start_date,
             end_date=end_date,
+            location=fake.address(),
             status=choice(statuses)
         )
         db.session.add(request)
@@ -200,6 +201,11 @@ def seed_db():
             print("Starting database seeding...")
             print("="*50 + "\n")
             
+            # Clear existing requests so reseeding replaces old rows
+            # (avoids keeping rows that were created before `location` existed)
+            db.session.execute('TRUNCATE TABLE requests RESTART IDENTITY CASCADE;')
+            db.session.commit()
+
             # Seed in order of dependencies
             users = seed_users(20)
             equipment_list = seed_equipment(users, 30)

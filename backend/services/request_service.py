@@ -5,9 +5,9 @@ class RequestService:
     """Service layer for Request business logic"""
 
     @staticmethod
-    def create_request(requester_id, event_id, name, max_price, count, start_date, end_date):
+    def create_request(requester_id, event_id, name, max_price, count, start_date, end_date, location):
         """Create a new request"""
-        if not all([requester_id, event_id, name, max_price, count, start_date, end_date]):
+        if not all([requester_id, event_id, name, max_price, count, start_date, end_date, location]):
             raise ValueError("All fields are required")
         if end_date <= start_date:
             raise ValueError("End date must be after start date")
@@ -21,7 +21,8 @@ class RequestService:
             max_price=max_price,
             count=count,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            location=location
         )
         db.session.add(req)
         db.session.commit()
@@ -35,7 +36,9 @@ class RequestService:
     @staticmethod
     def get_all_requests():
         """Get all requests"""
-        return Request.query.all()
+        # return newest requests first so freshly-seeded rows with locations
+        # appear at the top in the API response
+        return Request.query.order_by(Request.id.desc()).all()
 
     @staticmethod
     def get_requests_by_requester(requester_id):

@@ -62,7 +62,8 @@ def create_request():
             data.get('max_price'),
             data.get('count'),
             data.get('start_date'),
-            data.get('end_date')
+            data.get('end_date'),
+            data.get('location')
         )
         return jsonify(req.to_dict()), 201
     except ValueError as e:
