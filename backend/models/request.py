@@ -12,6 +12,7 @@ class Request(db.Model):
     count = db.Column(db.Integer, nullable=False)
     start_date = db.Column(db.DateTime, nullable=False)
     end_date = db.Column(db.DateTime, nullable=False)
+    location = db.Column(db.String(255), nullable=False)
     status = db.Column(db.String(50), default='created')  # created, completed
 
     def to_dict(self):
@@ -24,6 +25,7 @@ class Request(db.Model):
             'count': self.count,
             'start_date': self.start_date.isoformat(),
             'end_date': self.end_date.isoformat(),
+            'location': self.location,
             'status': self.status
         }
 
