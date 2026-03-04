@@ -18,6 +18,7 @@ import { RouterLink, RouterView } from 'vue-router'
           <router-link to="/" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Home</router-link>
           <router-link to="/about" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">About</router-link>
           <router-link to="/users" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Users</router-link>
+          <router-link to="/requests" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Requests</router-link>
         </nav>
       </aside>
 
