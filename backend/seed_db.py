@@ -203,8 +203,8 @@ def seed_db():
             
             # Clear existing requests so reseeding replaces old rows
             # (avoids keeping rows that were created before `location` existed)
-            db.session.execute('TRUNCATE TABLE requests RESTART IDENTITY CASCADE;')
-            db.session.commit()
+            # db.session.execute('TRUNCATE TABLE requests RESTART IDENTITY CASCADE;')
+            # db.session.commit()
 
             # Seed in order of dependencies
             users = seed_users(20)

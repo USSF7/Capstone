@@ -5,24 +5,33 @@ class RequestService:
     """Service layer for Request business logic"""
 
     @staticmethod
-    def create_request(requester_id, event_id, name, max_price, count, start_date, end_date, location):
+    def create_request(requester_id, event_id, name, max_price, count, start_date, end_date, location, min_price=None, comments=None):
         """Create a new request"""
-        if not all([requester_id, event_id, name, max_price, count, start_date, end_date, location]):
-            raise ValueError("All fields are required")
+        # event_id can be None (no associated event)
+        if not all([requester_id, name, max_price, count, start_date, end_date, location]):
+            raise ValueError("All required fields must be provided")
         if end_date <= start_date:
             raise ValueError("End date must be after start date")
         if count < 1:
             raise ValueError("Count must be at least 1")
+        if min_price is not None and min_price < 0:
+            raise ValueError("Min price must be non-negative")
+        if max_price < 0:
+            raise ValueError("Max price must be non-negative")
+        if min_price is not None and min_price > max_price:
+            raise ValueError("Min price cannot exceed max price")
         
         req = Request(
             requester_id=requester_id,
             event_id=event_id,
             name=name,
             max_price=max_price,
+            min_price=min_price,
             count=count,
             start_date=start_date,
             end_date=end_date,
-            location=location
+            location=location,
+            comments=comments
         )
         db.session.add(req)
         db.session.commit()
@@ -56,19 +65,54 @@ class RequestService:
         return Request.query.filter_by(status=status).all()
 
     @staticmethod
-    def update_request(request_id, status=None, max_price=None, count=None):
-        """Update a request"""
+    def update_request(request_id,
+                       status=None,
+                       max_price=None,
+                       count=None,
+                       name=None,
+                       event_id=None,
+                       start_date=None,
+                       end_date=None,
+                       location=None,
+                       min_price=None,
+                       comments=None):
+        """Update a request
+
+        Only the values passed in will be modified; other fields are left
+        untouched.  The validation rules mirror those in ``create_request``.
+        """
         req = Request.query.get(request_id)
         if not req:
             raise ValueError("Request not found")
-        
-        if status:
+
+        # update fields if provided
+        if status is not None:
             req.status = status
-        if max_price:
+        if max_price is not None:
             req.max_price = max_price
-        if count:
+        if count is not None:
             req.count = count
-        
+        if name is not None:
+            req.name = name
+        if event_id is not None:
+            req.event_id = event_id
+        if start_date is not None:
+            req.start_date = start_date
+        if end_date is not None:
+            req.end_date = end_date
+        if location is not None:
+            req.location = location
+        if min_price is not None:
+            req.min_price = min_price
+        if comments is not None:
+            req.comments = comments
+
+        # basic validation similar to create_request
+        if req.end_date <= req.start_date:
+            raise ValueError("End date must be after start date")
+        if req.count < 1:
+            raise ValueError("Count must be at least 1")
+
         db.session.commit()
         return req
 

@@ -64,6 +64,9 @@ def create_request():
             data.get('start_date'),
             data.get('end_date'),
             data.get('location')
+            ,
+            data.get('min_price'),
+            data.get('comments')
         )
         return jsonify(req.to_dict()), 201
     except ValueError as e:
@@ -76,7 +79,19 @@ def update_request(request_id):
     """Update a request"""
     try:
         data = request.get_json()
-        req = RequestService.update_request(request_id, data.get('status'), data.get('max_price'), data.get('count'))
+        req = RequestService.update_request(
+            request_id,
+            status=data.get('status'),
+            max_price=data.get('max_price'),
+            count=data.get('count'),
+            name=data.get('name'),
+            event_id=data.get('event_id'),
+            start_date=data.get('start_date'),
+            end_date=data.get('end_date'),
+            location=data.get('location'),
+            min_price=data.get('min_price'),
+            comments=data.get('comments'),
+        )
         return jsonify(req.to_dict()), 200
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
