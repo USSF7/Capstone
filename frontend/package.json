@@ -12,6 +12,7 @@
   "dependencies": {
     "flowbite": "^4.0.1",
     "flowbite-vue": "^0.2.1",
+    "libphonenumber-js": "^1.12.38",
     "vue": "^3.4.0",
     "vue-router": "^4.2.0"
   },
