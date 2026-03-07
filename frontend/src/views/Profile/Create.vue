@@ -188,7 +188,7 @@ async function submitAccountForm() {
                 terms and conditions.
             </fwb-a>
         </fwb-checkbox>
-        <fwb-button color="default" pill type="submit">Submit</fwb-button>
+        <fwb-button class="w-24" color="default" pill type="submit">Submit</fwb-button>
     </form>
 </template>
 
