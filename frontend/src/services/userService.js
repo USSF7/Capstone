@@ -13,12 +13,36 @@ class UserService {
     return api.get(`/users/${id}/messages`)
   }
 
-  async createUser(name, email) {
-    return api.post('/users', { name, email })
+  async createUser(name, email, password, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter) {
+    return api.post('/users', { 
+      name: name,
+      email: email,
+      password: password, 
+      phone: phone, 
+      date_of_birth: date_of_birth, 
+      street_address: street_address,
+      city: city, 
+      state: state, 
+      zip_code: zip_code, 
+      vendor: vendor, 
+      renter: renter
+    })
   }
 
-  async updateUser(id, name, email) {
-    return api.put(`/users/${id}`, { name, email })
+  async updateUser(id, name, email, password, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter) {
+    return api.put(`/users/${id}`, { 
+      name: name, 
+      email: email, 
+      password: password, 
+      phone: phone, 
+      date_of_birth: date_of_birth, 
+      street_address: street_address, 
+      city: city, 
+      state: state, 
+      zip_code: zip_code, 
+      vendor: vendor, 
+      renter: renter 
+    })
   }
 
   async deleteUser(id) {

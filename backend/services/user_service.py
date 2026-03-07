@@ -5,7 +5,7 @@ class UserService:
     """Service layer for User business logic"""
 
     @staticmethod
-    def create_user(name, email):
+    def create_user(name, email, password, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter):
         """Create a new user"""
         if not name or not email:
             raise ValueError("Name and email are required")
@@ -13,7 +13,10 @@ class UserService:
         if User.query.filter_by(email=email).first():
             raise ValueError("Email already exists")
         
-        user = User(name=name, email=email)
+        if User.query.filter_by(phone=phone).first():
+            raise ValueError("Phone number already exists")
+        
+        user = User(name=name, email=email, password=password, phone=phone, date_of_birth=date_of_birth, street_address=street_address, city=city, state=state, zip_code=zip_code, vendor=vendor, renter=renter)
         db.session.add(user)
         db.session.commit()
         return user
@@ -29,7 +32,7 @@ class UserService:
         return User.query.all()
 
     @staticmethod
-    def update_user(user_id, name=None, email=None):
+    def update_user(user_id, name=None, email=None, password=None, phone=None, date_of_birth=None, street_address=None, city=None, state=None, zip_code=None, vendor=None, renter=None):
         """Update a user"""
         user = User.query.get(user_id)
         if not user:
@@ -38,10 +41,31 @@ class UserService:
         if email and User.query.filter_by(email=email).first():
             raise ValueError("Email already exists")
         
+        if phone and User.query.filter_by(phone=phone).first():
+            raise ValueError("Phone number already exists")
+        
         if name:
             user.name = name
         if email:
             user.email = email
+        if password:
+            user.password = password
+        if phone:
+            user.phone = phone
+        if date_of_birth:
+            user.date_of_birth = date_of_birth
+        if street_address:
+            user.street_address = street_address
+        if city:
+            user.city = city
+        if state:
+            user.state = state
+        if zip_code:
+            user.zip_code = zip_code
+        if vendor:
+            user.vendor = vendor
+        if renter:
+            user.renter = renter
         
         db.session.commit()
         return user

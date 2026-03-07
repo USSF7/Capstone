@@ -1,12 +1,13 @@
 <!-- Create an account profile view -->
 <script lang="js" setup>
+
 import { ref, computed } from 'vue'
-import { FwbInput, FwbCheckbox, FwbA, FwbButton } from 'flowbite-vue'
+import { FwbInput, FwbCheckbox, FwbA, FwbButton, FwbRadio } from 'flowbite-vue'
 import { AsYouType } from 'libphonenumber-js'
+import UserService from '../../services/userService'
 
 const firstName = ref('')
 const lastName = ref('')
-const username = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -16,8 +17,7 @@ const city = ref('')
 const state = ref('')
 const zipCode = ref('')
 const dateOfBirth = ref('')
-const isVendor = ref(false)
-const isRenter = ref(false)
+const siteUsage = ref('')
 const termsAndConditions = ref(false)
 
 const passwordMismatch = computed(() => {
@@ -29,21 +29,53 @@ function formatPhoneNumber(event) {
     phoneNum.value = phoneNumberFormatter.input(event.target.value)
 }
 
-function submitAccountForm() {
+async function submitAccountForm() {
     // Checking if the password and confirm password match
     if (passwordMismatch.value) {
         alert("Please make sure both password and confirm password match.")
         return
     }
 
-    // Checking if the email is valid
-    if (email.includes("@") == false) {
-        alert("Please make sure to use a valid email.")
-        return
-    }
+    // Adding a new user to the database
+    try {
+        await UserService.createUser(
+            firstName.value + " " + lastName.value,
+            email.value,
+            password.value,
+            phoneNum.value,
+            dateOfBirth.value,
+            streetAddress.value,
+            city.value,
+            state.value,
+            zipCode.value,
+            siteUsage.value == "Vendor",
+            siteUsage.value == "Renter"
+        )
 
-    // Successful account submission
-    alert("Account has been successfully created. Please login.")
+        // Resetting the variables back to their default values
+        firstName.value = ''
+        lastName.value = ''
+        email.value = ''
+        password.value = ''
+        confirmPassword.value = ''
+        phoneNum.value = ''
+        streetAddress.value = ''
+        city.value = ''
+        state.value = ''
+        zipCode.value = ''
+        dateOfBirth.value = ''
+        siteUsage.value = ''
+        termsAndConditions.value = false
+
+        // Successful account submission
+        alert("Account has been successfully created. Please login.")
+    }
+    catch (error) {
+        console.error("Error creating user:", error)
+
+        // Unsuccessful account submission
+        alert("Error: Account was not properly created. Please try again.")
+    }
 }
 
 </script>
@@ -66,14 +98,8 @@ function submitAccountForm() {
             />
         </div>
         <fwb-input
-            v-model="username"
-            placeholder="Enter your username"
-            label="Username"
-            required
-        />
-        <fwb-input
             v-model="email"
-            placeholder="Enter your email: user@example.com"
+            placeholder="Enter your email address: user@example.com"
             label="Email"
             type="email"
             required
@@ -101,6 +127,7 @@ function submitAccountForm() {
             label="Phone Number"
             type="tel"
             @input="formatPhoneNumber"
+            maxlength="14"
             required
         />
         <div class="grid grid-cols-2 gap-4">
@@ -140,14 +167,18 @@ function submitAccountForm() {
         />
         <div class="space-y-2">
             <label class="block text-sm font-medium">Site Usage</label>
-            <div class="flex gap-6">
-                <fwb-checkbox
-                    v-model="isVendor"
+            <div class="flex w-48">
+                <fwb-radio
+                    v-model="siteUsage"
+                    name="vendor"
                     label="Vendor"
+                    value="Vendor"
                 />
-                <fwb-checkbox
-                    v-model="isRenter"
+                <fwb-radio
+                    v-model="siteUsage"
+                    name="renter"
                     label="Renter"
+                    value="Renter"
                 />
             </div>
         </div>

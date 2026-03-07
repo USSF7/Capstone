@@ -19,10 +19,24 @@ def seed_users(num_users=20):
     users = []
     
     for _ in range(num_users):
+        randomNum = randint(1, 100)
+        isVendor = bool(randomNum % 2)
+        isRenter = not isVendor
+
         user = User(
             name=fake.name(),
-            email=fake.unique.email()
+            email=fake.unique.email(),
+            password=fake.password(),
+            phone=fake.numerify("(###) ###-####"),
+            date_of_birth=fake.date_of_birth(minimum_age=18, maximum_age=80),
+            street_address=fake.street_address(),
+            city=fake.city(),
+            state=fake.state(),
+            zip_code=fake.zipcode(),
+            vendor=isVendor,
+            renter=isRenter
         )
+
         users.append(user)
         db.session.add(user)
     
@@ -203,8 +217,8 @@ def seed_db():
             
             # Clear existing requests so reseeding replaces old rows
             # (avoids keeping rows that were created before `location` existed)
-            db.session.execute('TRUNCATE TABLE requests RESTART IDENTITY CASCADE;')
-            db.session.commit()
+            # db.session.execute('TRUNCATE TABLE requests RESTART IDENTITY CASCADE;')
+            # db.session.commit()
 
             # Seed in order of dependencies
             users = seed_users(20)
