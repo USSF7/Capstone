@@ -62,10 +62,9 @@ class UserService:
             user.state = state
         if zip_code:
             user.zip_code = zip_code
-        if vendor:
-            user.vendor = vendor
-        if renter:
-            user.renter = renter
+        
+        user.vendor = vendor
+        user.renter = renter
         
         db.session.commit()
         return user

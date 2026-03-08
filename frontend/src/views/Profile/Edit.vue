@@ -1,10 +1,11 @@
 <!-- Edit an account details view -->
- <script lang="js" setup>
+<script lang="js" setup>
 
 import { ref, computed, onMounted } from 'vue'
 import { FwbInput, FwbButton, FwbRadio, FwbSpinner } from 'flowbite-vue'
 import { AsYouType } from 'libphonenumber-js'
 import UserService from '../../services/userService'
+import router from '../../router'
 
 const firstName = ref('')
 const lastName = ref('')
@@ -19,6 +20,11 @@ const zipCode = ref('')
 const dateOfBirth = ref('')
 const siteUsage = ref('')
 const userDataLoaded = ref(false)
+
+// *************************************************************** //
+// userId needs to be updated when account login gets implemented. //
+// Potentially use localStorage.                                   //
+// *************************************************************** // 
 const userId = 20
 
 const passwordMismatch = computed(() => {
@@ -66,7 +72,9 @@ async function loadUserDate() {
     }
 }
 
-async function updateAccount() {
+async function updateAccount(event) {
+    event.preventDefault()
+
     // Checking if the password and confirm password match
     if (passwordMismatch.value) {
         alert("Please make sure both password and confirm password match.")
@@ -92,6 +100,9 @@ async function updateAccount() {
 
         // Successful account update
         alert("Account has been successfully updated.")
+
+        // Going back to the view profile page
+        router.push({ name: 'view_profile' })
     }
     catch (error) {
         console.error("Error updating user:", error)
@@ -102,7 +113,7 @@ async function updateAccount() {
 }
 
 function cancelUpdate() {
-
+    router.push({ name: 'view_profile' })
 }
 
 onMounted(() => {
@@ -117,7 +128,7 @@ onMounted(() => {
         <fwb-spinner size="12" />
     </div>
     <div v-else>
-        <form class="space-y-4">
+        <form class="space-y-4" @submit.prevent="updateAccount">
             <div class="grid grid-cols-2 gap-4">
                 <fwb-input
                     v-model="firstName"
@@ -219,7 +230,7 @@ onMounted(() => {
             </div>
             <div class="flex gap-3">
                 <fwb-button class="w-24" color="default" pill @click="cancelUpdate">Cancel</fwb-button>
-                <fwb-button class="w-24" color="default" pill type="submit" @click="updateAccount">Save</fwb-button>
+                <fwb-button class="w-24" color="default" pill type="submit">Save</fwb-button>
             </div>
         </form>
     </div>
