@@ -25,7 +25,7 @@ const userDataLoaded = ref(false)
 // userId needs to be updated when account login gets implemented. //
 // Potentially use localStorage.                                   //
 // *************************************************************** // 
-const userId = 20
+const userId = 10
 
 const passwordMismatch = computed(() => {
     return confirmPassword.value && (password.value !== confirmPassword.value)

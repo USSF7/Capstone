@@ -21,6 +21,10 @@ class RentalService {
     return api.get(`/rentals/status/${status}`)
   }
 
+  async getRentalsByVendorAndStatus(vendorId, status) {
+    return api.get(`/rentals/vendor/${vendorId}/status/${status}`)
+  }
+
   async createRental(renterId, vendorId, agreedPrice, startDate, endDate, eventId, location) {
     return api.post('/rentals', {
       renter_id: renterId,

@@ -13,8 +13,8 @@ const userDataLoaded = ref(false)
 // These user IDs need to be updated when account login gets implemented. //
 // Potentially use localStorage.                                          //
 // ********************************************************************** // 
-const userId = 20
-const userPageId = 20
+const userId = 10
+const userPageId = 10
 
 function dateFormatting(isoDate) {
     const date = new Date(isoDate)
@@ -43,7 +43,7 @@ function editAccount() {
     router.push({ name: 'edit_profile' })
 }
 
-async function loadUserDate() {
+async function loadUserData() {
     try {
         // Getting the user's data
         userData.value = await UserService.getUser(userPageId)
@@ -60,7 +60,7 @@ async function loadUserDate() {
 }
 
 onMounted(() => {
-    loadUserDate()
+    loadUserData()
 })
 
 </script>
@@ -71,7 +71,12 @@ onMounted(() => {
     </div>
     <div v-else>
         <div class="space-y-4">
+
+            <!-- ************************************************* -->
+            <!-- Avatar code needs to be updated in a later sprint -->
+            <!-- ************************************************* -->
             <fwb-avatar bordered size="xl" img="" />
+
             <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ userData.name }}</h1>
 
             <!-- ********************************************************* -->
@@ -84,7 +89,7 @@ onMounted(() => {
                     </p>
                 </template>
             </fwb-rating>
-            
+
             <div v-if="userId != userPageId">
                 <fwb-list-group class="w-auto">
                     <fwb-list-group-item><b>Email</b>: {{ userData.email }}</fwb-list-group-item>

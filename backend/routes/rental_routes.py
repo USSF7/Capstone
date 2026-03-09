@@ -49,6 +49,15 @@ def get_rentals_by_status(status):
         return jsonify([r.to_dict() for r in rentals]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@rental_bp.route('/vendor/<int:vendor_id>/status/<status>', methods=['GET'])
+def get_rentals_by_vendor_and_status(vendor_id, status):
+    """Get all rentals offered by a vendor with a specific status"""
+    try:
+        rentals = RentalService.get_rentals_by_vendor_and_status(vendor_id, status)
+        return jsonify([r.to_dict() for r in rentals]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @rental_bp.route('/', methods=['POST'])
 def create_rental():

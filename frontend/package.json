@@ -10,10 +10,13 @@
     "watch": "vite build --watch"
   },
   "dependencies": {
+    "chart.js": "^4.5.1",
+    "chartjs-adapter-date-fns": "^3.0.0",
     "flowbite": "^4.0.1",
     "flowbite-vue": "^0.2.1",
     "libphonenumber-js": "^1.12.38",
     "vue": "^3.4.0",
+    "vue-chartjs": "^5.3.3",
     "vue-router": "^4.2.0"
   },
   "devDependencies": {

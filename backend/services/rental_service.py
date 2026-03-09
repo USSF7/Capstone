@@ -51,6 +51,11 @@ class RentalService:
     def get_rentals_by_status(status):
         """Get all rentals with a specific status"""
         return Rental.query.filter_by(status=status).all()
+    
+    @staticmethod
+    def get_rentals_by_vendor_and_status(vendor_id, status):
+        """Get all rentals offered by a vendor with a specific status"""
+        return Rental.query.filter_by(vendor_id=vendor_id, status=status).all()
 
     @staticmethod
     def update_rental(rental_id, status=None, location=None, agreed_price=None):

@@ -5,6 +5,7 @@ import UsersView from './views/UsersView.vue'
 import CreateProfileView from './views/Profile/Create.vue'
 import EditProfileView from './views/Profile/Edit.vue'
 import ViewProfileView from './views/Profile/View.vue'
+import EarningsProfileView from './views/Profile/Earnings.vue'
 
 const routes = [
   {
@@ -36,6 +37,11 @@ const routes = [
     path: '/profile/view',
     name: 'view_profile',
     component: ViewProfileView
+  },
+  {
+    path: '/profile/earnings',
+    name: 'earnings_profile',
+    component: EarningsProfileView
   }
 ]
 
