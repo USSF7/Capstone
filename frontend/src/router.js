@@ -6,6 +6,10 @@ import CreateProfileView from './views/Profile/Create.vue'
 import EditProfileView from './views/Profile/Edit.vue'
 import ViewProfileView from './views/Profile/View.vue'
 import EarningsProfileView from './views/Profile/Earnings.vue'
+import RequestIndex from './views/Request/Index.vue'
+import RequestCreate from './views/Request/Create.vue'
+import RequestEdit from './views/Request/Edit.vue'
+import RequestView from './views/Request/View.vue'
 
 const routes = [
   {
@@ -42,6 +46,28 @@ const routes = [
     path: '/profile/earnings',
     name: 'earnings_profile',
     component: EarningsProfileView
+  },
+  {
+    path: '/requests',
+    name: 'requests',
+    component: RequestIndex
+  },
+  {
+    path: '/requests/create',
+    name: 'requests-create',
+    component: RequestCreate
+  },
+  {
+    path: '/requests/:id/edit',
+    name: 'requests-edit',
+    component: RequestEdit,
+    props: true
+  },
+  {
+    path: '/requests/:id',
+    name: 'requests-view',
+    component: RequestView,
+    props: true
   }
 ]
 
