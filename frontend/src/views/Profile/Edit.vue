@@ -36,7 +36,7 @@ function formatPhoneNumber(event) {
     phoneNum.value = phoneNumberFormatter.input(event.target.value)
 }
 
-async function loadUserDate() {
+async function loadUserData() {
     try {
         // Getting the user's data
         const userData = await UserService.getUser(userId)
@@ -116,8 +116,8 @@ function cancelUpdate() {
     router.push({ name: 'view_profile' })
 }
 
-onMounted(() => {
-    loadUserDate()
+onMounted(async () => {
+    await loadUserData()
 })
 
 </script>

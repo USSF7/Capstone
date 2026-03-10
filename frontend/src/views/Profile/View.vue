@@ -59,8 +59,8 @@ async function loadUserData() {
     }
 }
 
-onMounted(() => {
-    loadUserData()
+onMounted(async () => {
+    await loadUserData()
 })
 
 </script>
