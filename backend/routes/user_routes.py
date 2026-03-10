@@ -28,7 +28,7 @@ def create_user():
     """Create a new user"""
     try:
         data = request.get_json()
-        user = UserService.create_user(data.get('name'), data.get('email'))
+        user = UserService.create_user(data.get('name'), data.get('email'), data.get('password'), data.get('phone'), data.get('date_of_birth'), data.get('street_address'), data.get('city'), data.get('state'), data.get('zip_code'), data.get('vendor'), data.get('renter'))
         return jsonify(user.to_dict()), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
@@ -40,7 +40,7 @@ def update_user(user_id):
     """Update a user"""
     try:
         data = request.get_json()
-        user = UserService.update_user(user_id, data.get('name'), data.get('email'))
+        user = UserService.update_user(user_id, data.get('name'), data.get('email'), data.get('password'), data.get('phone'), data.get('date_of_birth'), data.get('street_address'), data.get('city'), data.get('state'), data.get('zip_code'), data.get('vendor'), data.get('renter'))
         return jsonify(user.to_dict()), 200
     except ValueError as e:
         return jsonify({'error': str(e)}), 400

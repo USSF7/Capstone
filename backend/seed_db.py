@@ -19,10 +19,24 @@ def seed_users(num_users=20):
     users = []
     
     for _ in range(num_users):
+        randomNum = randint(1, 100)
+        isVendor = bool(randomNum % 2)
+        isRenter = not isVendor
+
         user = User(
             name=fake.name(),
-            email=fake.unique.email()
+            email=fake.unique.email(),
+            password=fake.password(),
+            phone=fake.numerify("(###) ###-####"),
+            date_of_birth=fake.date_of_birth(minimum_age=18, maximum_age=80),
+            street_address=fake.street_address(),
+            city=fake.city(),
+            state=fake.state(),
+            zip_code=fake.zipcode(),
+            vendor=isVendor,
+            renter=isRenter
         )
+
         users.append(user)
         db.session.add(user)
     
@@ -126,7 +140,7 @@ def seed_rentals(users, equipment_list, events, num_rentals=25):
     for _ in range(num_rentals):
         renter = choice(users)
         vendor = choice([u for u in users if u.id != renter.id])
-        start_date = fake.date_object()
+        start_date = fake.date_between(start_date='-1y', end_date='today')
         end_date = start_date + timedelta(days=randint(1, 7))
         
         rental = Rental(
@@ -212,9 +226,9 @@ def seed_db():
             events = seed_events(users, 15)
             seed_reviews(users, equipment_list, 40)
             seed_messages(users, 50)
-            rentals = seed_rentals(users, equipment_list, events, 25)
+            rentals = seed_rentals(users, equipment_list, events, 1000)
             seed_rental_equipment(rentals, equipment_list)
-            seed_requests(users, events, 20)
+            seed_requests(users, events, 800)
             
             print("\n" + "="*50)
             print("✓ Database seeding completed successfully!")

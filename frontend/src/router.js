@@ -2,6 +2,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from './views/HomeView.vue'
 import AboutView from './views/AboutView.vue'
 import UsersView from './views/UsersView.vue'
+import CreateProfileView from './views/Profile/Create.vue'
+import EditProfileView from './views/Profile/Edit.vue'
+import ViewProfileView from './views/Profile/View.vue'
+import EarningsProfileView from './views/Profile/Earnings.vue'
 import RequestIndex from './views/Request/Index.vue'
 import RequestCreate from './views/Request/Create.vue'
 import RequestEdit from './views/Request/Edit.vue'
@@ -24,6 +28,26 @@ const routes = [
     component: UsersView
   },
   {
+    path: '/profile/create',
+    name: 'create_profile',
+    component: CreateProfileView
+  },
+  {
+    path: '/profile/edit',
+    name: 'edit_profile',
+    component: EditProfileView
+  },
+  {
+    path: '/profile/view',
+    name: 'view_profile',
+    component: ViewProfileView
+  },
+  {
+    path: '/profile/earnings',
+    name: 'earnings_profile',
+    component: EarningsProfileView
+  },
+  {
     path: '/requests',
     name: 'requests',
     component: RequestIndex
@@ -38,8 +62,7 @@ const routes = [
     name: 'requests-edit',
     component: RequestEdit,
     props: true
-  }
-  ,
+  },
   {
     path: '/requests/:id',
     name: 'requests-view',
