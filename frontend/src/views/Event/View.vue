@@ -58,15 +58,20 @@
               <p><strong>Location:</strong> {{ req.location }}</p>
               <p><strong>Status:</strong> {{ req.status }}</p>
             </div>
-            <div class="flex flex-col gap-2">
-              <router-link :to="{ name: 'requests-view', params: { id: req.id } }">
-                <button class="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">
+            <div class="flex flex-col gap-2 shrink-0 self-start">
+              <router-link class="block" :to="{ name: 'requests-view', params: { id: req.id } }">
+                <button class="w-full px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">
                   View
+                </button>
+              </router-link>
+              <router-link class="block" :to="{ name: 'requests-edit', params: { id: req.id } }">
+                <button class="w-full px-3 py-1.5 bg-yellow-500 text-white text-sm font-medium rounded-md hover:bg-yellow-600">
+                  Edit
                 </button>
               </router-link>
               <button
                 @click="deleteRequest(req.id)"
-                class="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
+                class="w-full px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700"
               >
                 Delete
               </button>
