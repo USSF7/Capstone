@@ -2,7 +2,7 @@
  * API Client for communicating with the backend
  */
 
-const API_BASE_URL = 'http://localhost:5000/api'
+const API_BASE_URL = 'http://localhost:5001/api'
 
 class ApiClient {
   async request(endpoint, options = {}) {
