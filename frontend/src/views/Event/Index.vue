@@ -40,8 +40,7 @@
           <h5 class="mb-2 text-xl font-bold tracking-tight text-white">
             {{ event.name }}
           </h5>
-          <p class="text-sm"><strong>Start Date:</strong> {{ formatDate(event.start_date || event.date) }}</p>
-          <p class="text-sm"><strong>End Date:</strong> {{ formatDate(event.end_date || event.date) }}</p>
+          <p class="text-sm"><strong>Date:</strong> {{ formatDate(event.date) }}</p>
         </div>
       </fwb-card>
     </div>
@@ -82,7 +81,8 @@ async function deleteEvent(eventId) {
 
 function formatDate(dateString) {
   if (!dateString) return ''
-  const date = new Date(dateString)
+  const [year, month, day] = dateString.split('T')[0].split('-')
+  const date = new Date(year, month - 1, day)
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',

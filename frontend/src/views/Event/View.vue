@@ -95,7 +95,8 @@ const requestsError = ref('')
 
 function formatDate(iso) {
   if (!iso) return '—'
-  const date = new Date(iso)
+  const [year, month, day] = iso.split('T')[0].split('-')
+  const date = new Date(year, month - 1, day)
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
