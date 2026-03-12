@@ -6,6 +6,10 @@ import CreateProfileView from './views/Profile/Create.vue'
 import EditProfileView from './views/Profile/Edit.vue'
 import ViewProfileView from './views/Profile/View.vue'
 import EarningsProfileView from './views/Profile/Earnings.vue'
+import EventIndex from './views/Event/Index.vue'
+import EventCreate from './views/Event/Create.vue'
+import EventEdit from './views/Event/Edit.vue'
+import EventView from './views/Event/View.vue'
 import RequestIndex from './views/Request/Index.vue'
 import RequestCreate from './views/Request/Create.vue'
 import RequestEdit from './views/Request/Edit.vue'
@@ -46,6 +50,28 @@ const routes = [
     path: '/profile/earnings',
     name: 'earnings_profile',
     component: EarningsProfileView
+  },
+  {
+    path: '/events',
+    name: 'events',
+    component: EventIndex
+  },
+  {
+    path: '/events/create',
+    name: 'events-create',
+    component: EventCreate
+  },
+  {
+    path: '/events/:id/edit',
+    name: 'events-edit',
+    component: EventEdit,
+    props: true
+  },
+  {
+    path: '/events/:id',
+    name: 'events-view',
+    component: EventView,
+    props: true
   },
   {
     path: '/requests',
