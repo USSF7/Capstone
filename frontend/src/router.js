@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from './stores/auth'
 import HomeView from './views/HomeView.vue'
 import AboutView from './views/AboutView.vue'
 import UsersView from './views/UsersView.vue'
@@ -157,6 +158,18 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
+})
+
+// Pages that don't require a complete profile
+const publicPages = ['login', 'logout', 'auth-callback', 'create_profile']
+
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+
+  // If authenticated but profile incomplete, redirect to complete profile
+  if (auth.isAuthenticated && !auth.profileComplete && !publicPages.includes(to.name)) {
+    return { name: 'create_profile' }
+  }
 })
 
 export default router

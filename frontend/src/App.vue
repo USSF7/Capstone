@@ -37,15 +37,16 @@ const auth = useAuthStore()
           <router-link to="/" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Home</router-link>
           <router-link to="/about" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">About</router-link>
           <router-link to="/users" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Users</router-link>
-          <router-link :to="{ name: 'create_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Register</router-link>
-          <router-link :to="{ name: 'view_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Profile</router-link>
-          <router-link :to="{ name: 'earnings_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Earnings</router-link>
-          <router-link to="/inventory" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Inventory</router-link>
-          <router-link to="/requests" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Requests</router-link>
-          <router-link to="/events" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Events</router-link>
-          <router-link to="/recommendations" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Recommendations</router-link>
-          <router-link to="/equipment" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Inventory</router-link>
-          <router-link to="/calendar" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Calendar</router-link>
+          <template v-if="auth.isAuthenticated && auth.profileComplete">
+            <router-link :to="{ name: 'view_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Profile</router-link>
+            <router-link :to="{ name: 'earnings_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Earnings</router-link>
+            <router-link to="/inventory" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Inventory</router-link>
+            <router-link to="/requests" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Requests</router-link>
+            <router-link to="/events" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Events</router-link>
+            <router-link to="/recommendations" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Recommendations</router-link>
+            <router-link to="/equipment" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Equipment</router-link>
+            <router-link to="/calendar" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Calendar</router-link>
+          </template>
         </nav>
       </aside>
 

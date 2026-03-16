@@ -24,7 +24,7 @@ const userDataLoaded = ref(false)
 // *************************************************************** //
 // userId needs to be updated when account login gets implemented. //
 // Potentially use localStorage.                                   //
-// *************************************************************** // 
+// *************************************************************** //
 const userId = 10
 
 const passwordMismatch = computed(() => {
@@ -32,8 +32,14 @@ const passwordMismatch = computed(() => {
 })
 
 function formatPhoneNumber(event) {
-    const phoneNumberFormatter = new AsYouType("US")
-    phoneNum.value = phoneNumberFormatter.input(event.target.value)
+    const digits = event.target.value.replace(/\D/g, '').slice(0, 10)
+    if (!digits) {
+        phoneNum.value = ''
+        return
+    }
+    if (digits.length <= 3) phoneNum.value = `(${digits}`
+    else if (digits.length <= 6) phoneNum.value = `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+    else phoneNum.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
 }
 
 async function loadUserData() {

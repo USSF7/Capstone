@@ -39,6 +39,19 @@ class User(db.Model):
             return False
         return check_password_hash(self.password_hash, password)
 
+    @property
+    def profile_complete(self):
+        """Check if the user has filled in all required profile fields."""
+        return all([
+            self.phone,
+            self.date_of_birth,
+            self.street_address,
+            self.city,
+            self.state,
+            self.zip_code is not None,
+            self.vendor is not None or self.renter is not None,
+        ])
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -53,7 +66,8 @@ class User(db.Model):
             'state': self.state,
             'zip_code': self.zip_code,
             'vendor': self.vendor,
-            'renter': self.renter
+            'renter': self.renter,
+            'profile_complete': self.profile_complete,
         }
 
     def __repr__(self):

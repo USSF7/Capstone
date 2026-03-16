@@ -19,11 +19,16 @@ onMounted(async () => {
     try {
       const user = await authService.getMe()
       auth.setAuth({ access_token: accessToken, refresh_token: refreshToken, user })
-    } catch {
-      // Token is stored; user info will load on next page
-    }
 
-    router.push('/')
+      if (user.profile_complete) {
+        router.push('/')
+      } else {
+        router.push('/profile/create')
+      }
+    } catch {
+      // Token is stored; redirect to profile completion to be safe
+      router.push('/profile/create')
+    }
   } else {
     router.push('/login')
   }

@@ -12,7 +12,7 @@ const userDataLoaded = ref(false)
 // ********************************************************************** //
 // These user IDs need to be updated when account login gets implemented. //
 // Potentially use localStorage.                                          //
-// ********************************************************************** // 
+// ********************************************************************** //
 const userId = 10
 const userPageId = 10
 
