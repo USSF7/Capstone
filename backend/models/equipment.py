@@ -15,7 +15,9 @@ class Equipment(db.Model):
         return {
             'id': self.id,
             'owner_id': self.owner_id,
-            'name': self.name
+            'name': self.name,
+            'status': 'available' if not self.rentals else 'rented',
+            'transaction_id': self.rentals[0].rental_id if self.rentals else None
         }
 
     def __repr__(self):

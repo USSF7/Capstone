@@ -18,6 +18,7 @@ import RequestView from './views/Request/View.vue'
 import LoginView from './views/Auth/login.vue'
 import LogoutView from './views/Auth/logout.vue'
 import CallbackView from './views/Auth/callback.vue'
+import RecommendationsView from './views/Profile/Recommendations.vue'
 
 const routes = [
   {
@@ -118,6 +119,38 @@ const routes = [
     path: '/auth/callback',
     name: 'auth-callback',
     component: CallbackView
+  },
+  {
+    path: '/recommendations',
+    name: 'recommendations',
+    component: RecommendationsView
+  },
+  {
+    path: '/equipment',
+    name: 'inventory',
+    component: () => import('./views/Inventory/Index.vue')
+  },
+  {
+    path: '/equipment/:id/edit',
+    name: 'equipment-edit',
+    component: () => import('./views/Inventory/Edit.vue'),
+    props: true
+  },
+  {
+    path: '/equipment/create',
+    name: 'equipment-create',
+    component: () => import('./views/Inventory/Create.vue')
+  },
+  {
+    path: '/calendar',
+    name: 'calendar',
+    component: () => import('./views/Profile/Calendar.vue')
+  },
+  {
+    path: '/rentals/:id',
+    name: 'rentals-view',
+    component: () => import('./views/Rental/View.vue'),
+    props: true
   }
 ]
 
