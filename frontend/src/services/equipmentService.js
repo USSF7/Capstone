@@ -13,6 +13,10 @@ class EquipmentService {
     return api.get(`/equipment/owner/${ownerId}`)
   }
 
+  async getEquipmentByOwnerWithRentals(ownerId) {
+    return api.get(`/equipment/owner/${ownerId}/with-rentals`)
+  }
+
   async createEquipment(ownerId, name) {
     return api.post('/equipment', { owner_id: ownerId, name })
   }
