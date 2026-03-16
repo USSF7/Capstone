@@ -21,3 +21,6 @@ yarn-error.log*
 CLAUDE.md
 .claude/
 shell.nix
+# Python cache
+__pycache__/
+*.pyc

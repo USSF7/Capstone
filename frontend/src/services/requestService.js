@@ -46,6 +46,12 @@ class RequestService {
   async deleteRequest(requestId) {
     return api.delete(`/requests/${requestId}`)
   }
+
+  async getRecommendationsByRenter(renterId) {
+    // TODO implement this endpoint in the backend and update this function accordingly
+    // For now, this is just a placeholder that returns all requests.  The frontend can filter these as needed.
+    return api.get(`/requests`)
+  }
 }
 
 export default new RequestService()
