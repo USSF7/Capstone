@@ -29,11 +29,10 @@ class UserService {
     })
   }
 
-  async updateUser(id, name, email, password, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter) {
+  async updateUser(id, name, email, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter) {
     return api.put(`/users/${id}`, { 
       name: name, 
       email: email, 
-      password: password, 
       phone: phone, 
       date_of_birth: date_of_birth, 
       street_address: street_address, 

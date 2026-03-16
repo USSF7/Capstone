@@ -54,7 +54,6 @@ async function submitProfile() {
             auth.user.id,
             firstName.value + " " + lastName.value,
             auth.user.email,
-            null,
             phoneNum.value,
             dateOfBirth.value,
             streetAddress.value,
