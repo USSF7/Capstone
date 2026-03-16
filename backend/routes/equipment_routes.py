@@ -32,6 +32,15 @@ def get_equipment_by_owner(owner_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@equipment_bp.route('/owner/<int:owner_id>/with-rentals', methods=['GET'])
+def get_equipment_by_owner_with_rentals(owner_id):
+    """Get all equipment owned by a user with active rental details"""
+    try:
+        result = EquipmentService.get_equipment_by_owner_with_rentals(owner_id)
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @equipment_bp.route('/', methods=['POST'])
 def create_equipment():
     """Create new equipment"""

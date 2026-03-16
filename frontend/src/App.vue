@@ -21,6 +21,7 @@ import { RouterLink, RouterView } from 'vue-router'
           <router-link :to="{ name: 'create_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Register</router-link>
           <router-link :to="{ name: 'view_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Profile</router-link>
           <router-link :to="{ name: 'earnings_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Earnings</router-link>
+          <router-link to="/inventory" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Inventory</router-link>
           <router-link to="/requests" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Requests</router-link>
           <router-link to="/events" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Events</router-link>
         </nav>

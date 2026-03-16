@@ -10,6 +10,7 @@ import EventIndex from './views/Event/Index.vue'
 import EventCreate from './views/Event/Create.vue'
 import EventEdit from './views/Event/Edit.vue'
 import EventView from './views/Event/View.vue'
+import InventoryView from './views/Profile/Inventory.vue'
 import RequestIndex from './views/Request/Index.vue'
 import RequestCreate from './views/Request/Create.vue'
 import RequestEdit from './views/Request/Edit.vue'
@@ -50,6 +51,11 @@ const routes = [
     path: '/profile/earnings',
     name: 'earnings_profile',
     component: EarningsProfileView
+  },
+  {
+    path: '/inventory',
+    name: 'inventory',
+    component: InventoryView
   },
   {
     path: '/events',

@@ -1,4 +1,5 @@
-from models import Equipment
+from models import Equipment, Rental, RentalHasEquipment
+from models.user import User
 from database import db
 
 class EquipmentService:
@@ -29,6 +30,37 @@ class EquipmentService:
     def get_equipment_by_owner(owner_id):
         """Get all equipment owned by a user"""
         return Equipment.query.filter_by(owner_id=owner_id).all()
+
+    @staticmethod
+    def get_equipment_by_owner_with_rentals(owner_id):
+        """Get all equipment owned by a user with active rental details"""
+        equipment_list = Equipment.query.filter_by(owner_id=owner_id).all()
+        result = []
+        for equip in equipment_list:
+            data = equip.to_dict()
+            # Find active rental for this equipment
+            active_rental = (
+                db.session.query(Rental, User.name)
+                .join(RentalHasEquipment, Rental.id == RentalHasEquipment.rental_id)
+                .join(User, Rental.renter_id == User.id)
+                .filter(
+                    RentalHasEquipment.equipment_id == equip.id,
+                    Rental.status == 'active'
+                )
+                .first()
+            )
+            if active_rental:
+                rental, renter_name = active_rental
+                data['active_rental'] = {
+                    'rental_id': rental.id,
+                    'renter_name': renter_name,
+                    'start_date': rental.start_date.isoformat(),
+                    'end_date': rental.end_date.isoformat(),
+                }
+            else:
+                data['active_rental'] = None
+            result.append(data)
+        return result
 
     @staticmethod
     def update_equipment(equipment_id, name=None, owner_id=None):
