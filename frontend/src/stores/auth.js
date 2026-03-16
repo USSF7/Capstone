@@ -7,6 +7,7 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshToken = ref(localStorage.getItem('refresh_token') || null)
 
   const isAuthenticated = computed(() => !!accessToken.value)
+  const profileComplete = computed(() => !!user.value?.profile_complete)
 
   function setAuth(tokens) {
     accessToken.value = tokens.access_token
@@ -30,5 +31,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user')
   }
 
-  return { user, accessToken, refreshToken, isAuthenticated, setAuth, clearAuth }
+  return { user, accessToken, refreshToken, isAuthenticated, profileComplete, setAuth, clearAuth }
 })
