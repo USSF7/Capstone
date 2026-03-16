@@ -25,6 +25,10 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://capstone_user:capstone_password@db:5432/capstone_db
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-jwt-secret-change-in-production}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
 
   frontend:
     build: ./frontend

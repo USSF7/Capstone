@@ -14,6 +14,9 @@ import RequestIndex from './views/Request/Index.vue'
 import RequestCreate from './views/Request/Create.vue'
 import RequestEdit from './views/Request/Edit.vue'
 import RequestView from './views/Request/View.vue'
+import LoginView from './views/Auth/login.vue'
+import LogoutView from './views/Auth/logout.vue'
+import CallbackView from './views/Auth/callback.vue'
 
 const routes = [
   {
@@ -94,6 +97,21 @@ const routes = [
     name: 'requests-view',
     component: RequestView,
     props: true
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginView
+  },
+  {
+    path: '/logout',
+    name: 'logout',
+    component: LogoutView
+  },
+  {
+    path: '/auth/callback',
+    name: 'auth-callback',
+    component: CallbackView
   }
 ]
 

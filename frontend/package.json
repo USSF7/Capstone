@@ -15,6 +15,7 @@
     "flowbite": "^4.0.1",
     "flowbite-vue": "^0.2.1",
     "libphonenumber-js": "^1.12.38",
+    "pinia": "^2.1.0",
     "vue": "^3.4.0",
     "vue-chartjs": "^5.3.3",
     "vue-router": "^4.2.0"

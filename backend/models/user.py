@@ -1,5 +1,6 @@
 from database import db
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -7,8 +8,10 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=True)
     phone = db.Column(db.String(20), nullable=True)
+    google_id = db.Column(db.String(120), unique=True, nullable=True)
+    auth_provider = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     date_of_birth = db.Column(db.String(10), nullable=True)
     street_address = db.Column(db.String(200), nullable=True)
@@ -28,13 +31,21 @@ class User(db.Model):
     messages_received = db.relationship('Message', foreign_keys='Message.receiver_id', backref='receiver')
     requests = db.relationship('Request', foreign_keys='Request.requester_id', backref='requester')
 
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
+
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'email': self.email,
-            'password': self.password,
             'phone': self.phone,
+            'auth_provider': self.auth_provider,
             'created_at': self.created_at.isoformat(),
             'date_of_birth': self.date_of_birth,
             'street_address': self.street_address,
