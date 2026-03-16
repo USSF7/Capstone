@@ -146,12 +146,12 @@ const routes = [
     name: 'calendar',
     component: () => import('./views/Profile/Calendar.vue')
   },
-  {
-    path: '/rentals/:id',
-    name: 'rentals-view',
-    component: () => import('./views/Rental/View.vue'),
-    props: true
-  }
+  // {
+  //   path: '/rentals/:id',
+  //   name: 'rentals-view',
+  //   component: () => import('./views/Rental/View.vue'),
+  //   props: true
+  // }
 ]
 
 const router = createRouter({
