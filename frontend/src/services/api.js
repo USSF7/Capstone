@@ -7,9 +7,11 @@ const API_BASE_URL = 'http://localhost:5000/api'
 class ApiClient {
   async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`
+    const token = localStorage.getItem('access_token')
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...options.headers,
       },
       ...options,

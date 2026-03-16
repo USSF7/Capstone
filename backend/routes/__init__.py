@@ -6,6 +6,7 @@ from .message_routes import message_bp
 from .rental_routes import rental_bp
 from .event_routes import event_bp
 from .request_routes import request_bp
+from .auth_routes import auth_bp
 
 def register_blueprints(app):
     """Register all route blueprints"""
@@ -16,5 +17,6 @@ def register_blueprints(app):
     app.register_blueprint(rental_bp)
     app.register_blueprint(event_bp)
     app.register_blueprint(request_bp)
+    app.register_blueprint(auth_bp)
 
 __all__ = ['register_blueprints']

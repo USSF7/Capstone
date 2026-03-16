@@ -16,7 +16,9 @@ class UserService:
         if User.query.filter_by(phone=phone).first():
             raise ValueError("Phone number already exists")
         
-        user = User(name=name, email=email, password=password, phone=phone, date_of_birth=date_of_birth, street_address=street_address, city=city, state=state, zip_code=zip_code, vendor=vendor, renter=renter)
+        user = User(name=name, email=email, phone=phone, date_of_birth=date_of_birth, street_address=street_address, city=city, state=state, zip_code=zip_code, vendor=vendor, renter=renter)
+        if password:
+            user.set_password(password)
         db.session.add(user)
         db.session.commit()
         return user
@@ -49,7 +51,7 @@ class UserService:
         if email:
             user.email = email
         if password:
-            user.password = password
+            user.set_password(password)
         if phone:
             user.phone = phone
         if date_of_birth:

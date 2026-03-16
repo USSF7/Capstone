@@ -17,3 +17,7 @@ yarn-error.log*
 # IDE files
 .vscode/
 .DS_Store
+
+CLAUDE.md
+.claude/
+shell.nix

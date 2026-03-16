@@ -45,8 +45,6 @@ async function loadUserData() {
         firstName.value = userData.name.split(' ')[0]
         lastName.value = userData.name.split(' ')[1]
         email.value = userData.email
-        password.value = userData.password
-        confirmPassword.value = userData.password
         phoneNum.value = userData.phone
         streetAddress.value = userData.street_address
         city.value = userData.city

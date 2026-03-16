@@ -103,6 +103,7 @@ Capstone/
 │   ├── postcss.config.js  # PostCSS configuration
 │   └── Dockerfile
 └── docker-compose.yml   # Docker Compose configuration
+```
 
 ## Backend
 
