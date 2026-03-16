@@ -26,7 +26,6 @@ def seed_users(num_users=20):
         user = User(
             name=fake.name(),
             email=fake.unique.email(),
-            password=fake.password(),
             phone=fake.numerify("(###) ###-####"),
             date_of_birth=fake.date_of_birth(minimum_age=18, maximum_age=80),
             street_address=fake.street_address(),
@@ -37,6 +36,7 @@ def seed_users(num_users=20):
             renter=isRenter
         )
 
+        user.set_password(fake.password())
         users.append(user)
         db.session.add(user)
     
