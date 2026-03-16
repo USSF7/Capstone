@@ -43,8 +43,16 @@ def create_app(config_name='development'):
         # Add auth columns to users table if they don't exist
         columns_to_add = [
             ("password_hash", "VARCHAR(255)"),
+            ("phone", "VARCHAR(20)"),
             ("google_id", "VARCHAR(120) UNIQUE"),
             ("auth_provider", "VARCHAR(20)"),
+            ("date_of_birth", "VARCHAR(10)"),
+            ("street_address", "VARCHAR(200)"),
+            ("city", "VARCHAR(100)"),
+            ("state", "VARCHAR(100)"),
+            ("zip_code", "INTEGER"),
+            ("vendor", "BOOLEAN"),
+            ("renter", "BOOLEAN"),
         ]
         for col_name, col_type in columns_to_add:
             try:
