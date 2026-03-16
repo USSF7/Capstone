@@ -10,8 +10,6 @@ import router from '../../router'
 const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
-const password = ref('')
-const confirmPassword = ref('')
 const phoneNum = ref('')
 const streetAddress = ref('')
 const city = ref('')
@@ -26,10 +24,6 @@ const userDataLoaded = ref(false)
 // Potentially use localStorage.                                   //
 // *************************************************************** //
 const userId = 10
-
-const passwordMismatch = computed(() => {
-    return confirmPassword.value && (password.value !== confirmPassword.value)
-})
 
 function formatPhoneNumber(event) {
     const digits = event.target.value.replace(/\D/g, '').slice(0, 10)
@@ -79,19 +73,12 @@ async function loadUserData() {
 async function updateAccount(event) {
     event.preventDefault()
 
-    // Checking if the password and confirm password match
-    if (passwordMismatch.value) {
-        alert("Please make sure both password and confirm password match.")
-        return
-    }
-
     // Updating the user's data in the database
     try {
         await UserService.updateUser(
             userId,
             firstName.value + " " + lastName.value,
             email.value,
-            password.value,
             phoneNum.value,
             dateOfBirth.value,
             streetAddress.value,
@@ -154,23 +141,6 @@ onMounted(async () => {
                 type="email"
                 required
             />
-            <fwb-input
-                v-model="password"
-                placeholder="Enter your password"
-                label="Password"
-                type="password"
-                required
-            />
-            <fwb-input
-                v-model="confirmPassword"
-                placeholder="Re-enter your password"
-                label="Confirm Password"
-                type="password"
-                required
-            />
-            <p v-if="passwordMismatch == true" class="text-red-500 text-sm">
-                Passwords do not match
-            </p>
             <fwb-input
                 v-model="phoneNum"
                 placeholder="Enter your phone number"

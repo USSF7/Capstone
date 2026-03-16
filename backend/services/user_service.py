@@ -34,7 +34,7 @@ class UserService:
         return User.query.all()
 
     @staticmethod
-    def update_user(user_id, name=None, email=None, password=None, phone=None, date_of_birth=None, street_address=None, city=None, state=None, zip_code=None, vendor=None, renter=None):
+    def update_user(user_id, name=None, email=None, phone=None, date_of_birth=None, street_address=None, city=None, state=None, zip_code=None, vendor=None, renter=None):
         """Update a user"""
         user = User.query.get(user_id)
         if not user:
@@ -52,8 +52,6 @@ class UserService:
             user.name = name
         if email:
             user.email = email
-        if password:
-            user.set_password(password)
         if phone:
             user.phone = phone
         if date_of_birth:
