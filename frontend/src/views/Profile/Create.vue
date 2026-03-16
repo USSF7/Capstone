@@ -1,16 +1,19 @@
-<!-- Create an account profile view -->
+<!-- Complete profile after registration/OAuth -->
 <script lang="js" setup>
 
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { FwbInput, FwbCheckbox, FwbA, FwbButton, FwbRadio } from 'flowbite-vue'
 import { AsYouType } from 'libphonenumber-js'
+import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
+import authService from '../../services/authService'
+
+const router = useRouter()
+const auth = useAuthStore()
 
 const firstName = ref('')
 const lastName = ref('')
-const email = ref('')
-const password = ref('')
-const confirmPassword = ref('')
 const phoneNum = ref('')
 const streetAddress = ref('')
 const city = ref('')
@@ -20,178 +23,153 @@ const dateOfBirth = ref('')
 const siteUsage = ref('')
 const termsAndConditions = ref(false)
 
-const passwordMismatch = computed(() => {
-    return confirmPassword.value && (password.value !== confirmPassword.value)
-})
-
-function formatPhoneNumber(event) {
-    const phoneNumberFormatter = new AsYouType("US")
-    phoneNum.value = phoneNumberFormatter.input(event.target.value)
-}
-
-async function submitAccountForm() {
-    // Checking if the password and confirm password match
-    if (passwordMismatch.value) {
-        alert("Please make sure both password and confirm password match.")
+onMounted(() => {
+    if (!auth.isAuthenticated) {
+        router.push({ name: 'login' })
         return
     }
 
-    // Adding a new user to the database
+    // Pre-fill name from the authenticated user
+    if (auth.user?.name) {
+        const parts = auth.user.name.split(' ')
+        firstName.value = parts[0] || ''
+        lastName.value = parts.slice(1).join(' ') || ''
+    }
+})
+
+function formatPhoneNumber(event) {
+    const digits = event.target.value.replace(/\D/g, '').slice(0, 10)
+    if (!digits) {
+        phoneNum.value = ''
+        return
+    }
+    if (digits.length <= 3) phoneNum.value = `(${digits}`
+    else if (digits.length <= 6) phoneNum.value = `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+    else phoneNum.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
+async function submitProfile() {
     try {
-        await UserService.createUser(
+        await UserService.updateUser(
+            auth.user.id,
             firstName.value + " " + lastName.value,
-            email.value,
-            password.value,
+            auth.user.email,
+            null,
             phoneNum.value,
             dateOfBirth.value,
             streetAddress.value,
             city.value,
             state.value,
             zipCode.value,
-            siteUsage.value == "Vendor",
-            siteUsage.value == "Renter"
+            siteUsage.value === "Vendor",
+            siteUsage.value === "Renter"
         )
 
-        // Resetting the variables back to their default values
-        firstName.value = ''
-        lastName.value = ''
-        email.value = ''
-        password.value = ''
-        confirmPassword.value = ''
-        phoneNum.value = ''
-        streetAddress.value = ''
-        city.value = ''
-        state.value = ''
-        zipCode.value = ''
-        dateOfBirth.value = ''
-        siteUsage.value = ''
-        termsAndConditions.value = false
+        // Refresh user data in the auth store
+        const user = await authService.getMe()
+        auth.setAuth({
+            access_token: auth.accessToken,
+            refresh_token: auth.refreshToken,
+            user
+        })
 
-        // Successful account submission
-        alert("Account has been successfully created. Please login.")
+        router.push('/')
     }
     catch (error) {
-        console.error("Error creating user:", error)
-
-        // Unsuccessful account submission
-        alert("Error: Account was not properly created. Please try again.")
+        console.error("Error completing profile:", error)
+        alert("Error: Profile could not be saved. Please try again.")
     }
 }
 
 </script>
 
 <template>
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Create Profile</h1>
-    <form class="space-y-4" @submit.prevent="submitAccountForm">
-        <div class="grid grid-cols-2 gap-4">
-            <fwb-input
-                v-model="firstName"
-                placeholder="Enter your first name"
-                label="First Name"
-                required
-            />
-            <fwb-input
-                v-model="lastName"
-                placeholder="Enter your last name"
-                label="Last Name"
-                required
-            />
-        </div>
-        <fwb-input
-            v-model="email"
-            placeholder="Enter your email address: user@example.com"
-            label="Email"
-            type="email"
-            required
-        />
-        <fwb-input
-            v-model="password"
-            placeholder="Enter your password"
-            label="Password"
-            type="password"
-            required
-        />
-        <fwb-input
-            v-model="confirmPassword"
-            placeholder="Re-enter your password"
-            label="Confirm Password"
-            type="password"
-            required
-        />
-        <p v-if="passwordMismatch == true" class="text-red-500 text-sm">
-            Passwords do not match
-        </p>
-        <fwb-input
-            v-model="phoneNum"
-            placeholder="Enter your phone number"
-            label="Phone Number"
-            type="tel"
-            @input="formatPhoneNumber"
-            maxlength="14"
-            required
-        />
-        <div class="grid grid-cols-2 gap-4">
-            <fwb-input
-                v-model="streetAddress"
-                placeholder="Enter your street address"
-                label="Street Address"
-                required
-            />
-            <fwb-input
-                v-model="city"
-                placeholder="Enter your city"
-                label="City"
-                required
-            />
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-            <fwb-input
-                v-model="state"
-                placeholder="Enter your state"
-                label="State"
-                required
-            />
-            <fwb-input
-                v-model="zipCode"
-                placeholder="Enter your zip code"
-                label="Zip Code"
-                required
-            />
-        </div>
-        <fwb-input
-            v-model="dateOfBirth"
-            placeholder="Enter your date of birth"
-            label = "Date of Birth"
-            type="date"
-            required
-        />
-        <div class="space-y-2">
-            <label class="block text-sm font-medium">Site Usage</label>
-            <div class="flex w-48">
-                <fwb-radio
-                    v-model="siteUsage"
-                    name="vendor"
-                    label="Vendor"
-                    value="Vendor"
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Complete Your Profile</h1>
+        <p class="text-gray-600 mb-6">Please fill in the remaining details to get started.</p>
+        <form class="space-y-4" @submit.prevent="submitProfile">
+            <div class="grid grid-cols-2 gap-4">
+                <fwb-input
+                    v-model="firstName"
+                    placeholder="Enter your first name"
+                    label="First Name"
+                    required
                 />
-                <fwb-radio
-                    v-model="siteUsage"
-                    name="renter"
-                    label="Renter"
-                    value="Renter"
+                <fwb-input
+                    v-model="lastName"
+                    placeholder="Enter your last name"
+                    label="Last Name"
+                    required
                 />
             </div>
-        </div>
-        <fwb-checkbox v-model="termsAndConditions" required>
-            I agree with
-            <fwb-a class="text-blue-600 hover:underline" href="#">
-                terms and conditions.
-            </fwb-a>
-        </fwb-checkbox>
-        <fwb-button class="w-24" color="default" pill type="submit">Submit</fwb-button>
-    </form>
+            <fwb-input
+                v-model="phoneNum"
+                placeholder="Enter your phone number"
+                label="Phone Number"
+                type="tel"
+                @input="formatPhoneNumber"
+                maxlength="14"
+                required
+            />
+            <div class="grid grid-cols-2 gap-4">
+                <fwb-input
+                    v-model="streetAddress"
+                    placeholder="Enter your street address"
+                    label="Street Address"
+                    required
+                />
+                <fwb-input
+                    v-model="city"
+                    placeholder="Enter your city"
+                    label="City"
+                    required
+                />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <fwb-input
+                    v-model="state"
+                    placeholder="Enter your state"
+                    label="State"
+                    required
+                />
+                <fwb-input
+                    v-model="zipCode"
+                    placeholder="Enter your zip code"
+                    label="Zip Code"
+                    required
+                />
+            </div>
+            <fwb-input
+                v-model="dateOfBirth"
+                placeholder="Enter your date of birth"
+                label="Date of Birth"
+                type="date"
+                required
+            />
+            <div class="space-y-2">
+                <label class="block text-sm font-medium">I want to use the site as a:</label>
+                <div class="flex w-48">
+                    <fwb-radio
+                        v-model="siteUsage"
+                        name="siteUsage"
+                        label="Vendor"
+                        value="Vendor"
+                    />
+                    <fwb-radio
+                        v-model="siteUsage"
+                        name="siteUsage"
+                        label="Renter"
+                        value="Renter"
+                    />
+                </div>
+            </div>
+            <fwb-checkbox v-model="termsAndConditions" required>
+                I agree with
+                <fwb-a class="text-blue-600 hover:underline" href="#">
+                    terms and conditions.
+                </fwb-a>
+            </fwb-checkbox>
+            <fwb-button class="w-full" color="default" type="submit">Complete Profile</fwb-button>
+        </form>
+    </div>
 </template>
-
-<style scoped>
-
-</style>

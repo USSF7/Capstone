@@ -25,7 +25,11 @@ async function handleSubmit() {
       tokens = await authService.login(email.value, password.value)
     }
     auth.setAuth(tokens)
-    router.push('/')
+    if (tokens.user?.profile_complete) {
+      router.push('/')
+    } else {
+      router.push('/profile/create')
+    }
   } catch (e) {
     error.value = e.message || 'Something went wrong'
   } finally {
