@@ -40,10 +40,12 @@ class UserService:
         if not user:
             raise ValueError("User not found")
         
-        if email and (User.query.filter_by(email=email).first().id != user_id):
+        existing = User.query.filter_by(email=email).first()
+        if email and existing and existing.id != user_id:
             raise ValueError("Email already exists")
-        
-        if phone and (User.query.filter_by(phone=phone).first().id != user_id):
+
+        existing = User.query.filter_by(phone=phone).first()
+        if phone and existing and existing.id != user_id:
             raise ValueError("Phone number already exists")
         
         if name:

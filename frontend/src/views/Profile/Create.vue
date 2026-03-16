@@ -77,7 +77,7 @@ async function submitProfile() {
     }
     catch (error) {
         console.error("Error completing profile:", error)
-        alert("Error: Profile could not be saved. Please try again.")
+        alert(error.message || "Profile could not be saved. Please try again.")
     }
 }
 
