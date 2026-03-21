@@ -67,7 +67,7 @@ def me():
 @auth_bp.route('/google', methods=['GET'])
 def google_login():
     try:
-        redirect_uri = request.host_url.rstrip('/') + '/api/auth/google/callback'
+        redirect_uri = current_app.config['GOOGLE_REDIRECT_URI']
         url = AuthService.get_google_auth_url(redirect_uri)
         return redirect(url)
     except ValueError as e:
@@ -83,12 +83,12 @@ def google_callback():
         if not code:
             return jsonify({'error': 'Missing authorization code'}), 400
 
-        redirect_uri = request.host_url.rstrip('/') + '/api/auth/google/callback'
+        redirect_uri = current_app.config['GOOGLE_REDIRECT_URI']
         user = AuthService.handle_google_callback(code, redirect_uri)
         tokens = AuthService.generate_tokens(user)
 
         # Redirect to frontend with tokens as query params
-        frontend_url = 'http://localhost:8080/auth/callback'
+        frontend_url = current_app.config['FRONTEND_URL'].rstrip('/') + '/auth/callback'
         params = urlencode({
             'access_token': tokens['access_token'],
             'refresh_token': tokens['refresh_token'],
