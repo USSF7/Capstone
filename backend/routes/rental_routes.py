@@ -59,6 +59,25 @@ def get_rentals_by_vendor_and_status(vendor_id, status):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@rental_bp.route('/average-price', methods=['GET'])
+def get_average_price():
+    """Get average price for equipment in a location"""
+    try:
+        equipment_name = request.args.get('equipment_name')
+        location = request.args.get('location')
+        
+        if not equipment_name or not location:
+            return jsonify({'error': 'equipment_name and location are required'}), 400
+        
+        average_price = RentalService.get_average_price_by_equipment_and_location(equipment_name, location)
+        
+        if average_price is not None:
+            return jsonify({'average_price': round(average_price, 2)}), 200
+        else:
+            return jsonify({'average_price': None, 'message': 'No data available for this equipment/location combination'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @rental_bp.route('/', methods=['POST'])
 def create_rental():
     """Create a new rental"""

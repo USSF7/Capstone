@@ -28,6 +28,10 @@ class EquipmentService {
   async deleteEquipment(equipmentId) {
     return api.delete(`/equipment/${equipmentId}`)
   }
+
+  async getEquipmentNames() {
+    return api.get('/equipment/names')
+  }
 }
 
 export default new EquipmentService()

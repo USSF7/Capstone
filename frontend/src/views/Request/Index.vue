@@ -52,17 +52,24 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { FwbCard, FwbButton } from 'flowbite-vue'
+import { useAuthStore } from '../../stores/auth'
 import requestService from '../../services/requestService'
 import eventService from '../../services/eventService'
 
 const requests = ref([])
 const loading = ref(true)
 const error = ref('')
+const auth = useAuthStore()
 
 async function loadRequestsWithEventNames() {
   try {
-    // initial list of requests
-    const data = await requestService.getRequests()
+    if (!auth.user?.id) {
+      requests.value = []
+      error.value = 'You must be logged in to view your requests.'
+      return
+    }
+
+    const data = await requestService.getRequestsByRequester(auth.user.id)
     // for each request fetch the related event
     const enhanced = await Promise.all(
       data.map(async (r) => {
