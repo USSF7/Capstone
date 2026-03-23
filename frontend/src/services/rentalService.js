@@ -48,6 +48,10 @@ class RentalService {
   async deleteRental(rentalId) {
     return api.delete(`/rentals/${rentalId}`)
   }
+
+  async getAveragePrice(equipmentName, location) {
+    return api.get(`/rentals/average-price?equipment_name=${encodeURIComponent(equipmentName)}&location=${encodeURIComponent(location)}`)
+  }
 }
 
 export default new RentalService()

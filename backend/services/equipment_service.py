@@ -1,6 +1,26 @@
 from models import Equipment, Rental, RentalHasEquipment
 from models.user import User
 from database import db
+from pathlib import Path
+
+
+def load_equipment_names_from_config():
+    # .config is mounted in the app directory in Docker
+    config_path = Path(__file__).resolve().parents[1] / '.config'
+    if config_path.exists():
+        ns = {}
+        with open(config_path, 'r') as f:
+            exec(f.read(), {}, ns)
+        if 'EQUIPMENT_NAMES' in ns and isinstance(ns['EQUIPMENT_NAMES'], list):
+            return ns['EQUIPMENT_NAMES']
+
+    return [
+        'Projector', 'Sound System', 'Microphone', 'Camera', 'Lighting Kit',
+        'DJ Booth', 'Tent', 'Tables', 'Chairs', 'Decorations',
+        'Amplifier', 'Speaker', 'Mixer', 'Laptop', 'Monitor',
+        'Screen', 'Tripod', 'Cables', 'Microphone Stand', 'Power Bank'
+    ]
+
 
 class EquipmentService:
     """Service layer for Equipment business logic"""
@@ -30,6 +50,11 @@ class EquipmentService:
     def get_equipment_by_owner(owner_id):
         """Get all equipment owned by a user"""
         return Equipment.query.filter_by(owner_id=owner_id).all()
+
+    @staticmethod
+    def get_equipment_names():
+        """Get current equipment name pool from .config"""
+        return load_equipment_names_from_config()
 
     @staticmethod
     def get_equipment_by_owner_with_rentals(owner_id):

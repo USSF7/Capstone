@@ -1,5 +1,7 @@
 from models import Rental
 from database import db
+from sqlalchemy import func
+from models import Equipment
 
 class RentalService:
     """Service layer for Rental business logic"""
@@ -84,3 +86,64 @@ class RentalService:
         db.session.delete(rental)
         db.session.commit()
         return True
+
+    @staticmethod
+    def get_average_price_by_equipment_and_location(equipment_name, location):
+        """Get average price for equipment in a specific city/state"""
+        if not equipment_name or not location:
+            return None
+        
+        # Parse city and state from location string
+        # Location format is typically: "Street Address, City, State Zip"
+        # We'll extract city and state
+        city_state = RentalService._extract_city_state(location)
+        if not city_state:
+            return None
+        
+        city, state = city_state
+        
+        # Query for average price of rentals with this equipment in this city/state
+        result = db.session.query(func.avg(Rental.agreed_price))\
+            .join(Rental.equipment_list)\
+            .join(Equipment)\
+            .filter(Equipment.name == equipment_name)\
+            .filter(Rental.location.like(f'%{city}%'))\
+            .filter(Rental.location.like(f'%{state}%'))\
+            .scalar()
+        
+        return float(result) if result else None
+
+    @staticmethod
+    def _extract_city_state(location):
+        """Extract city and state from location string"""
+        # Handle both comma-separated and newline-separated formats
+        if '\n' in location:
+            # Multi-line format: "Street\nCity, State ZIP"
+            lines = [line.strip() for line in location.split('\n') if line.strip()]
+            if len(lines) >= 2:
+                # Last line should be "City, State ZIP"
+                city_state_line = lines[-1]
+                parts = [part.strip() for part in city_state_line.split(',')]
+                if len(parts) >= 2:
+                    city = parts[0]
+                    state_zip = parts[1].split()
+                    if state_zip:
+                        state = state_zip[0]
+                        return city, state
+        else:
+            # Comma-separated format: "Street, City, State ZIP" or "City, State"
+            parts = [part.strip() for part in location.split(',')]
+            if len(parts) >= 2:
+                if len(parts) >= 3:
+                    # "Street, City, State ZIP"
+                    city = parts[-2]
+                    state_zip = parts[-1].split()
+                else:
+                    # "City, State"
+                    city = parts[0]
+                    state_zip = parts[1].split()
+                
+                if state_zip:
+                    state = state_zip[0]
+                    return city, state
+        return None

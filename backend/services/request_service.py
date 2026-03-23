@@ -1,5 +1,27 @@
 from models import Request
 from database import db
+from pathlib import Path
+import os
+from random import choice
+
+def load_equipment_names():
+    # .config is in project root
+    config_path = Path(__file__).resolve().parents[2] / '.config'
+    if config_path.exists():
+        ns = {}
+        with open(config_path, 'r') as f:
+            exec(f.read(), {}, ns)
+        if 'EQUIPMENT_NAMES' in ns:
+            return ns['EQUIPMENT_NAMES']
+    # fallback default set, kept as defensive config in case .config is missing
+    return [
+        'Projector', 'Sound System', 'Microphone', 'Camera', 'Lighting Kit',
+        'DJ Booth', 'Tent', 'Tables', 'Chairs', 'Decorations',
+        'Amplifier', 'Speaker', 'Mixer', 'Laptop', 'Monitor',
+        'Screen', 'Tripod', 'Cables', 'Microphone Stand', 'Power Bank'
+    ]
+
+EQUIPMENT_NAMES = load_equipment_names()
 
 class RequestService:
     """Service layer for Request business logic"""

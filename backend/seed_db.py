@@ -4,12 +4,32 @@ Database seeding script.
 Populates the database with sample data using Faker.
 """
 
-import sys
 from datetime import datetime, timedelta
 from random import randint, choice
 from faker import Faker
+from pathlib import Path
 from app import create_app, db
 from models import User, Equipment, Review, Message, Rental, RentalHasEquipment, Event, Request
+import sys
+
+
+def load_equipment_names():
+    # .config is in project root
+    config_path = Path(__file__).resolve().parent.parent / '.config'
+    if config_path.exists():
+        ns = {}
+        with open(config_path, 'r') as f:
+            exec(f.read(), {}, ns)
+        if 'EQUIPMENT_NAMES' in ns:
+            return ns['EQUIPMENT_NAMES']
+    return [
+        'Projector', 'Sound System', 'Microphone', 'Camera', 'Lighting Kit',
+        'DJ Booth', 'Tent', 'Tables', 'Chairs', 'Decorations',
+        'Amplifier', 'Speaker', 'Mixer', 'Laptop', 'Monitor',
+        'Screen', 'Tripod', 'Cables', 'Microphone Stand', 'Power Bank'
+    ]
+
+EQUIPMENT_NAMES = load_equipment_names()
 
 fake = Faker()
 
@@ -49,17 +69,10 @@ def seed_equipment(users, num_items=30):
     print(f"Creating {num_items} equipment items...")
     equipment_list = []
     
-    equipment_names = [
-        'Projector', 'Sound System', 'Microphone', 'Camera', 'Lighting Kit',
-        'DJ Booth', 'Tent', 'Tables', 'Chairs', 'Decorations',
-        'Amplifier', 'Speaker', 'Mixer', 'Laptop', 'Monitor',
-        'Screen', 'Tripod', 'Cables', 'Microphone Stand', 'Power Bank'
-    ]
-    
     for _ in range(num_items):
         equipment = Equipment(
             owner_id=choice(users).id,
-            name=choice(equipment_names)
+            name=choice(EQUIPMENT_NAMES)
         )
         equipment_list.append(equipment)
         db.session.add(equipment)
@@ -160,21 +173,17 @@ def seed_rentals(users, equipment_list, events, num_rentals=25):
     print(f"✓ Created {num_rentals} rentals")
     return rentals
 
-def seed_rental_equipment(rentals, equipment_list, links_per_rental=3):
-    """Link equipment to rentals"""
+def seed_rental_equipment(rentals, equipment_list):
+    """Link exactly one equipment item to each rental"""
     print(f"Creating rental-equipment links...")
     
     for rental in rentals:
-        # Sample unique equipment for this rental to avoid duplicates
-        num_items = randint(1, min(links_per_rental, len(equipment_list)))
-        selected_equipment = list(set([choice(equipment_list) for _ in range(num_items)]))
-        
-        for equipment in selected_equipment:
-            link = RentalHasEquipment(
-                equipment_id=equipment.id,
-                rental_id=rental.id
-            )
-            db.session.add(link)
+        equipment = choice(equipment_list)
+        link = RentalHasEquipment(
+            equipment_id=equipment.id,
+            rental_id=rental.id
+        )
+        db.session.add(link)
     
     db.session.commit()
     print(f"✓ Created rental-equipment links")
@@ -192,7 +201,7 @@ def seed_requests(users, events, num_requests=20):
         request = Request(
             requester_id=choice(users).id,
             event_id=choice(events).id if events else None,
-            name=fake.word(),
+            name=choice(EQUIPMENT_NAMES),
             max_price=round(randint(100, 1000) + randint(0, 99) / 100, 2),
             count=randint(1, 10),
             start_date=start_date,

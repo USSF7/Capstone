@@ -61,6 +61,17 @@
 
       <div class="mb-4">
         <fwb-input
+          v-model.number="form.countWanted"
+          label="Count"
+          type="number"
+          :min="1"
+          size="md"
+          required
+        />
+      </div>
+
+      <div class="mb-4">
+        <fwb-input
           v-model.number="form.maxPrice"
           label="Max Price"
           type="number"
