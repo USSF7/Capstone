@@ -14,7 +14,9 @@
     <p v-if="loading" class="text-gray-600">Loading events...</p>
     <p v-else-if="error" class="text-red-600">{{ error }}</p>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <p v-else-if="events.length === 0" class="text-gray-600">No events found for your account.</p>
+
+    <div v-else class="grid grid-cols-1 gap-4">
       <fwb-card
         v-for="event in events"
         :key="event.id"
@@ -28,19 +30,14 @@
           <router-link :to="{ name: 'events-edit', params: { id: event.id } }">
             <fwb-button color="Yellow" pill>Edit</fwb-button>
           </router-link>
-          <button
-            class="px-3 py-1.5 text-sm rounded-full bg-red-600 text-white font-medium hover:bg-red-700"
-            @click="deleteEvent(event.id)"
-          >
-            Delete
-          </button>
+          <fwb-button color="Red" pill @click="deleteEvent(event.id)">Delete</fwb-button>
         </div>
 
-        <div class="p-5 bg-gray-800 rounded-md text-white">
-          <h5 class="mb-2 text-xl font-bold tracking-tight text-white">
+        <div class="p-5">
+          <h5 class="mb-2 text-xl font-bold tracking-tight text-gray-900 dark:text-white">
             {{ event.name }}
           </h5>
-          <p class="text-sm"><strong>Date:</strong> {{ formatDate(event.date) }}</p>
+          <p><strong>Date:</strong> {{ formatDate(event.date) }}</p>
         </div>
       </fwb-card>
     </div>
@@ -49,16 +46,45 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useAuthStore } from '../../stores/auth'
 import { FwbCard, FwbButton } from 'flowbite-vue'
 import eventService from '../../services/eventService'
+import authService from '../../services/authService'
 
 const events = ref([])
 const loading = ref(true)
 const error = ref('')
+const auth = useAuthStore()
+
+async function ensureCurrentUser() {
+  if (auth.user?.id) return auth.user
+  if (!auth.accessToken) return null
+
+  try {
+    const me = await authService.getMe()
+    auth.setAuth({
+      access_token: auth.accessToken,
+      refresh_token: auth.refreshToken,
+      user: me
+    })
+    return me
+  } catch {
+    return null
+  }
+}
 
 async function loadEvents() {
   try {
-    const data = await eventService.getEvents()
+    const currentUser = await ensureCurrentUser()
+    const userId = currentUser?.id || auth.user?.id
+
+    if (!userId) {
+      events.value = []
+      error.value = 'You must be logged in to view your events.'
+      return
+    }
+
+    const data = await eventService.getEventsByUser(userId)
     events.value = data
   } catch (err) {
     error.value = err.message || 'Failed to load events'
