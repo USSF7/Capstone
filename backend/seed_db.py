@@ -33,6 +33,91 @@ EQUIPMENT_NAMES = load_equipment_names()
 
 fake = Faker()
 
+
+def _build_equipment_review_text(rating):
+    positives = [
+        "arrived on time",
+        "was clean and ready to use",
+        "worked reliably throughout the event",
+        "matched the listing description",
+        "was easy to set up"
+    ]
+    negatives = [
+        "showed more wear than expected",
+        "performance was inconsistent throughout the session",
+        "was not as comfortable to use for a full event",
+        "did not hold up well under normal activity",
+        "came with a few missing or worn accessories",
+        "quality did not match the listing photos",
+    ]
+
+    if rating >= 5:
+        return (
+            f"Great rental experience. The equipment {choice(positives)} and made the event run smoothly. "
+            "I would definitely rent this again."
+        )
+    if rating == 4:
+        return (
+            f"Overall very good. The equipment {choice(positives)}, though {choice(negatives)}. "
+            "Still a solid option and good value."
+        )
+    if rating == 3:
+        return (
+            f"Average experience. The equipment {choice(positives)}, but {choice(negatives)}. "
+            "Usable, but there is room for improvement."
+        )
+    if rating == 2:
+        return (
+            f"Below expectations. The equipment had issues: {choice(negatives)}. "
+            "It worked in parts, but caused unnecessary stress during the event."
+        )
+    return (
+        f"Poor experience. The equipment had multiple problems and {choice(negatives)}. "
+        "I would not rent this item again in its current condition."
+    )
+
+
+def _build_user_review_text(rating):
+    positives = [
+        "communicated clearly and quickly",
+        "was punctual for handoff",
+        "was professional and courteous",
+        "was flexible when plans changed",
+        "made the process straightforward"
+    ]
+    negatives = [
+        "responses were delayed",
+        "pickup details were unclear",
+        "coordination at return was difficult",
+        "communication was inconsistent",
+        "some expectations were not clearly discussed"
+    ]
+
+    if rating >= 5:
+        return (
+            f"Excellent person to work with. They {choice(positives)} and everything went smoothly. "
+            "Highly recommended."
+        )
+    if rating == 4:
+        return (
+            f"Good overall interaction. They {choice(positives)}; only small issue was that {choice(negatives)}. "
+            "I would work with them again."
+        )
+    if rating == 3:
+        return (
+            f"Mixed experience. They {choice(positives)}, but {choice(negatives)}. "
+            "Average overall."
+        )
+    if rating == 2:
+        return (
+            f"Difficult interaction. {choice(negatives).capitalize()}, and that made the rental process harder than expected. "
+            "Needs improvement in communication and coordination."
+        )
+    return (
+        f"Very poor interaction. {choice(negatives).capitalize()}, and multiple parts of the handoff were frustrating. "
+        "I would avoid future transactions."
+    )
+
 def seed_users(num_users=20):
     """Create sample users"""
     print(f"Creating {num_users} users...")
@@ -81,24 +166,32 @@ def seed_equipment(users, num_items=30):
     print(f"✓ Created {num_items} equipment items")
     return equipment_list
 
-def seed_reviews(users, equipment_list, num_reviews=40):
-    """Create sample reviews"""
+def seed_reviews(users, equipment_list, num_reviews=100):
+    """Create sample reviews with realistic, rating-aware text"""
     print(f"Creating {num_reviews} reviews...")
-    
+
     for _ in range(num_reviews):
+        submitter = choice(users)
         model_type = choice(['equipment', 'user'])
-        
+
         if model_type == 'equipment':
             model_id = choice(equipment_list).id
         else:
-            model_id = choice(users).id
-        
+            target_user = choice([u for u in users if u.id != submitter.id])
+            model_id = target_user.id
+
+        rating = randint(1, 5)
+        if model_type == 'equipment':
+            review_text = _build_equipment_review_text(rating)
+        else:
+            review_text = _build_user_review_text(rating)
+
         review = Review(
-            submitter_id=choice(users).id,
+            submitter_id=submitter.id,
             model_type=model_type,
             model_id=model_id,
-            rating=randint(1, 5),
-            review=fake.text(max_nb_chars=200),
+            rating=rating,
+            review=review_text,
             date=fake.date_time_this_year()
         )
         db.session.add(review)
@@ -233,7 +326,7 @@ def seed_db():
             users = seed_users(20)
             equipment_list = seed_equipment(users, 30)
             events = seed_events(users, 15)
-            seed_reviews(users, equipment_list, 40)
+            seed_reviews(users, equipment_list, 100)
             seed_messages(users, 50)
             rentals = seed_rentals(users, equipment_list, events, 1000)
             seed_rental_equipment(rentals, equipment_list)
