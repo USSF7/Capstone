@@ -51,7 +51,6 @@ class AIService:
             "- Do not list or use bullet points\n"
             "- Do not mention individual reviewers\n"
             "- Do not mention the model ID\n"
-            "- If reviews are limited, mention that briefly\n"
             "- Keep it under 100 words\n\n"
 
             f"Average rating: {avg_rating:.2f}/5\n"
