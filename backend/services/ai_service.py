@@ -40,12 +40,23 @@ class AIService:
             )
 
         prompt = (
-            "You are summarizing reviews for a marketplace item or user. "
-            "Provide a concise, neutral summary\n\n"
-            f"Model type: {model_type}\n"
-            f"Model id: {model_id}\n"
-            f"Review count: {len(reviews)}\n"
-            f"Average rating: {avg_rating:.2f}/5\n\n"
+            "You are summarizing user reviews for a marketplace item or user.\n\n"
+            
+            "Write a single short paragraph (3–5 sentences) that summarizes the overall feedback.\n"
+            "Include the general sentiment, the most common positive points, and the most common complaints.\n"
+            
+            "Guidelines:\n"
+            "- Be neutral and objective\n"
+            "- Focus only on recurring themes across reviews\n"
+            "- Do not list or use bullet points\n"
+            "- Do not mention individual reviewers\n"
+            "- Do not mention the model ID\n"
+            "- If reviews are limited, mention that briefly\n"
+            "- Keep it under 100 words\n\n"
+
+            f"Average rating: {avg_rating:.2f}/5\n"
+            f"Total reviews: {len(reviews)}\n\n"
+
             "Reviews:\n"
             + "\n".join(review_lines)
         )
