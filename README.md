@@ -75,6 +75,11 @@ docker-compose up frontend-dev
 ```
 Frontend will be available at http://localhost:5173 with HMR enabled.
 
+Test users:
+- **Renter**: renter@test.com
+- **Vendor**: vendor@test.com
+- both passwords are `password`
+
 ## Project Structure
 
 ```
