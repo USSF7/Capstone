@@ -56,7 +56,13 @@ def create_equipment():
     """Create new equipment"""
     try:
         data = request.get_json()
-        equipment = EquipmentService.create_equipment(data.get('owner_id'), data.get('name'))
+        equipment = EquipmentService.create_equipment(
+            data.get('owner_id'),
+            data.get('name'),
+            data.get('price'),
+            data.get('description'),
+            data.get('picture')
+        )
         return jsonify(equipment.to_dict()), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
@@ -68,7 +74,14 @@ def update_equipment(equipment_id):
     """Update equipment"""
     try:
         data = request.get_json()
-        equipment = EquipmentService.update_equipment(equipment_id, data.get('name'), data.get('owner_id'))
+        equipment = EquipmentService.update_equipment(
+            equipment_id,
+            data.get('name'),
+            data.get('owner_id'),
+            data.get('price'),
+            data.get('description'),
+            data.get('picture')
+        )
         return jsonify(equipment.to_dict()), 200
     except ValueError as e:
         return jsonify({'error': str(e)}), 404

@@ -2,12 +2,12 @@
 <script lang="js" setup>
 
 import { onMounted, ref } from 'vue'
-import { FwbCard, FwbButton } from 'flowbite-vue'
-import RequestService from '../../services/requestService'
+import { FwbCard } from 'flowbite-vue'
 import UserService from '../../services/userService'
 
 const userData = ref()
 const loading = ref(true)
+const error = ref('')
 
 const userId = 10
 
@@ -17,8 +17,7 @@ async function loadUser() {
 }
 
 async function loadRecommendations() {
-    // Get the current user's recommendations data
-    userData.value.recommendations = await RequestService.getRecommendationsByRenter(userId)
+  userData.value.recommendations = []
 }
 
 function formatDate(dateString) {
@@ -48,6 +47,7 @@ onMounted(async () => {
 
     <p v-if="loading" class="text-gray-600">Loading recommendations...</p>
     <p v-else-if="error" class="text-red-600">{{ error }}</p>
+    <p v-else-if="!userData?.recommendations?.length" class="text-gray-600">No recommendations yet.</p>
 
     <div v-else class="grid grid-cols-2 gap-4">
       <fwb-card
@@ -55,25 +55,11 @@ onMounted(async () => {
         :key="request.id"
         class="w-sm relative"
       >
-        <!-- action buttons top-right -->
-        <div class="absolute top-2 right-2 flex gap-2">
-          <router-link :to="{ name: 'requests-view', params: { id: request.id } }">
-            <fwb-button color="Green" pill>View</fwb-button>
-          </router-link>
-        </div>
-
         <div class="p-5">
           <h5 class="mb-2 text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Equipment name: {{ request.name }}
+            {{ request.name }}
           </h5>
-          <p><strong>Event Name:</strong> {{ request.event_name }}</p>
-          <p><strong>Max Price:</strong> {{ request.max_price }}</p>
-          <p><strong>Count:</strong> {{ request.count }}</p>
-          <p><strong>Start:</strong> {{ formatDate(request.start_date) }}</p>
-          <p><strong>End:</strong> {{ formatDate(request.end_date) }}</p>
-          <p><strong>Location:</strong> {{ request.location }}</p>
-          <p><strong>Comments:</strong> {{ request.comments }}</p>
-          <p><strong>Status:</strong> {{ request.status }}</p>
+          <p><strong>Date:</strong> {{ formatDate(request.start_date) }}</p>
         </div>
       </fwb-card>
     </div>

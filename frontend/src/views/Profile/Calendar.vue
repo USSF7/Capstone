@@ -30,9 +30,6 @@
 			</div>
 
 			<div class="mt-4 flex flex-wrap items-center gap-3 text-xs">
-				<span class="inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 font-medium text-sky-700">
-					<span class="h-2 w-2 rounded-full bg-sky-600"></span> Event
-				</span>
 				<span class="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-700">
 					<span class="h-2 w-2 rounded-full bg-emerald-600"></span> Rental
 				</span>
@@ -77,16 +74,14 @@
 					</div>
 
 					<div class="space-y-1">
-						<router-link
+						<div
 							v-for="item in day.items.slice(0, 3)"
-							:key="`${day.isoKey}-${item.type}-${item.id}`"
-							:to="item.route"
-							class="block truncate rounded-md px-2 py-1 text-xs font-medium transition hover:brightness-95"
-							:class="item.type === 'event' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'"
+							:key="`${day.isoKey}-${item.id}`"
+							class="block truncate rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800"
 							:title="item.description"
 						>
 							{{ item.title }}
-						</router-link>
+						</div>
 						<div
 							v-if="day.items.length > 3"
 							class="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600"
@@ -102,7 +97,6 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import eventService from '../../services/eventService'
 import rentalService from '../../services/rentalService'
 
 // TODO: Replace with authenticated user id when auth module is integrated.
@@ -110,9 +104,7 @@ const USER_ID = 10
 
 const loading = ref(true)
 const error = ref('')
-const events = ref([])
 const rentals = ref([])
-const rentalsWithoutEvent = ref([])
 const currentMonth = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
 
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -140,13 +132,10 @@ async function loadCalendarData() {
 	error.value = ''
 
 	try {
-		const [eventsData, renterRentals, vendorRentals] = await Promise.all([
-			eventService.getEventsByUser(USER_ID),
+		const [renterRentals, vendorRentals] = await Promise.all([
 			rentalService.getRentalsByRenter(USER_ID),
 			rentalService.getRentalsByVendor(USER_ID)
 		])
-
-		events.value = eventsData
 
 		const rentalMap = new Map()
 		for (const rental of [...renterRentals, ...vendorRentals]) {
@@ -156,7 +145,6 @@ async function loadCalendarData() {
 		}
 
 		rentals.value = Array.from(rentalMap.values())
-		rentalsWithoutEvent.value = rentals.value.filter(rental => rental.event_id == null)
 	} catch (err) {
 		error.value = err.message || 'Failed to load calendar data'
 	} finally {
@@ -164,37 +152,10 @@ async function loadCalendarData() {
 	}
 }
 
-const rentalsByEventId = computed(() => {
+const itemsByDate = computed(() => {
 	const map = {}
 
 	for (const rental of rentals.value) {
-		if (rental.event_id == null) continue
-		if (!map[rental.event_id]) map[rental.event_id] = []
-		map[rental.event_id].push(rental)
-	}
-
-	return map
-})
-
-const itemsByDate = computed(() => {
-	const map = {}
-	const maxVisibleItems = 3
-
-	for (const event of events.value) {
-		const eventDate = parseDateString(event.date)
-		const key = getIsoDate(eventDate)
-		if (!map[key]) map[key] = []
-
-		map[key].push({
-			id: event.id,
-			type: 'event',
-			title: event.name,
-			description: `${event.name} (Event)`,
-			route: { name: 'events-view', params: { id: event.id } }
-		})
-	}
-
-	for (const rental of rentalsWithoutEvent.value) {
 		const start = parseDateString(rental.start_date)
 		const end = parseDateString(rental.end_date)
 
@@ -204,35 +165,8 @@ const itemsByDate = computed(() => {
 
 			map[key].push({
 				id: rental.id,
-				type: 'rental',
 				title: `Rental #${rental.id}`,
-				description: `Rental #${rental.id} (${rental.status}) at ${rental.location || 'No location'}`,
-				route: { name: 'rentals-view', params: { id: rental.id } }
-			})
-		}
-	}
-
-	for (const event of events.value) {
-		const eventDate = parseDateString(event.date)
-		const key = getIsoDate(eventDate)
-		if (!map[key]) continue
-
-		const eventRentals = rentalsByEventId.value[event.id] || []
-		if (map[key].length >= maxVisibleItems || eventRentals.length === 0) {
-			continue
-		}
-
-		for (const rental of eventRentals) {
-			if (map[key].length >= maxVisibleItems) {
-				break
-			}
-
-			map[key].push({
-				id: rental.id,
-				type: 'rental',
-				title: `Rental #${rental.id} (Event)`,
-				description: `Rental #${rental.id} for ${event.name} (${rental.status})`,
-				route: { name: 'rentals-view', params: { id: rental.id } }
+				description: `Rental #${rental.id} (${rental.status}) at ${rental.location || 'No location'}`
 			})
 		}
 	}
