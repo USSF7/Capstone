@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from services import EquipmentService
 
 equipment_bp = Blueprint('equipment', __name__, url_prefix='/api/equipment')
@@ -64,9 +65,16 @@ def create_equipment():
         return jsonify({'error': str(e)}), 500
 
 @equipment_bp.route('/<int:equipment_id>', methods=['PUT'])
+@jwt_required()
 def update_equipment(equipment_id):
     """Update equipment"""
     try:
+        current_user_id = int(get_jwt_identity())
+        equipment = EquipmentService.get_equipment(equipment_id)
+        if not equipment:
+            return jsonify({'error': 'Equipment not found'}), 404
+        if equipment.owner_id != current_user_id:
+            return jsonify({'error': 'Not authorized to update this equipment'}), 403
         data = request.get_json()
         equipment = EquipmentService.update_equipment(equipment_id, data.get('name'), data.get('owner_id'))
         return jsonify(equipment.to_dict()), 200

@@ -102,11 +102,12 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useAuthStore } from '../../stores/auth'
 import eventService from '../../services/eventService'
 import rentalService from '../../services/rentalService'
 
-// TODO: Replace with authenticated user id when auth module is integrated.
-const USER_ID = 10
+const auth = useAuthStore()
+const USER_ID = computed(() => auth.user?.id)
 
 const loading = ref(true)
 const error = ref('')
@@ -141,9 +142,9 @@ async function loadCalendarData() {
 
 	try {
 		const [eventsData, renterRentals, vendorRentals] = await Promise.all([
-			eventService.getEventsByUser(USER_ID),
-			rentalService.getRentalsByRenter(USER_ID),
-			rentalService.getRentalsByVendor(USER_ID)
+			eventService.getEventsByUser(USER_ID.value),
+			rentalService.getRentalsByRenter(USER_ID.value),
+			rentalService.getRentalsByVendor(USER_ID.value)
 		])
 
 		events.value = eventsData

@@ -21,8 +21,14 @@ class ApiClient {
       const response = await fetch(url, config)
       
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || `HTTP ${response.status}`)
+        let message = `HTTP ${response.status}`
+        try {
+          const error = await response.json()
+          message = error.error || message
+        } catch {
+          // Response was not JSON (e.g. HTML error page)
+        }
+        throw new Error(message)
       }
       
       return await response.json()

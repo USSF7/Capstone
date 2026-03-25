@@ -1,3 +1,5 @@
+import json
+
 from models import Request
 from database import db
 from pathlib import Path
@@ -8,11 +10,10 @@ def load_equipment_names():
     # .config is in project root
     config_path = Path(__file__).resolve().parents[2] / '.config'
     if config_path.exists():
-        ns = {}
         with open(config_path, 'r') as f:
-            exec(f.read(), {}, ns)
-        if 'EQUIPMENT_NAMES' in ns:
-            return ns['EQUIPMENT_NAMES']
+            data = json.load(f)
+        if 'EQUIPMENT_NAMES' in data:
+            return data['EQUIPMENT_NAMES']
     # fallback default set, kept as defensive config in case .config is missing
     return [
         'Projector', 'Sound System', 'Microphone', 'Camera', 'Lighting Kit',

@@ -1,20 +1,18 @@
 <!-- View a specific users profile details -->
 <script lang="js" setup>
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton } from 'flowbite-vue'
+import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
 import router from '../../router'
 
+const auth = useAuthStore()
 const userData = ref()
 const userDataLoaded = ref(false)
 
-// ********************************************************************** //
-// These user IDs need to be updated when account login gets implemented. //
-// Potentially use localStorage.                                          //
-// ********************************************************************** //
-const userId = 10
-const userPageId = 10
+const userId = computed(() => auth.user?.id)
+const userPageId = computed(() => auth.user?.id)
 
 function dateFormatting(isoDate) {
     const date = new Date(isoDate)
@@ -30,7 +28,7 @@ function computeAge(dateOfBirth) {
     let age = currentDate.getFullYear() - birthDate.getFullYear()
 
     // Subtracting a year if the user's birthday has not occurred
-    const hadBirthday = (currentDate.getMonth() > birthDate.getMonth) || ((currentDate.getMonth() == birthDate.getMonth()) && (currentDate.getDate() >= birthDate.getDate()))
+    const hadBirthday = (currentDate.getMonth() > birthDate.getMonth()) || ((currentDate.getMonth() == birthDate.getMonth()) && (currentDate.getDate() >= birthDate.getDate()))
 
     if (!hadBirthday) {
         age--
@@ -46,7 +44,7 @@ function editAccount() {
 async function loadUserData() {
     try {
         // Getting the user's data
-        userData.value = await UserService.getUser(userPageId)
+        userData.value = await UserService.getUser(userPageId.value)
 
         // Displaying the page to the user
         userDataLoaded.value = true

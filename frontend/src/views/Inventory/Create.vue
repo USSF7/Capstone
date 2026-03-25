@@ -27,13 +27,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { FwbInput } from 'flowbite-vue'
+import { useAuthStore } from '../../stores/auth'
 import equipmentService from '../../services/equipmentService'
 
-// TODO: Replace with authenticated user id when auth module is integrated.
-const OWNER_ID = 10
+const auth = useAuthStore()
+const OWNER_ID = computed(() => auth.user?.id)
 
 const router = useRouter()
 const loading = ref(false)
@@ -48,7 +49,7 @@ const submitForm = async () => {
   error.value = ''
 
   try {
-    await equipmentService.createEquipment(OWNER_ID, form.value.equipmentName)
+    await equipmentService.createEquipment(OWNER_ID.value, form.value.equipmentName)
     router.push({ name: 'inventory' })
   } catch (err) {
     error.value = err.message || 'Failed to create equipment'

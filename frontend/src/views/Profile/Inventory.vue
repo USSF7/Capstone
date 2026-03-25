@@ -41,11 +41,13 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { FwbCard } from 'flowbite-vue'
+import { useAuthStore } from '../../stores/auth'
 import equipmentService from '../../services/equipmentService'
 
-const userId = 10 // placeholder until auth is implemented
+const auth = useAuthStore()
+const userId = computed(() => auth.user?.id)
 
 const equipment = ref([])
 const loading = ref(true)
@@ -53,7 +55,7 @@ const error = ref('')
 
 async function loadInventory() {
   try {
-    equipment.value = await equipmentService.getEquipmentByOwnerWithRentals(userId)
+    equipment.value = await equipmentService.getEquipmentByOwnerWithRentals(userId.value)
   } catch (err) {
     error.value = err.message || 'Failed to load inventory'
   } finally {

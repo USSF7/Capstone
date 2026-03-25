@@ -2,28 +2,40 @@
 
 <script lang="js" setup>
 
-    import { onMounted, ref } from 'vue'
+    import { onMounted, ref, computed } from 'vue'
     import { FwbCard, FwbButton } from 'flowbite-vue'
+    import { useAuthStore } from '../../stores/auth'
     import EquipmentService from '../../services/equipmentService'
     import UserService from '../../services/userService'
 
+    const auth = useAuthStore()
     const userData = ref()
     const loading = ref(true)
     const error = ref('')
-    const userId = 10
+    const userId = computed(() => auth.user?.id)
 
     async function loadUser() {
         // Get the current user's data
-        userData.value = await UserService.getUser(userId)
+        userData.value = await UserService.getUser(userId.value)
     }
 
     async function loadInventory() {
         // Get the current user's inventory data
-        userData.value.inventory = await EquipmentService.getEquipmentByOwner(userId)
+        userData.value.inventory = await EquipmentService.getEquipmentByOwner(userId.value)
+    }
+
+    async function deleteEquipment(equipmentId) {
+        if (!confirm('Are you sure you want to delete this equipment?')) return
+        try {
+            await EquipmentService.deleteEquipment(equipmentId)
+            await loadInventory()
+        } catch (err) {
+            error.value = err.message || 'Failed to delete equipment'
+            console.error('Error deleting equipment:', err)
+        }
     }
 
     onMounted(async () => {
-        // Validating the user's vendor status
         await loadUser()
         await loadInventory()
         loading.value = false

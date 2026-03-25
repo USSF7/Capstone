@@ -160,14 +160,24 @@ const router = createRouter({
   routes
 })
 
-// Pages that don't require a complete profile
-const publicPages = ['login', 'logout', 'auth-callback', 'create_profile']
+// Pages accessible without login
+const publicPages = ['login', 'logout', 'auth-callback', 'home', 'about']
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
 
+  // Allow public pages without auth
+  if (publicPages.includes(to.name)) {
+    return
+  }
+
+  // Redirect to login if not authenticated
+  if (!auth.isAuthenticated) {
+    return { name: 'login' }
+  }
+
   // If authenticated but profile incomplete, redirect to complete profile
-  if (auth.isAuthenticated && !auth.profileComplete && !publicPages.includes(to.name)) {
+  if (!auth.profileComplete && to.name !== 'create_profile') {
     return { name: 'create_profile' }
   }
 })
