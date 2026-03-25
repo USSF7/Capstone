@@ -1,19 +1,21 @@
 <!-- View of all recommendations for the signed in user's profile -->
 <script lang="js" setup>
 
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { FwbCard } from 'flowbite-vue'
+import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
 
+const auth = useAuthStore()
 const userData = ref()
 const loading = ref(true)
 const error = ref('')
 
-const userId = 10
+const userId = computed(() => auth.user?.id)
 
 async function loadUser() {
     // Get the current user's data
-    userData.value = await UserService.getUser(userId)
+    userData.value = await UserService.getUser(userId.value)
 }
 
 async function loadRecommendations() {

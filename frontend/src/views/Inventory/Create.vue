@@ -57,13 +57,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { FwbInput } from 'flowbite-vue'
+import { useAuthStore } from '../../stores/auth'
 import equipmentService from '../../services/equipmentService'
 
-// TODO: Replace with authenticated user id when auth module is integrated.
-const OWNER_ID = 10
+const auth = useAuthStore()
+const OWNER_ID = computed(() => auth.user?.id)
 
 const router = useRouter()
 const loading = ref(false)
@@ -82,7 +83,7 @@ const submitForm = async () => {
 
   try {
     await equipmentService.createEquipment(
-      OWNER_ID,
+      OWNER_ID.value,
       form.value.equipmentName,
       form.value.price,
       form.value.description,

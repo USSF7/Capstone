@@ -1,3 +1,5 @@
+import re
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -6,23 +8,27 @@ from config import config
 from database import db
 from routes import register_blueprints
 
+# Whitelist pattern for column names used in DDL statements
+_SAFE_COL_NAME = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+_SAFE_COL_TYPE = re.compile(r'^[A-Z()0-9, ]+$')
+
 def create_app(config_name='development'):
     """Application factory"""
     app = Flask(__name__)
 
     app.url_map.strict_slashes = False
-    
+
     # Load configuration
     app.config.from_object(config[config_name])
-    
+
     # Initialize extensions
     db.init_app(app)
     JWTManager(app)
     CORS(app)
-    
+
     # Register blueprints
     register_blueprints(app)
-    
+
     # Health check endpoint
     @app.route('/health', methods=['GET'])
     def health():
@@ -35,7 +41,7 @@ def create_app(config_name='development'):
             return jsonify({'status': 'ok', 'postgis_version': result}), 200
         except Exception as e:
             return jsonify({'status': 'error', 'error': str(e)}), 500
-    
+
     # Create database tables and add any missing columns
     with app.app_context():
         db.create_all()
@@ -55,9 +61,11 @@ def create_app(config_name='development'):
             ("renter", "BOOLEAN"),
         ]
         for col_name, col_type in columns_to_add:
+            if not _SAFE_COL_NAME.match(col_name) or not _SAFE_COL_TYPE.match(col_type):
+                raise ValueError(f"Invalid column definition: {col_name} {col_type}")
             try:
                 db.session.execute(text(
-                    f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"
+                    "ALTER TABLE users ADD COLUMN " + col_name + " " + col_type
                 ))
                 db.session.commit()
             except Exception:
@@ -69,9 +77,11 @@ def create_app(config_name='development'):
             ("picture", "VARCHAR(500)"),
         ]
         for col_name, col_type in equipment_columns_to_add:
+            if not _SAFE_COL_NAME.match(col_name) or not _SAFE_COL_TYPE.match(col_type):
+                raise ValueError(f"Invalid column definition: {col_name} {col_type}")
             try:
                 db.session.execute(text(
-                    f"ALTER TABLE equipment ADD COLUMN {col_name} {col_type}"
+                    "ALTER TABLE equipment ADD COLUMN " + col_name + " " + col_type
                 ))
                 db.session.commit()
             except Exception:
@@ -84,7 +94,7 @@ def create_app(config_name='development'):
             db.session.commit()
         except Exception:
             db.session.rollback()
-    
+
     return app
 
 if __name__ == '__main__':

@@ -1,3 +1,5 @@
+import json
+
 from models import Equipment, Rental, RentalHasEquipment
 from models.user import User
 from database import db
@@ -8,11 +10,10 @@ def load_equipment_names_from_config():
     # .config is mounted in the app directory in Docker
     config_path = Path(__file__).resolve().parents[1] / '.config'
     if config_path.exists():
-        ns = {}
         with open(config_path, 'r') as f:
-            exec(f.read(), {}, ns)
-        if 'EQUIPMENT_NAMES' in ns and isinstance(ns['EQUIPMENT_NAMES'], list):
-            return ns['EQUIPMENT_NAMES']
+            data = json.load(f)
+        if 'EQUIPMENT_NAMES' in data and isinstance(data['EQUIPMENT_NAMES'], list):
+            return data['EQUIPMENT_NAMES']
 
     return [
         'Projector', 'Sound System', 'Microphone', 'Camera', 'Lighting Kit',

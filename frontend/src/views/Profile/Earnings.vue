@@ -5,10 +5,12 @@ import { ref, onMounted, computed } from 'vue'
 import { FwbTable, FwbTableBody, FwbTableCell, FwbTableHead, FwbTableHeadCell, FwbTableRow, FwbListGroup, FwbListGroupItem, FwbSpinner } from 'flowbite-vue'
 import { Line } from "vue-chartjs"
 import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, TimeScale, plugins } from "chart.js"
+import { useAuthStore } from '../../stores/auth'
 import RentalService from '../../services/rentalService'
 import UserService from '../../services/userService'
 import 'chartjs-adapter-date-fns'
 
+const auth = useAuthStore()
 const isVendor = ref(false)
 const vendorRentalsData = ref()
 const vendorRentalsDataLoaded = ref(false)
@@ -16,15 +18,11 @@ const usersData = ref()
 const chartDataRentals = ref([])
 const chartDataRentalsByMonth = ref([])
 
-// ********************************************************************** //
-// The Vendor ID needs to be updated when account login gets implemented. //
-// Potentially use localStorage.                                          //
-// ********************************************************************** //
-const vendorId = 10
+const vendorId = computed(() => auth.user?.id)
 
 async function validateVendorStatus() {
     // Get the current user's data
-    let userData = await UserService.getUser(vendorId)
+    let userData = await UserService.getUser(vendorId.value)
 
     // Determine if the user is a vendor
     if (userData.vendor == true) {
@@ -38,7 +36,7 @@ async function validateVendorStatus() {
 async function loadCompletedVendorRentals() {
     try {
         // Getting the vendor's completed rentals data
-        vendorRentalsData.value = await RentalService.getRentalsByVendorAndStatus(vendorId, 'returned')
+        vendorRentalsData.value = await RentalService.getRentalsByVendorAndStatus(vendorId.value, 'returned')
         vendorRentalsData.value = vendorRentalsData.value.sort((a, b) => new Date(b.end_date) - new Date(a.end_date))
 
         // Putting some of the vendor's completed rentals data into chartDataRentals
@@ -48,22 +46,17 @@ async function loadCompletedVendorRentals() {
         }))
         .sort((a, b) => a.x - b.x)
 
-        // Sorting the completed rentals data into months
+        // Sorting the completed rentals data into months (using 0-indexed months to match Date.getMonth())
         let currentDate = new Date()
-        let currentMonthYear = { Month: currentDate.getMonth() + 1, Year: currentDate.getFullYear() }
-        let pastMonthYear = { Month: currentDate.getMonth() + 1, Year: currentDate.getFullYear() - 1 }
-
-        if (pastMonthYear.Month == 12) {
-            pastMonthYear.Month = 0
-            pastMonthYear.Year += 1
-        }
+        let currentMonthYear = { Month: currentDate.getMonth(), Year: currentDate.getFullYear() }
+        let pastMonthYear = { Month: currentDate.getMonth(), Year: currentDate.getFullYear() - 1 }
 
         while ((pastMonthYear.Month != currentMonthYear.Month) || (pastMonthYear.Year != currentMonthYear.Year)) {
             // Adding the earnings from the current month and year together
             let sumEarnings = 0.0
             for (let i = 0; i < chartDataRentals.value.length; i++) {
-                if ((pastMonthYear.Month == (chartDataRentals.value[i].x.getMonth())) &&
-                    (pastMonthYear.Year  == (chartDataRentals.value[i].x.getFullYear()))) {
+                if ((pastMonthYear.Month == chartDataRentals.value[i].x.getMonth()) &&
+                    (pastMonthYear.Year  == chartDataRentals.value[i].x.getFullYear())) {
                     sumEarnings += chartDataRentals.value[i].y
                 }
             }
@@ -73,8 +66,8 @@ async function loadCompletedVendorRentals() {
 
             // Incrementing pastMonthYear
             pastMonthYear.Month += 1
-            
-            if (pastMonthYear.Month == 12) {
+
+            if (pastMonthYear.Month > 11) {
                 pastMonthYear.Month = 0
                 pastMonthYear.Year += 1
             }

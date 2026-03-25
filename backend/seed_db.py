@@ -4,6 +4,7 @@ Database seeding script.
 Populates the database with sample data using Faker.
 """
 
+import json
 from datetime import datetime, timedelta
 from random import randint, choice
 from faker import Faker
@@ -17,11 +18,10 @@ def load_equipment_names():
     # .config is in project root
     config_path = Path(__file__).resolve().parent.parent / '.config'
     if config_path.exists():
-        ns = {}
         with open(config_path, 'r') as f:
-            exec(f.read(), {}, ns)
-        if 'EQUIPMENT_NAMES' in ns:
-            return ns['EQUIPMENT_NAMES']
+            data = json.load(f)
+        if 'EQUIPMENT_NAMES' in data:
+            return data['EQUIPMENT_NAMES']
     return [
         'Projector', 'Sound System', 'Microphone', 'Camera', 'Lighting Kit',
         'DJ Booth', 'Tent', 'Tables', 'Chairs', 'Decorations',
@@ -118,11 +118,53 @@ def _build_user_review_text(rating):
         "I would avoid future transactions."
     )
 
+def seed_test_users():
+    """Create deterministic test users for development login."""
+    print("Creating test users...")
+    test_users = []
+
+    renter = User(
+        name='Sarah Mitchell',
+        email='renter@test.com',
+        phone='(555) 234-5678',
+        date_of_birth='1994-06-15',
+        street_address='742 Evergreen Terrace',
+        city='Austin',
+        state='Texas',
+        zip_code=73301,
+        vendor=False,
+        renter=True
+    )
+    renter.set_password('password')
+    test_users.append(renter)
+    db.session.add(renter)
+
+    vendor = User(
+        name='Marcus Chen',
+        email='vendor@test.com',
+        phone='(555) 876-5432',
+        date_of_birth='1988-11-23',
+        street_address='1200 Lakeshore Drive',
+        city='Austin',
+        state='Texas',
+        zip_code=73301,
+        vendor=True,
+        renter=False
+    )
+    vendor.set_password('password')
+    test_users.append(vendor)
+    db.session.add(vendor)
+
+    db.session.commit()
+    print("✓ Created 2 test users (renter@test.com / vendor@test.com, password: password)")
+    return test_users
+
+
 def seed_users(num_users=20):
     """Create sample users"""
     print(f"Creating {num_users} users...")
     users = []
-    
+
     for _ in range(num_users):
         randomNum = randint(1, 100)
         isVendor = bool(randomNum % 2)
@@ -277,7 +319,9 @@ def seed_db():
             print("="*50 + "\n")
             
             # Seed in order of dependencies
+            test_users = seed_test_users()
             users = seed_users(20)
+            users = test_users + users
             equipment_list = seed_equipment(users, 30)
             seed_reviews(users, equipment_list, 40)
             seed_messages(users, 50)
