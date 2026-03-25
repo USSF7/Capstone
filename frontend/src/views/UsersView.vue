@@ -1,16 +1,16 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import requestService from '../services/requestService'
+import userService from '../services/userService'
 
-const requests = ref([])
+const users = ref([])
 const loading = ref(true)
 const error = ref('')
 
 onMounted(async () => {
   try {
-    requests.value = await requestService.getRequests()
+    users.value = await userService.getUsers()
   } catch (err) {
-    error.value = err.message || 'Failed to load requests'
+    error.value = err.message || 'Failed to load users'
   } finally {
     loading.value = false
   }
@@ -19,19 +19,19 @@ onMounted(async () => {
 
 <template>
   <section>
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Requests</h1>
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Users</h1>
 
-    <p v-if="loading" class="text-gray-600">Loading request...</p>
+    <p v-if="loading" class="text-gray-600">Loading users...</p>
     <p v-else-if="error" class="text-red-600">{{ error }}</p>
 
     <ul v-else class="space-y-3">
       <li
-        v-for="request in requests"
-        :key="request.id"
+        v-for="user in users"
+        :key="user.id"
         class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
       >
-        <p class="font-semibold text-gray-900">{{ request.name }}</p>
-        <p class="text-gray-600">{{ request.location }}</p>
+        <p class="font-semibold text-gray-900">{{ user.name }}</p>
+        <p class="text-gray-600">{{ user.email }}</p>
       </li>
     </ul>
   </section>

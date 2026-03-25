@@ -17,12 +17,24 @@ class EquipmentService {
     return api.get(`/equipment/owner/${ownerId}/with-rentals`)
   }
 
-  async createEquipment(ownerId, name) {
-    return api.post('/equipment', { owner_id: ownerId, name })
+  async createEquipment(ownerId, name, price, description, picture) {
+    return api.post('/equipment', {
+      owner_id: ownerId,
+      name,
+      price,
+      description,
+      picture,
+    })
   }
 
-  async updateEquipment(equipmentId, name, ownerId) {
-    return api.put(`/equipment/${equipmentId}`, { name, owner_id: ownerId })
+  async updateEquipment(equipmentId, name, ownerId, price, description, picture) {
+    return api.put(`/equipment/${equipmentId}`, {
+      name,
+      owner_id: ownerId,
+      price,
+      description,
+      picture,
+    })
   }
 
   async deleteEquipment(equipmentId) {

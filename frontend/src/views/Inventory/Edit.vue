@@ -15,6 +15,36 @@
         />
       </div>
 
+      <div class="mb-4">
+        <fwb-input
+          v-model.number="form.price"
+          label="Price"
+          type="number"
+          :step="0.01"
+          :min="0"
+          size="md"
+          required
+        />
+      </div>
+
+      <div class="mb-4">
+        <fwb-input
+          v-model="form.description"
+          label="Description"
+          placeholder="enter equipment description"
+          size="md"
+        />
+      </div>
+
+      <div class="mb-4">
+        <fwb-input
+          v-model="form.picture"
+          label="Picture Path"
+          placeholder="/images/equipment/item.jpg"
+          size="md"
+        />
+      </div>
+
       <button
         type="submit"
         :disabled="loading"
@@ -41,7 +71,10 @@ const error = ref('')
 const OWNER_ID = computed(() => auth.user?.id)
 
 const form = ref({
-  equipmentName: ''
+  equipmentName: '',
+  price: 0,
+  description: '',
+  picture: '',
 })
 
 onMounted(async () => {
@@ -50,6 +83,9 @@ onMounted(async () => {
     try {
       const equipment = await equipmentService.getEquipmentById(id)
       form.value.equipmentName = equipment.name
+      form.value.price = equipment.price
+      form.value.description = equipment.description || ''
+      form.value.picture = equipment.picture || ''
     } catch (e) {
       error.value = 'Unable to load equipment for editing'
       console.error(e)
@@ -72,7 +108,10 @@ const submitForm = async () => {
     await equipmentService.updateEquipment(
       id,
       form.value.equipmentName,
-      OWNER_ID.value
+      OWNER_ID.value,
+      form.value.price,
+      form.value.description,
+      form.value.picture,
     )
 
     router.push({ name: 'inventory' })

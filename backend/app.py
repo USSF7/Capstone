@@ -10,7 +10,7 @@ from routes import register_blueprints
 
 # Whitelist pattern for column names used in DDL statements
 _SAFE_COL_NAME = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
-_SAFE_COL_TYPE = re.compile(r'^[A-Z()0-9 ]+$')
+_SAFE_COL_TYPE = re.compile(r'^[A-Z()0-9, ]+$')
 
 def create_app(config_name='development'):
     """Application factory"""
@@ -70,6 +70,30 @@ def create_app(config_name='development'):
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+
+        equipment_columns_to_add = [
+            ("price", "NUMERIC(10,2) DEFAULT 0"),
+            ("description", "VARCHAR(1000)"),
+            ("picture", "VARCHAR(500)"),
+        ]
+        for col_name, col_type in equipment_columns_to_add:
+            if not _SAFE_COL_NAME.match(col_name) or not _SAFE_COL_TYPE.match(col_type):
+                raise ValueError(f"Invalid column definition: {col_name} {col_type}")
+            try:
+                db.session.execute(text(
+                    "ALTER TABLE equipment ADD COLUMN " + col_name + " " + col_type
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        try:
+            db.session.execute(text(
+                "ALTER TABLE rentals ADD COLUMN deleted BOOLEAN DEFAULT FALSE"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
     return app
 
