@@ -9,7 +9,7 @@ from random import randint, choice
 from faker import Faker
 from pathlib import Path
 from app import create_app, db
-from models import User, Equipment, Review, Message, Rental, RentalHasEquipment, Event, Request
+from models import User, Equipment, Review, Message, Rental, RentalHasEquipment
 import sys
 
 
@@ -157,7 +157,10 @@ def seed_equipment(users, num_items=30):
     for _ in range(num_items):
         equipment = Equipment(
             owner_id=choice(users).id,
-            name=choice(EQUIPMENT_NAMES)
+            name=choice(EQUIPMENT_NAMES),
+            price=round(randint(10, 1000) + randint(0, 99) / 100, 2),
+            description=fake.sentence(nb_words=12),
+            picture=f"/images/equipment/{fake.uuid4()}.jpg"
         )
         equipment_list.append(equipment)
         db.session.add(equipment)
@@ -218,30 +221,12 @@ def seed_messages(users, num_messages=50):
     db.session.commit()
     print(f"✓ Created {num_messages} messages")
 
-def seed_events(users, num_events=15):
-    """Create sample events"""
-    print(f"Creating {num_events} events...")
-    events = []
-    
-    for _ in range(num_events):
-        event = Event(
-            user_id=choice(users).id,
-            name=fake.word(),
-            date=fake.date_this_year()
-        )
-        events.append(event)
-        db.session.add(event)
-    
-    db.session.commit()
-    print(f"✓ Created {num_events} events")
-    return events
-
-def seed_rentals(users, equipment_list, events, num_rentals=25):
+def seed_rentals(users, equipment_list, num_rentals=25):
     """Create sample rentals"""
     print(f"Creating {num_rentals} rentals...")
     rentals = []
     
-    statuses = ['pending', 'active', 'returned', 'disputed', 'canceled']
+    statuses = ['requesting', 'accepted', 'active', 'returned', 'disputed', 'denied']
     
     for _ in range(num_rentals):
         renter = choice(users)
@@ -252,12 +237,12 @@ def seed_rentals(users, equipment_list, events, num_rentals=25):
         rental = Rental(
             renter_id=renter.id,
             vendor_id=vendor.id,
-            event_id=choice(events).id if events else None,
             location=fake.address(),
             agreed_price=round(randint(50, 500) + randint(0, 99) / 100, 2),
             start_date=start_date,
             end_date=end_date,
-            status=choice(statuses)
+            status=choice(statuses),
+            deleted=False
         )
         rentals.append(rental)
         db.session.add(rental)
@@ -281,32 +266,6 @@ def seed_rental_equipment(rentals, equipment_list):
     db.session.commit()
     print(f"✓ Created rental-equipment links")
 
-def seed_requests(users, events, num_requests=20):
-    """Create sample requests"""
-    print(f"Creating {num_requests} requests...")
-    
-    statuses = ['created', 'completed']
-    
-    for _ in range(num_requests):
-        start_date = fake.date_time_this_year()
-        end_date = start_date + timedelta(days=randint(1, 5))
-        
-        request = Request(
-            requester_id=choice(users).id,
-            event_id=choice(events).id if events else None,
-            name=choice(EQUIPMENT_NAMES),
-            max_price=round(randint(100, 1000) + randint(0, 99) / 100, 2),
-            count=randint(1, 10),
-            start_date=start_date,
-            end_date=end_date,
-            location=fake.address(),
-            status=choice(statuses)
-        )
-        db.session.add(request)
-    
-    db.session.commit()
-    print(f"✓ Created {num_requests} requests")
-
 def seed_db():
     """Main seeding function"""
     app = create_app('development')
@@ -317,20 +276,13 @@ def seed_db():
             print("Starting database seeding...")
             print("="*50 + "\n")
             
-            # Clear existing requests so reseeding replaces old rows
-            # (avoids keeping rows that were created before `location` existed)
-            # db.session.execute('TRUNCATE TABLE requests RESTART IDENTITY CASCADE;')
-            # db.session.commit()
-
             # Seed in order of dependencies
             users = seed_users(20)
             equipment_list = seed_equipment(users, 30)
-            events = seed_events(users, 15)
-            seed_reviews(users, equipment_list, 100)
+            seed_reviews(users, equipment_list, 40)
             seed_messages(users, 50)
-            rentals = seed_rentals(users, equipment_list, events, 1000)
+            rentals = seed_rentals(users, equipment_list, 1000)
             seed_rental_equipment(rentals, equipment_list)
-            seed_requests(users, events, 800)
             
             print("\n" + "="*50)
             print("✓ Database seeding completed successfully!")

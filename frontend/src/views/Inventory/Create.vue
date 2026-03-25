@@ -15,6 +15,36 @@
         />
       </div>
 
+      <div class="mb-4">
+        <fwb-input
+          v-model.number="form.price"
+          label="Price"
+          type="number"
+          :step="0.01"
+          :min="0"
+          size="md"
+          required
+        />
+      </div>
+
+      <div class="mb-4">
+        <fwb-input
+          v-model="form.description"
+          label="Description"
+          placeholder="enter equipment description"
+          size="md"
+        />
+      </div>
+
+      <div class="mb-4">
+        <fwb-input
+          v-model="form.picture"
+          label="Picture Path"
+          placeholder="/images/equipment/item.jpg"
+          size="md"
+        />
+      </div>
+
       <button
         type="submit"
         :disabled="loading"
@@ -40,7 +70,10 @@ const loading = ref(false)
 const error = ref('')
 
 const form = ref({
-  equipmentName: ''
+  equipmentName: '',
+  price: 0,
+  description: '',
+  picture: '',
 })
 
 const submitForm = async () => {
@@ -48,7 +81,13 @@ const submitForm = async () => {
   error.value = ''
 
   try {
-    await equipmentService.createEquipment(OWNER_ID, form.value.equipmentName)
+    await equipmentService.createEquipment(
+      OWNER_ID,
+      form.value.equipmentName,
+      form.value.price,
+      form.value.description,
+      form.value.picture,
+    )
     router.push({ name: 'inventory' })
   } catch (err) {
     error.value = err.message || 'Failed to create equipment'

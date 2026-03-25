@@ -89,8 +89,9 @@ def create_rental():
             data.get('agreed_price'),
             data.get('start_date'),
             data.get('end_date'),
-            data.get('event_id'),
-            data.get('location')
+            data.get('location'),
+            data.get('status', 'requesting'),
+            data.get('deleted', False)
         )
         return jsonify(rental.to_dict()), 201
     except ValueError as e:
@@ -103,7 +104,13 @@ def update_rental(rental_id):
     """Update a rental"""
     try:
         data = request.get_json()
-        rental = RentalService.update_rental(rental_id, data.get('status'), data.get('location'), data.get('agreed_price'))
+        rental = RentalService.update_rental(
+            rental_id,
+            data.get('status'),
+            data.get('location'),
+            data.get('agreed_price'),
+            data.get('deleted')
+        )
         return jsonify(rental.to_dict()), 200
     except ValueError as e:
         return jsonify({'error': str(e)}), 400

@@ -62,6 +62,28 @@ def create_app(config_name='development'):
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+
+        equipment_columns_to_add = [
+            ("price", "NUMERIC(10,2) DEFAULT 0"),
+            ("description", "VARCHAR(1000)"),
+            ("picture", "VARCHAR(500)"),
+        ]
+        for col_name, col_type in equipment_columns_to_add:
+            try:
+                db.session.execute(text(
+                    f"ALTER TABLE equipment ADD COLUMN {col_name} {col_type}"
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        try:
+            db.session.execute(text(
+                "ALTER TABLE rentals ADD COLUMN deleted BOOLEAN DEFAULT FALSE"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
     
     return app
 

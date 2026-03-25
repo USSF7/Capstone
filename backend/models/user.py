@@ -23,13 +23,11 @@ class User(db.Model):
 
     # Relationships
     equipment = db.relationship('Equipment', foreign_keys='Equipment.owner_id', backref='owner')
-    events = db.relationship('Event', backref='user')
     rentals_as_renter = db.relationship('Rental', foreign_keys='Rental.renter_id', backref='renter')
     rentals_as_vendor = db.relationship('Rental', foreign_keys='Rental.vendor_id', backref='vendor')
     reviews = db.relationship('Review', foreign_keys='Review.submitter_id', backref='submitter')
     messages_sent = db.relationship('Message', foreign_keys='Message.sender_id', backref='sender')
     messages_received = db.relationship('Message', foreign_keys='Message.receiver_id', backref='receiver')
-    requests = db.relationship('Request', foreign_keys='Request.requester_id', backref='requester')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
