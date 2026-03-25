@@ -51,10 +51,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../../stores/auth'
 import { FwbInput } from 'flowbite-vue'
 import eventService from '../../services/eventService'
+import authService from '../../services/authService'
 
 const router = useRouter()
+const auth = useAuthStore()
 const loading = ref(false)
 const error = ref('')
 
@@ -68,17 +71,40 @@ onMounted(async () => {
   // Events loading removed
 })
 
+async function ensureCurrentUser() {
+  if (auth.user?.id) return auth.user
+  if (!auth.accessToken) return null
+
+  try {
+    const me = await authService.getMe()
+    auth.setAuth({
+      access_token: auth.accessToken,
+      refresh_token: auth.refreshToken,
+      user: me
+    })
+    return me
+  } catch {
+    return null
+  }
+}
+
 const submitForm = async () => {
   loading.value = true
   error.value = ''
   try {
+    const currentUser = await ensureCurrentUser()
+    const userId = currentUser?.id || auth.user?.id
+    if (!userId) {
+      throw new Error('You must be logged in to create an event')
+    }
+
     const response = await eventService.createEvent(
-      1, // user_id placeholder
+      userId,
       form.value.eventName,
       form.value.date
     )
     console.log('Event created:', response)
-    router.push({ name: 'home' })
+    router.push({ name: 'events' })
   } catch (err) {
     error.value = err.message || 'Failed to create event'
     console.error('Error creating event:', err)
