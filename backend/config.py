@@ -12,6 +12,7 @@ class Config:
     GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET', '')
     GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5000/api/auth/google/callback')
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 class DevelopmentConfig(Config):
     """Development configuration"""

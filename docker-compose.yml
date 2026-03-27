@@ -36,6 +36,7 @@ services:
       # For prod (frontend on port 8080): set these in your .env file
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:5000/api/auth/google/callback}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
 
   frontend:
     build: ./frontend

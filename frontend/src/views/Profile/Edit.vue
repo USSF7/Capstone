@@ -3,10 +3,13 @@
 
 import { ref, onMounted } from 'vue'
 import { FwbInput, FwbButton, FwbRadio, FwbSpinner } from 'flowbite-vue'
+import { AsYouType } from 'libphonenumber-js'
+import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
 import AuthService from '../../services/authService'
 import router from '../../router'
 
+const auth = useAuthStore()
 const firstName = ref('')
 const lastName = ref('')
 const email = ref('')
@@ -19,11 +22,7 @@ const dateOfBirth = ref('')
 const siteUsage = ref('')
 const userDataLoaded = ref(false)
 
-// *************************************************************** //
-// userId needs to be updated when account login gets implemented. //
-// Potentially use localStorage.                                   //
-// *************************************************************** //
-const userId = 10
+const userId = computed(() => auth.user?.id)
 
 function formatPhoneNumber(event) {
     const digits = event.target.value.replace(/\D/g, '').slice(0, 10)
@@ -39,11 +38,12 @@ function formatPhoneNumber(event) {
 async function loadUserData() {
     try {
         // Getting the user's data
-        const userData = await AuthService.getMe()
+        const userData = await UserService.getUser(userId.value)
 
         // Storing the user's data into the component variables
-        firstName.value = userData.name.split(' ')[0]
-        lastName.value = userData.name.split(' ')[1]
+        const parts = (userData.name || '').split(' ')
+        firstName.value = parts[0] || ''
+        lastName.value = parts.slice(1).join(' ') || ''
         email.value = userData.email
         phoneNum.value = userData.phone
         streetAddress.value = userData.street_address
@@ -76,7 +76,7 @@ async function updateAccount(event) {
     // Updating the user's data in the database
     try {
         await UserService.updateUser(
-            userId,
+            userId.value,
             firstName.value + " " + lastName.value,
             email.value,
             phoneNum.value,

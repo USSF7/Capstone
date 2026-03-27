@@ -3,11 +3,15 @@ from database import db
 from sqlalchemy import func
 from models import Equipment
 
+
+VALID_RENTAL_STATUSES = {'requesting', 'accepted', 'active', 'returned', 'disputed', 'denied'}
+
+
 class RentalService:
     """Service layer for Rental business logic"""
 
     @staticmethod
-    def create_rental(renter_id, vendor_id, agreed_price, start_date, end_date, event_id=None, location=None):
+    def create_rental(renter_id, vendor_id, agreed_price, start_date, end_date, location=None, status='requesting', deleted=False):
         """Create a new rental"""
         if not all([renter_id, vendor_id, agreed_price, start_date, end_date]):
             raise ValueError("renter_id, vendor_id, agreed_price, start_date, and end_date are required")
@@ -15,6 +19,8 @@ class RentalService:
             raise ValueError("Renter and vendor cannot be the same user")
         if end_date <= start_date:
             raise ValueError("End date must be after start date")
+        if status not in VALID_RENTAL_STATUSES:
+            raise ValueError("Invalid rental status")
         
         rental = Rental(
             renter_id=renter_id,
@@ -22,8 +28,9 @@ class RentalService:
             agreed_price=agreed_price,
             start_date=start_date,
             end_date=end_date,
-            event_id=event_id,
-            location=location
+            location=location,
+            status=status,
+            deleted=deleted
         )
         db.session.add(rental)
         db.session.commit()
@@ -60,18 +67,22 @@ class RentalService:
         return Rental.query.filter_by(vendor_id=vendor_id, status=status).all()
 
     @staticmethod
-    def update_rental(rental_id, status=None, location=None, agreed_price=None):
+    def update_rental(rental_id, status=None, location=None, agreed_price=None, deleted=None):
         """Update a rental"""
         rental = Rental.query.get(rental_id)
         if not rental:
             raise ValueError("Rental not found")
         
         if status:
+            if status not in VALID_RENTAL_STATUSES:
+                raise ValueError("Invalid rental status")
             rental.status = status
         if location:
             rental.location = location
         if agreed_price:
             rental.agreed_price = agreed_price
+        if deleted is not None:
+            rental.deleted = deleted
         
         db.session.commit()
         return rental
@@ -83,7 +94,7 @@ class RentalService:
         if not rental:
             raise ValueError("Rental not found")
         
-        db.session.delete(rental)
+        rental.deleted = True
         db.session.commit()
         return True
 

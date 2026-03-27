@@ -25,23 +25,25 @@ class RentalService {
     return api.get(`/rentals/vendor/${vendorId}/status/${status}`)
   }
 
-  async createRental(renterId, vendorId, agreedPrice, startDate, endDate, eventId, location) {
+  async createRental(renterId, vendorId, agreedPrice, startDate, endDate, location, status = 'requesting', deleted = false) {
     return api.post('/rentals', {
       renter_id: renterId,
       vendor_id: vendorId,
       agreed_price: agreedPrice,
       start_date: startDate,
       end_date: endDate,
-      event_id: eventId,
       location,
+      status,
+      deleted,
     })
   }
 
-  async updateRental(rentalId, status, location, agreedPrice) {
+  async updateRental(rentalId, status, location, agreedPrice, deleted) {
     return api.put(`/rentals/${rentalId}`, {
       status,
       location,
       agreed_price: agreedPrice,
+      deleted,
     })
   }
 

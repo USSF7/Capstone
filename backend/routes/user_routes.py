@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
 from services import UserService
 
 user_bp = Blueprint('users', __name__, url_prefix='/api/users')
 
 @user_bp.route('/', methods=['GET'])
+@jwt_required()
 def get_users():
     """Get all users"""
     try:
@@ -48,6 +50,7 @@ def update_user(user_id):
         return jsonify({'error': str(e)}), 500
 
 @user_bp.route('/<int:user_id>', methods=['DELETE'])
+@jwt_required()
 def delete_user(user_id):
     """Delete a user"""
     try:

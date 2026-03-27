@@ -46,7 +46,7 @@ function computeAge(dateOfBirth) {
     let age = currentDate.getFullYear() - birthDate.getFullYear()
 
     // Subtracting a year if the user's birthday has not occurred
-    const hadBirthday = (currentDate.getMonth() > birthDate.getMonth) || ((currentDate.getMonth() == birthDate.getMonth()) && (currentDate.getDate() >= birthDate.getDate()))
+    const hadBirthday = (currentDate.getMonth() > birthDate.getMonth()) || ((currentDate.getMonth() == birthDate.getMonth()) && (currentDate.getDate() >= birthDate.getDate()))
 
     if (!hadBirthday) {
         age--

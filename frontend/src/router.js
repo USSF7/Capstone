@@ -7,15 +7,7 @@ import CreateProfileView from './views/Profile/Create.vue'
 import EditProfileView from './views/Profile/Edit.vue'
 import ViewProfileView from './views/Profile/View.vue'
 import EarningsProfileView from './views/Profile/Earnings.vue'
-import EventIndex from './views/Event/Index.vue'
-import EventCreate from './views/Event/Create.vue'
-import EventEdit from './views/Event/Edit.vue'
-import EventView from './views/Event/View.vue'
 import InventoryView from './views/Profile/Inventory.vue'
-import RequestIndex from './views/Request/Index.vue'
-import RequestCreate from './views/Request/Create.vue'
-import RequestEdit from './views/Request/Edit.vue'
-import RequestView from './views/Request/View.vue'
 import LoginView from './views/Auth/login.vue'
 import LogoutView from './views/Auth/logout.vue'
 import CallbackView from './views/Auth/callback.vue'
@@ -62,50 +54,6 @@ const routes = [
     path: '/inventory',
     name: 'inventory',
     component: InventoryView
-  },
-  {
-    path: '/events',
-    name: 'events',
-    component: EventIndex
-  },
-  {
-    path: '/events/create',
-    name: 'events-create',
-    component: EventCreate
-  },
-  {
-    path: '/events/:id/edit',
-    name: 'events-edit',
-    component: EventEdit,
-    props: true
-  },
-  {
-    path: '/events/:id',
-    name: 'events-view',
-    component: EventView,
-    props: true
-  },
-  {
-    path: '/requests',
-    name: 'requests',
-    component: RequestIndex
-  },
-  {
-    path: '/requests/create',
-    name: 'requests-create',
-    component: RequestCreate
-  },
-  {
-    path: '/requests/:id/edit',
-    name: 'requests-edit',
-    component: RequestEdit,
-    props: true
-  },
-  {
-    path: '/requests/:id',
-    name: 'requests-view',
-    component: RequestView,
-    props: true
   },
   {
     path: '/login',
@@ -166,14 +114,24 @@ const router = createRouter({
   routes
 })
 
-// Pages that don't require a complete profile
-const publicPages = ['login', 'logout', 'auth-callback', 'create_profile']
+// Pages accessible without login
+const publicPages = ['login', 'logout', 'auth-callback', 'home', 'about']
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
 
+  // Allow public pages without auth
+  if (publicPages.includes(to.name)) {
+    return
+  }
+
+  // Redirect to login if not authenticated
+  if (!auth.isAuthenticated) {
+    return { name: 'login' }
+  }
+
   // If authenticated but profile incomplete, redirect to complete profile
-  if (auth.isAuthenticated && !auth.profileComplete && !publicPages.includes(to.name)) {
+  if (!auth.profileComplete && to.name !== 'create_profile') {
     return { name: 'create_profile' }
   }
 })
