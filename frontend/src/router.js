@@ -20,6 +20,7 @@ import LoginView from './views/Auth/login.vue'
 import LogoutView from './views/Auth/logout.vue'
 import CallbackView from './views/Auth/callback.vue'
 import RecommendationsView from './views/Profile/Recommendations.vue'
+import RentalIndex from './views/Rental/Index.vue'
 
 const routes = [
   {
@@ -147,6 +148,11 @@ const routes = [
     name: 'calendar',
     component: () => import('./views/Profile/Calendar.vue')
   },
+  {
+    path: '/rentals',
+    name: 'rentals',
+    component: RentalIndex
+  }
   // {
   //   path: '/rentals/:id',
   //   name: 'rentals-view',

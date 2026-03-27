@@ -2,23 +2,39 @@
 <script lang="js" setup>
 
 import { ref, onMounted } from 'vue'
-import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton } from 'flowbite-vue'
+import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton, FwbCard } from 'flowbite-vue'
 import UserService from '../../services/userService'
+import reviewService from '../../services/reviewService'
+import authService from '../../services/authService'
 import router from '../../router'
+
+const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 const userData = ref()
 const userDataLoaded = ref(false)
+const userReviews = ref()
+const numRatings = ref(0)
+const numRatingsText = ref('')
+const averageRating = ref(0.0)
 
 // ********************************************************************** //
 // These user IDs need to be updated when account login gets implemented. //
 // Potentially use localStorage.                                          //
 // ********************************************************************** //
-const userId = 10
-const userPageId = 10
+const userPageId = 21
 
 function dateFormatting(isoDate) {
     const date = new Date(isoDate)
     return date.toLocaleDateString()
+}
+
+function reviewDateFormatting(isoDate) {
+    const date = new Date(isoDate)
+    let day = date.getDate()
+    let month = date.getMonth()
+    let year = date.getFullYear()
+
+    return months[month] + " " + day.toString() + ", " + year.toString()
 }
 
 function computeAge(dateOfBirth) {
@@ -43,10 +59,52 @@ function editAccount() {
     router.push({ name: 'edit_profile' })
 }
 
+async function sortUserReviewsDescending() {
+    userReviews.value.sort((a, b) => new Date(b.date) - new Date(a.date))
+}
+
+async function addSubmitterName() {
+    for (let i = 0; i < userReviews.value.length; i++) {
+        // Getting the submitter's user information
+        let userInfo = await UserService.getUser(userReviews.value[i].submitter_id)
+
+        // Adding the submitter's name to the dictionary
+        userReviews.value[i].submitter_name = userInfo.name;
+    }
+}
+
+async function computeReviewData() {
+    // Computing the total number of ratings
+    numRatings.value = userReviews.value.length
+
+    if (numRatings.value == 1) {
+        numRatingsText.value = numRatings.value.toString() + " review"
+    }
+    else {
+        numRatingsText.value = numRatings.value.toString() + " reviews"
+    }
+
+    // Computing the average rating
+    if (numRatings.value == 0) {
+        averageRating.value = 0.0
+    }
+    else {
+        let sumRatings = 0.0
+        for (let i = 0; i < userReviews.value.length; i++) {
+            sumRatings += userReviews.value[i].rating
+        }
+        averageRating.value = sumRatings / numRatings.value
+    }
+}
+
 async function loadUserData() {
     try {
         // Getting the user's data
-        userData.value = await UserService.getUser(userPageId)
+        userData.value = await authService.getMe()
+        userReviews.value = await reviewService.getReviewsForModel("user", userData.value.id)
+        await sortUserReviewsDescending()
+        await addSubmitterName()
+        await computeReviewData()
 
         // Displaying the page to the user
         userDataLoaded.value = true
@@ -78,19 +136,14 @@ onMounted(async () => {
             <fwb-avatar bordered size="xl" img="" />
 
             <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ userData.name }}</h1>
-
-            <!-- ********************************************************* -->
-            <!-- Ratings code needs to be updated when it gets implemented -->
-            <!-- ********************************************************* -->
-            <fwb-rating :rating="0.0" review-link="#" review-text="0 reviews">
+            <fwb-rating :rating="averageRating" review-link="#ReviewsTitle" :review-text="numRatingsText">
                 <template #besideText>
                     <p class="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">
-                        0.0 out of 5
+                        {{ averageRating }} out of 5
                     </p>
                 </template>
             </fwb-rating>
-
-            <div v-if="userId != userPageId">
+            <div v-if="userData.id != userPageId">
                 <fwb-list-group class="w-auto">
                     <fwb-list-group-item><b>Email</b>: {{ userData.email }}</fwb-list-group-item>
                     <fwb-list-group-item><b>Phone Number</b>: {{ userData.phone }}</fwb-list-group-item>
@@ -113,6 +166,30 @@ onMounted(async () => {
                     <fwb-list-group-item><b>Date Joined</b>: {{ dateFormatting(userData.created_at) }}</fwb-list-group-item>
                 </fwb-list-group>
                 <fwb-button class="w-24" color="default" pill @click="editAccount">Edit</fwb-button>
+            </div>
+            <hr class="h-px my-8 bg-gray-200 border-0 dark:bg-gray-700" />
+            <h1 id="ReviewsTitle" class="text-2xl font-bold text-gray-800 mb-6">Reviews</h1>
+            <div v-if="numRatings == 0" class="space-y-4">
+                <p class="font-normal text-gray-700 dark:text-gray-400">This user has not been reviewed</p>
+            </div>
+            <div v-else class="space-y-4">
+                <fwb-card v-for="review in userReviews" :key="review.id" class="!max-w-full">
+                    <div class="space-y-3 p-5">
+                        <div class="flex items-center space-x-4">
+                            <fwb-avatar size="md" img="" rounded />
+                            <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
+                        </div>
+                        <fwb-rating size="sm" :rating="review.rating">
+                            <template #besideText>
+                                <p class="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                                    {{ review.rating }} out of 5
+                                </p>
+                            </template>
+                        </fwb-rating>
+                        <p class="text-sm font-bold text-gray-900 dark:text-white">Reviewed on {{ reviewDateFormatting(review.date) }}</p>
+                        <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.review }}</p>
+                    </div>
+                </fwb-card>
             </div>
         </div>
     </div>

@@ -42,6 +42,7 @@ const auth = useAuthStore()
             <router-link :to="{ name: 'earnings_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Earnings</router-link>
             <router-link to="/inventory" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Inventory</router-link>
             <router-link to="/requests" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Requests</router-link>
+            <router-link to="/rentals" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Rentals</router-link>
             <router-link to="/events" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Events</router-link>
             <router-link to="/recommendations" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Recommendations</router-link>
             <router-link to="/equipment" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Equipment</router-link>

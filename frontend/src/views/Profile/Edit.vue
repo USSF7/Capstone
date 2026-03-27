@@ -1,10 +1,10 @@
 <!-- Edit an account details view -->
 <script lang="js" setup>
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { FwbInput, FwbButton, FwbRadio, FwbSpinner } from 'flowbite-vue'
-import { AsYouType } from 'libphonenumber-js'
 import UserService from '../../services/userService'
+import AuthService from '../../services/authService'
 import router from '../../router'
 
 const firstName = ref('')
@@ -39,7 +39,7 @@ function formatPhoneNumber(event) {
 async function loadUserData() {
     try {
         // Getting the user's data
-        const userData = await UserService.getUser(userId)
+        const userData = await AuthService.getMe()
 
         // Storing the user's data into the component variables
         firstName.value = userData.name.split(' ')[0]

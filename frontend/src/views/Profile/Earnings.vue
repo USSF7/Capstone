@@ -7,8 +7,10 @@ import { Line } from "vue-chartjs"
 import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, TimeScale, plugins } from "chart.js"
 import RentalService from '../../services/rentalService'
 import UserService from '../../services/userService'
+import AuthService from '../../services/authService'
 import 'chartjs-adapter-date-fns'
 
+const userData = ref()
 const isVendor = ref(false)
 const vendorRentalsData = ref()
 const vendorRentalsDataLoaded = ref(false)
@@ -16,18 +18,12 @@ const usersData = ref()
 const chartDataRentals = ref([])
 const chartDataRentalsByMonth = ref([])
 
-// ********************************************************************** //
-// The Vendor ID needs to be updated when account login gets implemented. //
-// Potentially use localStorage.                                          //
-// ********************************************************************** //
-const vendorId = 10
-
 async function validateVendorStatus() {
     // Get the current user's data
-    let userData = await UserService.getUser(vendorId)
+    userData.value = await AuthService.getMe()
 
     // Determine if the user is a vendor
-    if (userData.vendor == true) {
+    if (userData.value.vendor == true) {
         isVendor.value = true
     }
     else {
@@ -38,7 +34,7 @@ async function validateVendorStatus() {
 async function loadCompletedVendorRentals() {
     try {
         // Getting the vendor's completed rentals data
-        vendorRentalsData.value = await RentalService.getRentalsByVendorAndStatus(vendorId, 'returned')
+        vendorRentalsData.value = await RentalService.getRentalsByVendorAndStatus(userData.value.id, 'returned')
         vendorRentalsData.value = vendorRentalsData.value.sort((a, b) => new Date(b.end_date) - new Date(a.end_date))
 
         // Putting some of the vendor's completed rentals data into chartDataRentals
