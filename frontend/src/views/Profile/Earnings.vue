@@ -22,11 +22,8 @@ const chartDataRentalsByMonth = ref([])
 const vendorId = computed(() => auth.user?.id)
 
 async function validateVendorStatus() {
-    // Get the current user's data
-    let userData = await UserService.getUser(vendorId.value)
-
     // Determine if the user is a vendor
-    if (userData.value.vendor == true) {
+    if (auth.user?.vendor == true) {
         isVendor.value = true
     }
     else {

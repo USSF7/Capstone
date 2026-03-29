@@ -2,26 +2,38 @@
 <script lang="js" setup>
 
 import { ref, onMounted } from 'vue'
-import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton, FwbCard } from 'flowbite-vue'
+import { useRoute } from 'vue-router'
+import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton, FwbCard, FwbSpinner } from 'flowbite-vue'
 import UserService from '../../services/userService'
 import reviewService from '../../services/reviewService'
 import authService from '../../services/authService'
 import router from '../../router'
 
-const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+const months = [
+    "January", 
+    "February", 
+    "March", 
+    "April", 
+    "May", 
+    "June", 
+    "July", 
+    "August", 
+    "September", 
+    "October", 
+    "November", 
+    "December"
+]
 
+
+const route = useRoute()
+const userID = ref()
 const userData = ref()
+const viewingUserData = ref()
 const userDataLoaded = ref(false)
 const userReviews = ref()
 const numRatings = ref(0)
 const numRatingsText = ref('')
 const averageRating = ref(0.0)
-
-// ********************************************************************** //
-// These user IDs need to be updated when account login gets implemented. //
-// Potentially use localStorage.                                          //
-// ********************************************************************** //
-const userPageId = 21
 
 function dateFormatting(isoDate) {
     const date = new Date(isoDate)
@@ -99,8 +111,12 @@ async function computeReviewData() {
 
 async function loadUserData() {
     try {
+        // Getting the viewing user's data 
+        viewingUserData.value = await authService.getMe()
+
         // Getting the user's data
-        userData.value = await authService.getMe()
+        userID.value = route.params.id
+        userData.value = await UserService.getUser(userID.value)
         userReviews.value = await reviewService.getReviewsForModel("user", userData.value.id)
         await sortUserReviewsDescending()
         await addSubmitterName()
@@ -143,7 +159,7 @@ onMounted(async () => {
                     </p>
                 </template>
             </fwb-rating>
-            <div v-if="userData.id != userPageId">
+            <div v-if="userData.id != viewingUserData.id">
                 <fwb-list-group class="w-auto">
                     <fwb-list-group-item><b>Email</b>: {{ userData.email }}</fwb-list-group-item>
                     <fwb-list-group-item><b>Phone Number</b>: {{ userData.phone }}</fwb-list-group-item>
@@ -155,7 +171,7 @@ onMounted(async () => {
             </div>
             <div v-else class="space-y-4">
                 <fwb-list-group class="w-auto">
-                    <fwb-list-group-item><b>Email</b>:  {{ userData.email }}</fwb-list-group-item>
+                    <fwb-list-group-item><b>Email</b>: {{ userData.email }}</fwb-list-group-item>
                     <fwb-list-group-item><b>Phone Number</b>: {{ userData.phone }}</fwb-list-group-item>
                     <fwb-list-group-item><b>Street Address</b>: {{ userData.street_address }}</fwb-list-group-item>
                     <fwb-list-group-item><b>City</b>: {{ userData.city }}</fwb-list-group-item>

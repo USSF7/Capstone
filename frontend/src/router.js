@@ -13,6 +13,7 @@ import LogoutView from './views/Auth/logout.vue'
 import CallbackView from './views/Auth/callback.vue'
 import RecommendationsView from './views/Profile/Recommendations.vue'
 import RentalIndex from './views/Rental/Index.vue'
+import RentalView from './views/Rental/View.vue'
 
 const routes = [
   {
@@ -41,7 +42,7 @@ const routes = [
     component: EditProfileView
   },
   {
-    path: '/profile/view',
+    path: '/profile/view/:id',
     name: 'view_profile',
     component: ViewProfileView
   },
@@ -100,13 +101,12 @@ const routes = [
     path: '/rentals',
     name: 'rentals',
     component: RentalIndex
+  },
+  {
+    path: '/rentals/view/:id',
+    name: 'rental_view',
+    component: RentalView
   }
-  // {
-  //   path: '/rentals/:id',
-  //   name: 'rentals-view',
-  //   component: () => import('./views/Rental/View.vue'),
-  //   props: true
-  // }
 ]
 
 const router = createRouter({
