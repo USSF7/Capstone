@@ -3,10 +3,13 @@
 
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { FwbSpinner, FwbCard, FwbImg, FwbRating, FwbProgress } from 'flowbite-vue'
+import { FwbSpinner, FwbCard, FwbImg, FwbRating, FwbProgress, FwbButton } from 'flowbite-vue'
 import RentalService from '../../services/rentalService'
 import UserService from '../../services/userService'
 import ReviewService from '../../services/reviewService'
+import AuthService from '../../services/authService'
+import ReviewEquipment from './ReviewEquipment.vue'
+import ReviewUser from './ReviewUser.vue'
 
 const months = [
     "January", 
@@ -45,11 +48,14 @@ const route = useRoute()
 const rentalID = ref()
 const rentalData = ref()
 const vendorData = ref()
+const userData = ref()
 const dataLoaded = ref(false)
 const equipmentReviews = ref()
 const numRatings = ref(0)
 const numRatingsText = ref('')
 const averageRating = ref(0.0)
+const showReviewEquipmentModal = ref(false)
+const showReviewUserModal = ref(false)
 
 function dateFormatting(isoDate) {
     const date = new Date(isoDate)
@@ -91,16 +97,16 @@ async function loadData() {
 
         // Getting the rental with equipment data
         rentalData.value = await RentalService.getRentalWithEquipment(rentalID.value)
-        console.log(rentalData)
 
         // Getting the vendor's data
         vendorData.value = await UserService.getUser(rentalData.value.vendor_id)
-        console.log(vendorData)
+
+        // Getting the user's data
+        userData.value = await AuthService.getMe()
 
         // Getting the equipment reviews data
         equipmentReviews.value = await ReviewService.getReviewsForModel("equipment", rentalData.value.equipment[0].id)
         await computeReviewData()
-        console.log(equipmentReviews)
 
         // Displaying the page to the user
         dataLoaded.value = true
@@ -125,6 +131,20 @@ onMounted(async () => {
     </div>
     <div v-else>
         <div class="space-y-4">
+            <review-equipment
+                v-if="showReviewEquipmentModal"
+                :equipmentName=rentalData.equipment[0].name
+                :equipmentID=rentalData.equipment[0].id
+                :submitterID=userData.id
+                @close="showReviewEquipmentModal = false"
+            />
+            <review-user 
+                v-if="showReviewUserModal"
+                :userName=vendorData.name
+                :userID=vendorData.id
+                :submitterID=userData.id
+                @close="showReviewUserModal = false"
+            />
             <div class="grid grid-cols-2 gap-4">
                 <fwb-card class="!max-w-full">
                     <div class="p-5 space-y-2">
@@ -166,6 +186,12 @@ onMounted(async () => {
                         <fwb-progress v-if="(rentalData.status === 'denied') || (rentalData.status === 'disputed')" class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rentalData.status)" size="md" color="red" :label=mapStatusToText.get(rentalData.status) />
                         <fwb-progress v-else-if="rentalData.status === 'returned'" class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rentalData.status)" size="md" color="green" :label=mapStatusToText.get(rentalData.status) />
                         <fwb-progress v-else class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rentalData.status)" size="md" :label=mapStatusToText.get(rentalData.status) />
+                        <div class="flex space-x-3 mt-4">
+                            <fwb-button v-if="rentalData.status === 'returned'" color="default" class="flex-1" @click="showReviewEquipmentModal = true">Review Equipment</fwb-button>
+                            <fwb-button v-else color="default" class="flex-1" @click="showReviewEquipmentModal = true" disabled>Review Equipment</fwb-button>
+                            <fwb-button v-if="rentalData.status === 'returned'" color="default" class="flex-1" @click="showReviewUserModal = true">Review Vendor</fwb-button>
+                            <fwb-button v-else color="default" class="flex-1" @click="showReviewUserModal = true" disabled>Review Vendor</fwb-button>
+                        </div>
                     </div>
                 </fwb-card>
                 <fwb-card class="!max-w-full">
