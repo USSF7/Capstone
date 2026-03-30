@@ -5,7 +5,32 @@
 const API_BASE_URL = 'http://localhost:5000/api'
 
 class ApiClient {
-  async request(endpoint, options = {}) {
+  _refreshing = null
+
+  async _refreshToken() {
+    const refreshToken = localStorage.getItem('refresh_token')
+    if (!refreshToken) return false
+
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${refreshToken}`,
+      },
+    })
+
+    if (!response.ok) return false
+
+    const data = await response.json()
+    localStorage.setItem('access_token', data.access_token)
+    localStorage.setItem('refresh_token', data.refresh_token)
+    if (data.user) {
+      localStorage.setItem('user', JSON.stringify(data.user))
+    }
+    return true
+  }
+
+  async request(endpoint, options = {}, _retried = false) {
     const url = `${API_BASE_URL}${endpoint}`
     const token = localStorage.getItem('access_token')
     const config = {
@@ -19,7 +44,23 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config)
-      
+
+      if (response.status === 401 && !_retried) {
+        if (!this._refreshing) {
+          this._refreshing = this._refreshToken().finally(() => { this._refreshing = null })
+        }
+        const refreshed = await this._refreshing
+        if (refreshed) {
+          return this.request(endpoint, options, true)
+        }
+        // Refresh failed — clear auth and redirect to login
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+        throw new Error('Session expired')
+      }
+
       if (!response.ok) {
         let message = `HTTP ${response.status}`
         try {
@@ -30,7 +71,7 @@ class ApiClient {
         }
         throw new Error(message)
       }
-      
+
       return await response.json()
     } catch (error) {
       console.error(`API Error: ${error.message}`)
