@@ -18,6 +18,8 @@ class User(db.Model):
     city = db.Column(db.String(100), nullable=True)
     state = db.Column(db.String(100), nullable=True)
     zip_code = db.Column(db.Integer, nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     vendor = db.Column(db.Boolean, nullable=True)
     renter = db.Column(db.Boolean, nullable=True)
 
@@ -63,6 +65,8 @@ class User(db.Model):
             'city': self.city,
             'state': self.state,
             'zip_code': self.zip_code,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
             'vendor': self.vendor,
             'renter': self.renter,
             'profile_complete': self.profile_complete,

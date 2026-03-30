@@ -5,5 +5,6 @@ from .message_service import MessageService
 from .rental_service import RentalService
 from .auth_service import AuthService
 from .ai_service import AIService
+from .location_service import LocationService
 
-__all__ = ['UserService', 'EquipmentService', 'ReviewService', 'MessageService', 'RentalService', 'EventService', 'RequestService', 'AuthService', 'AIService']
+__all__ = ['UserService', 'EquipmentService', 'ReviewService', 'MessageService', 'RentalService', 'EventService', 'RequestService', 'AuthService', 'AIService', 'LocationService']

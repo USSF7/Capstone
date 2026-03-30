@@ -101,6 +101,16 @@ const routes = [
   //   component: () => import('./views/Rental/View.vue'),
   //   props: true
   // }
+  {
+    path: '/equipment/search',
+    name: 'equipment-search',
+    component: () => import('./views/Equipment/Search.vue'),
+  },
+  {
+    path: '/rentals/:id/meeting',
+    name: 'rental-meeting',
+    component: () => import('./views/Rental/MeetingLocation.vue'),
+  },
 ]
 
 const router = createRouter({

@@ -8,6 +8,8 @@ class Rental(db.Model):
     renter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     vendor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     location = db.Column(db.String(500), nullable=True)
+    meeting_lat = db.Column(db.Float, nullable=True)
+    meeting_lng = db.Column(db.Float, nullable=True)
     agreed_price = db.Column(db.Numeric(10, 2), nullable=False)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
@@ -23,6 +25,8 @@ class Rental(db.Model):
             'renter_id': self.renter_id,
             'vendor_id': self.vendor_id,
             'location': self.location,
+            'meeting_lat': self.meeting_lat,
+            'meeting_lng': self.meeting_lng,
             'agreed_price': float(self.agreed_price),
             'start_date': self.start_date.isoformat(),
             'end_date': self.end_date.isoformat(),

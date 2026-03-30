@@ -18,7 +18,8 @@
     "pinia": "^2.1.0",
     "vue": "^3.4.0",
     "vue-chartjs": "^5.3.3",
-    "vue-router": "^4.2.0"
+    "vue-router": "^4.2.0",
+    "@googlemaps/js-api-loader": "^1.16.6"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
