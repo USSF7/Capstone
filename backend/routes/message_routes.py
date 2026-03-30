@@ -45,7 +45,19 @@ def get_messages_from_sender(sender_id):
 def get_conversation(user_id1, user_id2):
     """Get conversation between two users"""
     try:
-        messages = MessageService.get_conversation(user_id1, user_id2)
+        rental_id = request.args.get('rental_id', type=int)
+        messages = MessageService.get_conversation(user_id1, user_id2, rental_id=rental_id)
+        return jsonify([m.to_dict() for m in messages]), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@message_bp.route('/rental/<int:rental_id>', methods=['GET'])
+def get_messages_by_rental(rental_id):
+    """Get all messages associated with a rental"""
+    try:
+        messages = MessageService.get_messages_by_rental(rental_id)
         return jsonify([m.to_dict() for m in messages]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -58,7 +70,8 @@ def create_message():
         message = MessageService.create_message(
             data.get('sender_id'),
             data.get('receiver_id'),
-            data.get('data')
+            data.get('data'),
+            data.get('rental_id')
         )
         return jsonify(message.to_dict()), 201
     except ValueError as e:

@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from services import RentalService
 
 rental_bp = Blueprint('rentals', __name__, url_prefix='/api/rentals')
@@ -24,9 +25,18 @@ def get_rental(rental_id):
         return jsonify({'error': str(e)}), 500
     
 @rental_bp.route('/rental_equipment/<int:rental_id>', methods=['GET'])
+@jwt_required()
 def get_rental_with_equipment(rental_id):
     """Get a rental by ID with equipment"""
     try:
+        current_user_id = int(get_jwt_identity())
+        rental_record = RentalService.get_rental(rental_id)
+        if not rental_record:
+            return jsonify({'error': 'Rental not found'}), 404
+
+        if current_user_id not in [rental_record.renter_id, rental_record.vendor_id]:
+            return jsonify({'error': 'Forbidden: You are not part of this rental'}), 403
+
         rental = RentalService.get_rental_with_equipment(rental_id)
         if not rental:
             return jsonify({'error': 'Rental not found'}), 404
