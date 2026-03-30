@@ -8,7 +8,6 @@ import EarningsProfileView from './views/Profile/Earnings.vue'
 import LoginView from './views/Auth/login.vue'
 import LogoutView from './views/Auth/logout.vue'
 import CallbackView from './views/Auth/callback.vue'
-import RecommendationsView from './views/Profile/Recommendations.vue'
 import RentalIndex from './views/Rental/Index.vue'
 import RentalView from './views/Rental/View.vue'
 
@@ -52,11 +51,6 @@ const routes = [
     path: '/auth/callback',
     name: 'auth-callback',
     component: CallbackView
-  },
-  {
-    path: '/recommendations',
-    name: 'recommendations',
-    component: RecommendationsView
   },
   {
     path: '/equipment',
