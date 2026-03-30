@@ -280,21 +280,26 @@ def seed_messages(rentals, num_messages=50):
     print(f"✓ Created {num_messages} messages")
 
 def seed_rentals(users, equipment_list, num_rentals=25):
-    """Create sample rentals"""
+    """Create sample rentals with linked equipment.
+
+    The vendor is always the equipment's owner so the rental and
+    equipment views stay consistent.
+    """
     print(f"Creating {num_rentals} rentals...")
     rentals = []
-    
+
     statuses = ['requesting', 'accepted', 'active', 'returned', 'disputed', 'denied']
-    
+
     for _ in range(num_rentals):
-        renter = choice(users)
-        vendor = choice([u for u in users if u.id != renter.id])
+        equipment = choice(equipment_list)
+        vendor_id = equipment.owner_id
+        renter = choice([u for u in users if u.id != vendor_id])
         start_date = fake.date_between(start_date='-1y', end_date='today')
         end_date = start_date + timedelta(days=randint(1, 7))
-        
+
         rental = Rental(
             renter_id=renter.id,
-            vendor_id=vendor.id,
+            vendor_id=vendor_id,
             location=fake.address(),
             agreed_price=round(randint(50, 500) + randint(0, 99) / 100, 2),
             start_date=start_date,
@@ -302,14 +307,21 @@ def seed_rentals(users, equipment_list, num_rentals=25):
             status=choice(statuses),
             deleted=False
         )
-        rentals.append(rental)
         db.session.add(rental)
-    
+        db.session.flush()  # populate rental.id before creating the link
+
+        link = RentalHasEquipment(
+            equipment_id=equipment.id,
+            rental_id=rental.id
+        )
+        db.session.add(link)
+        rentals.append(rental)
+
     db.session.commit()
-    print(f"✓ Created {num_rentals} rentals")
+    print(f"✓ Created {num_rentals} rentals with equipment links")
     return rentals
 
-def seed_test_rental_between_test_users(test_users):
+def seed_test_rental_between_test_users(test_users, equipment_list):
     """Create one guaranteed rental between renter@test.com and vendor@test.com."""
     print("Creating guaranteed rental between test renter and test vendor...")
 
@@ -318,6 +330,22 @@ def seed_test_rental_between_test_users(test_users):
 
     if not renter or not vendor:
         raise ValueError("Test renter/vendor accounts were not found")
+
+    # Pick equipment owned by the test vendor so vendor_id matches owner_id
+    vendor_equipment = [e for e in equipment_list if e.owner_id == vendor.id]
+    if not vendor_equipment:
+        # Create one if the vendor doesn't own any yet
+        equipment = Equipment(
+            owner_id=vendor.id,
+            name=choice(EQUIPMENT_NAMES),
+            price=99.99,
+            description='Test equipment for guaranteed rental',
+            picture='/images/equipment/test.jpg'
+        )
+        db.session.add(equipment)
+        db.session.flush()
+    else:
+        equipment = choice(vendor_equipment)
 
     start_date = datetime.utcnow().date()
     end_date = start_date + timedelta(days=2)
@@ -333,25 +361,18 @@ def seed_test_rental_between_test_users(test_users):
         deleted=False
     )
     db.session.add(rental)
+    db.session.flush()
+
+    link = RentalHasEquipment(
+        equipment_id=equipment.id,
+        rental_id=rental.id
+    )
+    db.session.add(link)
     db.session.commit()
 
     print(f"✓ Created guaranteed test rental (id={rental.id})")
     return rental
 
-def seed_rental_equipment(rentals, equipment_list):
-    """Link exactly one equipment item to each rental"""
-    print(f"Creating rental-equipment links...")
-    
-    for rental in rentals:
-        equipment = choice(equipment_list)
-        link = RentalHasEquipment(
-            equipment_id=equipment.id,
-            rental_id=rental.id
-        )
-        db.session.add(link)
-    
-    db.session.commit()
-    print(f"✓ Created rental-equipment links")
 
 def seed_db():
     """Main seeding function"""
@@ -370,9 +391,8 @@ def seed_db():
             equipment_list = seed_equipment(users, 30)
             seed_reviews(users, equipment_list, 40)
             rentals = seed_rentals(users, equipment_list, 75)
-            test_rental = seed_test_rental_between_test_users(test_users)
+            test_rental = seed_test_rental_between_test_users(test_users, equipment_list)
             rentals.append(test_rental)
-            seed_rental_equipment(rentals, equipment_list)
             seed_messages(rentals, 50)
             
             print("\n" + "="*50)
