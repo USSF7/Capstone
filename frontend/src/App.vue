@@ -37,10 +37,9 @@ const auth = useAuthStore()
           <router-link to="/" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Home</router-link>
           <template v-if="auth.isAuthenticated && auth.profileComplete">
             <router-link :to="{ name: 'view_profile', params: { id: auth.user?.id } }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Profile</router-link>
-            <router-link :to="{ name: 'earnings_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Earnings</router-link>
+            <router-link v-if="auth.user?.vendor" :to="{ name: 'earnings_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Earnings</router-link>
             <router-link to="/rentals" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Rentals</router-link>
             <router-link to="/events" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Events</router-link>
-            <router-link to="/recommendations" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Recommendations</router-link>
             <router-link to="/equipment" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Equipment</router-link>
             <router-link v-if="!auth.user?.vendor || auth.user?.renter" to="/equipment/search" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Find Equipment</router-link>
             <router-link to="/calendar" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Calendar</router-link>
