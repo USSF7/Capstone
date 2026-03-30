@@ -1,5 +1,5 @@
 <template>
-	<div class="h-full flex flex-col border border-gray-200 rounded-lg overflow-hidden bg-white">
+	<div class="h-[32rem] max-h-[70vh] min-h-0 flex flex-col border border-gray-200 rounded-lg overflow-hidden bg-white">
 		<div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
 			<h4 class="font-semibold text-gray-800">{{ title }}</h4>
 			<p class="text-sm text-gray-600" v-if="!readyToChat">
@@ -10,7 +10,7 @@
 			</p>
 		</div>
 
-		<div ref="listEl" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50">
+		<div ref="listEl" class="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 bg-slate-50">
 			<p v-if="loading" class="text-sm text-gray-600">Loading messages...</p>
 			<p v-else-if="error" class="text-sm text-red-600">{{ error }}</p>
 			<p v-else-if="messages.length === 0" class="text-sm text-gray-500">No messages yet.</p>
