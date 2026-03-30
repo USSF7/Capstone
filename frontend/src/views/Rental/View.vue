@@ -2,7 +2,7 @@
 <script lang="js" setup>
 
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { FwbSpinner, FwbCard, FwbImg, FwbRating, FwbProgress, FwbButton, FwbListGroup, FwbListGroupItem } from 'flowbite-vue'
 import RentalService from '../../services/rentalService'
 import UserService from '../../services/userService'
@@ -10,6 +10,7 @@ import ReviewService from '../../services/reviewService'
 import AuthService from '../../services/authService'
 import ReviewEquipment from './ReviewEquipment.vue'
 import ReviewUser from './ReviewUser.vue'
+import MessageBox from '../../components/Messaging/MessageBox.vue'
 
 const months = [
     "January", 
@@ -45,10 +46,12 @@ const mapStatusToText = new Map([
 ])
 
 const route = useRoute()
+const router = useRouter()
 const rentalID = ref()
 const rentalData = ref()
 const vendorData = ref()
 const userData = ref()
+const otherParticipantID = ref(null)
 const dataLoaded = ref(false)
 const equipmentReviews = ref()
 const numRatings = ref(0)
@@ -95,14 +98,26 @@ async function loadData() {
         // Getting the rental id from the route
         rentalID.value = route.params.id
 
+        // Getting the user's data
+        userData.value = await AuthService.getMe()
+
         // Getting the rental with equipment data
         rentalData.value = await RentalService.getRentalWithEquipment(rentalID.value)
 
+        // Ensure only renter/vendor can view this page
+        const isParticipant = [rentalData.value.renter_id, rentalData.value.vendor_id].includes(userData.value.id)
+        if (!isParticipant) {
+            alert("You are not authorized to view this rental.")
+            router.push({ name: 'rentals' })
+            return
+        }
+
+        otherParticipantID.value = userData.value.id === rentalData.value.vendor_id
+            ? rentalData.value.renter_id
+            : rentalData.value.vendor_id
+
         // Getting the vendor's data
         vendorData.value = await UserService.getUser(rentalData.value.vendor_id)
-
-        // Getting the user's data
-        userData.value = await AuthService.getMe()
 
         // Getting the equipment reviews data
         equipmentReviews.value = await ReviewService.getReviewsForModel("equipment", rentalData.value.equipment[0].id)
@@ -113,6 +128,12 @@ async function loadData() {
     }
     catch (error) {
         console.error("Error getting rental data:", error)
+
+        if ((error?.message || '').toLowerCase().includes('forbidden') || (error?.message || '').includes('403')) {
+            alert("You are not authorized to view this rental.")
+            router.push({ name: 'rentals' })
+            return
+        }
 
         // Alerting the user that the rental data could not be loaded
         alert("Error: Rental data could not be loaded.")
@@ -177,8 +198,14 @@ onMounted(async () => {
                     </div>
                 </fwb-card>
                 <fwb-card class="!max-w-full">
-                    <div class="p-5">
+                    <div class="p-5 space-y-3">
                         <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Messaging</h5>
+                        <message-box
+                            :current-user-id="userData.id"
+                            :other-user-id="otherParticipantID"
+                            :rental-id="rentalData.id"
+                            title="Conversation"
+                        />
                     </div>
                 </fwb-card>
             </div>
