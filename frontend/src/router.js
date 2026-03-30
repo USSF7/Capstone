@@ -39,11 +39,6 @@ const routes = [
     component: EarningsProfileView
   },
   {
-    path: '/inventory',
-    name: 'inventory',
-    component: InventoryView
-  },
-  {
     path: '/login',
     name: 'login',
     component: LoginView
