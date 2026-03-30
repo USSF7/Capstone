@@ -35,13 +35,9 @@ const auth = useAuthStore()
       <aside class="w-56 bg-white border-r border-gray-200 p-4 overflow-auto">
         <nav class="space-y-2">
           <router-link to="/" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Home</router-link>
-          <router-link to="/about" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">About</router-link>
-          <router-link to="/users" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Users</router-link>
           <template v-if="auth.isAuthenticated && auth.profileComplete">
             <router-link :to="{ name: 'view_profile', params: { id: auth.user?.id } }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Profile</router-link>
             <router-link :to="{ name: 'earnings_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Earnings</router-link>
-            <router-link to="/inventory" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Inventory</router-link>
-            <router-link to="/requests" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Requests</router-link>
             <router-link to="/rentals" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Rentals</router-link>
             <router-link to="/events" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Events</router-link>
             <router-link to="/recommendations" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Recommendations</router-link>

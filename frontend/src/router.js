@@ -1,13 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import HomeView from './views/HomeView.vue'
-import AboutView from './views/AboutView.vue'
-import UsersView from './views/UsersView.vue'
 import CreateProfileView from './views/Profile/Create.vue'
 import EditProfileView from './views/Profile/Edit.vue'
 import ViewProfileView from './views/Profile/View.vue'
 import EarningsProfileView from './views/Profile/Earnings.vue'
-import InventoryView from './views/Profile/Inventory.vue'
 import LoginView from './views/Auth/login.vue'
 import LogoutView from './views/Auth/logout.vue'
 import CallbackView from './views/Auth/callback.vue'
@@ -20,16 +17,6 @@ const routes = [
     path: '/',
     name: 'home',
     component: HomeView
-  },
-  {
-    path: '/about',
-    name: 'about',
-    component: AboutView
-  },
-  {
-    path: '/users',
-    name: 'users',
-    component: UsersView
   },
   {
     path: '/profile/create',
