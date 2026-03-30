@@ -1,136 +1,213 @@
 <script setup>
-import TheWelcome from '../components/TheWelcome.vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { FwbCard, FwbProgress, FwbSpinner, FwbButton } from 'flowbite-vue'
+import { useAuthStore } from '../stores/auth'
+import RentalService from '../services/rentalService'
+import LocationService from '../services/locationService'
 
-import { computed, onMounted, ref, watch } from 'vue'
-import { FwbButton, FwbTextarea } from 'flowbite-vue'
-import AIService from '../services/aiService'
-import EquipmentService from '../services/equipmentService'
-import UserService from '../services/userService'
+const auth = useAuthStore()
+const router = useRouter()
 
-const selectedModelType = ref('equipment')
-const selectedModelId = ref('')
-const optionsLoading = ref(false)
-const equipmentOptions = ref([])
-const userOptions = ref([])
-const summaryLoading = ref(false)
-const summaryError = ref('')
-const summaryText = ref('')
+const rentals = ref([])
+const nearbyEquipment = ref([])
+const rentalsLoading = ref(true)
+const equipmentLoading = ref(true)
+const rentalsError = ref(null)
+const equipmentError = ref(null)
 
-const modelOptions = computed(() =>
-  selectedModelType.value === 'equipment' ? equipmentOptions.value : userOptions.value
+const isRenter = computed(() => auth.isAuthenticated && auth.profileComplete && auth.user?.renter)
+
+const activeRentals = computed(() =>
+  rentals.value
+    .filter(r => !r.deleted && ['requesting', 'accepted', 'active'].includes(r.status))
+    .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
 )
 
-async function loadOptionsForType(modelType) {
-  optionsLoading.value = true
-  try {
-    if (modelType === 'equipment') {
-      if (equipmentOptions.value.length === 0) {
-        equipmentOptions.value = await EquipmentService.getEquipment()
-      }
-    } else if (userOptions.value.length === 0) {
-      userOptions.value = await UserService.getUsers()
-    }
+const statusPercent = { requesting: 10, accepted: 40, active: 70 }
+const statusLabel = {
+  requesting: 'Awaiting vendor response',
+  accepted: 'Accepted — ready for pickup',
+  active: 'Currently renting',
+}
+const statusColor = { requesting: 'yellow', accepted: 'blue', active: 'green' }
 
-    selectedModelId.value = modelOptions.value.length ? String(modelOptions.value[0].id) : ''
+const hasLocation = computed(() => auth.user?.latitude != null && auth.user?.longitude != null)
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+async function loadRentals() {
+  rentalsLoading.value = true
+  rentalsError.value = null
+  try {
+    rentals.value = await RentalService.getRentalsWithEquipmentByRenter(auth.user.id)
   } catch (e) {
-    summaryError.value = e.message || 'Failed to load model options.'
-    selectedModelId.value = ''
+    rentalsError.value = e.message || 'Failed to load rentals.'
   } finally {
-    optionsLoading.value = false
+    rentalsLoading.value = false
   }
 }
 
-async function summarizeReviews() {
-  summaryError.value = ''
-  summaryText.value = ''
-
-  const modelId = Number(selectedModelId.value)
-  if (!selectedModelId.value || Number.isNaN(modelId) || modelId <= 0) {
-    summaryError.value = 'Please choose a valid model.'
+async function loadNearbyEquipment() {
+  if (!hasLocation.value) {
+    equipmentLoading.value = false
     return
   }
-
-  summaryLoading.value = true
+  equipmentLoading.value = true
+  equipmentError.value = null
   try {
-    const result = await AIService.summarizeReviews(selectedModelType.value, modelId)
-    summaryText.value = result.summary || 'No summary returned.'
+    const data = await LocationService.searchEquipmentNearby(auth.user.latitude, auth.user.longitude, 25)
+    nearbyEquipment.value = (data.results || []).slice(0, 6)
   } catch (e) {
-    summaryError.value = e.message || 'Failed to summarize reviews.'
+    equipmentError.value = e.message || 'Failed to load nearby equipment.'
   } finally {
-    summaryLoading.value = false
+    equipmentLoading.value = false
   }
 }
 
-watch(selectedModelType, async (newType) => {
-  summaryError.value = ''
-  summaryText.value = ''
-  await loadOptionsForType(newType)
-})
-
-onMounted(async () => {
-  await loadOptionsForType(selectedModelType.value)
+onMounted(() => {
+  if (isRenter.value) {
+    loadRentals()
+    loadNearbyEquipment()
+  }
 })
 </script>
 
 <template>
-  <section class="max-w-3xl mx-auto">
-    <h1 class="text-4xl font-bold text-gray-800 mb-8">Welcome to Capstone</h1>
-    <TheWelcome />
+  <!-- Renter Dashboard -->
+  <section v-if="isRenter" class="max-w-5xl mx-auto space-y-10">
+    <!-- Welcome -->
+    <div class="bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl p-8 text-white">
+      <h1 class="text-3xl font-bold">Welcome back, {{ auth.user?.name?.split(' ')[0] }}</h1>
+      <p class="mt-2 text-blue-100">Here's what's happening with your rentals.</p>
+    </div>
 
-    <div class="bg-white rounded-lg shadow p-6 mt-8 text-left">
-      <h2 class="text-xl font-semibold mb-4">AI Review Summary</h2>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Model Type</label>
-          <select
-            v-model="selectedModelType"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="equipment">equipment</option>
-            <option value="user">user</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            {{ selectedModelType === 'equipment' ? 'Equipment Name' : 'User Name' }}
-          </label>
-          <select
-            v-model="selectedModelId"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            :disabled="optionsLoading"
-          >
-            <option value="" disabled>
-              {{ optionsLoading ? 'Loading options...' : 'Select an option' }}
-            </option>
-            <option
-              v-for="item in modelOptions"
-              :key="item.id"
-              :value="String(item.id)"
-            >
-              {{ item.name }} (ID: {{ item.id }})
-            </option>
-          </select>
-        </div>
-
-        <div>
-          <fwb-button color="Blue" :disabled="summaryLoading || optionsLoading || !selectedModelId" @click="summarizeReviews">
-            {{ summaryLoading ? 'Summarizing...' : 'Summarize Reviews' }}
-          </fwb-button>
-        </div>
+    <!-- Active Requests -->
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Your Active Requests</h2>
+        <fwb-button size="sm" color="light" @click="router.push({ name: 'rentals' })">
+          View All Rentals
+        </fwb-button>
       </div>
 
-      <p v-if="summaryError" class="text-red-600 mt-3">{{ summaryError }}</p>
+      <div v-if="rentalsLoading" class="flex justify-center py-8">
+        <fwb-spinner size="10" />
+      </div>
 
-      <fwb-textarea
-        class="mt-4"
-        :rows="6"
-        label="Summary"
-        placeholder="AI summary will appear here..."
-        :model-value="summaryText"
-        readonly
-      />
+      <p v-else-if="rentalsError" class="text-red-600 text-sm">{{ rentalsError }}</p>
+
+      <div v-else-if="activeRentals.length" class="space-y-4">
+        <fwb-card
+          v-for="rental in activeRentals"
+          :key="rental.id"
+          class="!max-w-full cursor-pointer hover:shadow-lg transition-shadow"
+          @click="router.push({ name: 'rental_view', params: { id: rental.id } })"
+        >
+          <div class="flex flex-col p-5 gap-4">
+            <div class="flex gap-5 items-start">
+              <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-semibold text-gray-900 truncate">
+                  {{ rental.equipment?.[0]?.name || 'Equipment' }}
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">
+                  {{ formatDate(rental.start_date) }} — {{ formatDate(rental.end_date) }}
+                </p>
+              </div>
+              <span class="text-lg font-bold text-blue-600 flex-shrink-0">${{ rental.agreed_price }}</span>
+            </div>
+            <fwb-progress
+              :progress="statusPercent[rental.status]"
+              :color="statusColor[rental.status]"
+              size="md"
+              :label="statusLabel[rental.status]"
+            />
+          </div>
+        </fwb-card>
+      </div>
+
+      <div v-else class="bg-gray-50 rounded-lg border border-gray-200 p-8 text-center">
+        <p class="text-gray-500">No active requests right now.</p>
+        <fwb-button size="sm" class="mt-3" @click="router.push({ name: 'equipment-search' })">
+          Browse Equipment
+        </fwb-button>
+      </div>
+    </div>
+
+    <!-- Suggested Equipment Nearby -->
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Suggested Equipment Nearby</h2>
+        <fwb-button size="sm" color="light" @click="router.push({ name: 'equipment-search' })">
+          Search All
+        </fwb-button>
+      </div>
+
+      <div v-if="!hasLocation" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <p class="text-yellow-800 text-sm">
+          Your location is not set.
+          <router-link to="/profile/edit" class="underline font-medium">Update your profile address</router-link>
+          to see nearby equipment.
+        </p>
+      </div>
+
+      <div v-else-if="equipmentLoading" class="flex justify-center py-8">
+        <fwb-spinner size="10" />
+      </div>
+
+      <p v-else-if="equipmentError" class="text-red-600 text-sm">{{ equipmentError }}</p>
+
+      <div v-else-if="nearbyEquipment.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <fwb-card
+          v-for="item in nearbyEquipment"
+          :key="item.id"
+          class="cursor-pointer hover:shadow-lg transition-shadow"
+          @click="router.push({ name: 'equipment-view', params: { id: item.id } })"
+        >
+          <div class="p-4">
+            <div v-if="item.picture" class="mb-3">
+              <img :src="item.picture" :alt="item.name" class="w-full h-32 object-cover rounded-lg" />
+            </div>
+            <div v-else class="mb-3 w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
+              <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <h3 class="font-semibold text-gray-900 truncate">{{ item.name }}</h3>
+            <p v-if="item.description" class="text-sm text-gray-500 mt-1 line-clamp-2">{{ item.description }}</p>
+            <div class="flex items-center justify-between mt-3">
+              <span class="text-lg font-bold text-blue-600">${{ item.price }}/day</span>
+              <span class="text-sm text-gray-400">{{ item.distance_miles }} mi</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">{{ item.owner_city }}, {{ item.owner_state }}</p>
+          </div>
+        </fwb-card>
+      </div>
+
+      <div v-else class="bg-gray-50 rounded-lg border border-gray-200 p-8 text-center">
+        <p class="text-gray-500">No equipment found nearby. Try expanding your search.</p>
+        <fwb-button size="sm" class="mt-3" @click="router.push({ name: 'equipment-search' })">
+          Search Equipment
+        </fwb-button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Default Landing (not signed in as renter) -->
+  <section v-else class="max-w-3xl mx-auto text-center">
+    <div class="py-16">
+      <h1 class="text-4xl font-bold text-gray-800 mb-4">Welcome to SERA</h1>
+      <p class="text-lg text-gray-500 mb-8">Share, rent, and discover equipment in your neighborhood.</p>
+      <div v-if="!auth.isAuthenticated" class="flex justify-center gap-4">
+        <fwb-button @click="router.push({ name: 'login' })">Get Started</fwb-button>
+      </div>
     </div>
   </section>
 </template>
