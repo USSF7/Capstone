@@ -88,6 +88,12 @@ const routes = [
     props: true
   },
   {
+    path: '/equipment/:id/view',
+    name: 'equipment-view',
+    component: () => import('./views/Inventory/View.vue'),
+    props: true
+  },
+  {
     path: '/equipment/create',
     name: 'equipment-create',
     component: () => import('./views/Inventory/Create.vue')

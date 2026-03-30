@@ -3,7 +3,7 @@
 
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { FwbSpinner, FwbCard, FwbImg, FwbRating, FwbProgress, FwbButton } from 'flowbite-vue'
+import { FwbSpinner, FwbCard, FwbImg, FwbRating, FwbProgress, FwbButton, FwbListGroup, FwbListGroupItem } from 'flowbite-vue'
 import RentalService from '../../services/rentalService'
 import UserService from '../../services/userService'
 import ReviewService from '../../services/reviewService'
@@ -154,21 +154,26 @@ onMounted(async () => {
                             src="../../../image.jpg"
                         />
                         <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rentalData.equipment[0].name }}</h5>
-                        <fwb-rating :rating="averageRating" review-link="#" :review-text="numRatingsText">
+                        <fwb-rating :rating="averageRating" :review-link="`/equipment/${rentalData.equipment[0].id}/view`" :review-text="numRatingsText">
                             <template #besideText>
                                 <p class="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">
                                     {{ averageRating }} out of 5
                                 </p>
                             </template>
                         </fwb-rating>
-                        <p class="font-normal text-gray-700 dark:text-gray-400"><b>Price:</b> ${{ rentalData.agreed_price }}</p>
-                        <p class="font-normal text-gray-700 dark:text-gray-400">
-                            <b>Vendor: </b>
-                            <router-link :to="{ name: 'view_profile', params: { id: vendorData.id } }" class="text-blue-600 hover:underline">
-                                {{ vendorData.name }}
-                            </router-link>
-                        </p>
-                        <p class="font-normal text-gray-700 dark:text-gray-400"><b>Description:</b> <br> {{ rentalData.equipment[0].description }}</p>
+                        <fwb-list-group class="w-auto">
+                            <fwb-list-group-item><b class="mr-1">Price:</b> ${{ rentalData.agreed_price }}</fwb-list-group-item>
+                            <fwb-list-group-item>
+                                <b class="mr-1">Vendor: </b>
+                                <router-link :to="{ name: 'view_profile', params: { id: vendorData.id } }" class="text-blue-600 hover:underline">
+                                    {{ vendorData.name }}
+                                </router-link>
+                            </fwb-list-group-item>
+                            <fwb-list-group-item class="!flex !flex-col !items-start">
+                                <b class="mr-1">Description:</b>
+                                <span>{{ rentalData.equipment[0].description }}</span>
+                            </fwb-list-group-item>
+                        </fwb-list-group>
                     </div>
                 </fwb-card>
                 <fwb-card class="!max-w-full">
@@ -181,8 +186,13 @@ onMounted(async () => {
                 <fwb-card class="!max-w-full">
                     <div class="p-5 space-y-2">
                         <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Logistics</h5>
-                        <p class="font-normal text-gray-700 dark:text-gray-400"><b>Dates:</b> {{ dateFormatting(rentalData.start_date) }} through {{ dateFormatting(rentalData.end_date) }}</p>
-                        <p class="font-normal text-gray-700 dark:text-gray-400"><b>Meeting Location:</b> {{ rentalData.location }}</p>
+                        <fwb-list-group class="w-auto">
+                            <fwb-list-group-item><b class="mr-1">Dates:</b> {{ dateFormatting(rentalData.start_date) }} through {{ dateFormatting(rentalData.end_date) }}</fwb-list-group-item>
+                            <fwb-list-group-item class="!flex !flex-col !items-start">
+                                <b class="mr-1">Meeting Location:</b>
+                                <span>{{ rentalData.location }}</span>
+                            </fwb-list-group-item>
+                        </fwb-list-group>
                         <fwb-progress v-if="(rentalData.status === 'denied') || (rentalData.status === 'disputed')" class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rentalData.status)" size="md" color="red" :label=mapStatusToText.get(rentalData.status) />
                         <fwb-progress v-else-if="rentalData.status === 'returned'" class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rentalData.status)" size="md" color="green" :label=mapStatusToText.get(rentalData.status) />
                         <fwb-progress v-else class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rentalData.status)" size="md" :label=mapStatusToText.get(rentalData.status) />

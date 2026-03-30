@@ -24,7 +24,6 @@ const months = [
     "December"
 ]
 
-
 const route = useRoute()
 const userID = ref()
 const userData = ref()
@@ -65,6 +64,18 @@ function computeAge(dateOfBirth) {
     }
 
     return age
+}
+
+function displayUserSiteStatus() {
+    if ((userData.value.vendor == true) && (userData.value.renter == true)) {
+        return "Vendor / Renter"
+    }
+    else if (userData.value.vendor == true) {
+        return "Vendor"
+    }
+    else {
+        return "Renter"
+    }
 }
 
 function editAccount() {
@@ -178,7 +189,7 @@ onMounted(async () => {
                     <fwb-list-group-item><b>State</b>: {{ userData.state }}</fwb-list-group-item>
                     <fwb-list-group-item><b>Zip Code</b>: {{ userData.zip_code }}</fwb-list-group-item>
                     <fwb-list-group-item><b>Age</b>: {{ computeAge(userData.date_of_birth) }} years</fwb-list-group-item>
-                    <fwb-list-group-item><b>User Type</b>: {{ (userData.vendor == true) ? 'Vendor' : 'Renter' }}</fwb-list-group-item>
+                    <fwb-list-group-item><b>User Type</b>: {{ displayUserSiteStatus() }}</fwb-list-group-item>
                     <fwb-list-group-item><b>Date Joined</b>: {{ dateFormatting(userData.created_at) }}</fwb-list-group-item>
                 </fwb-list-group>
                 <fwb-button class="w-24" color="default" pill @click="editAccount">Edit</fwb-button>
