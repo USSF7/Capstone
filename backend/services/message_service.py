@@ -5,14 +5,21 @@ class MessageService:
     """Service layer for Message business logic"""
 
     @staticmethod
-    def create_message(sender_id, receiver_id, data):
+    def create_message(sender_id, receiver_id, data, rental_id=None):
         """Create a new message"""
         if not all([sender_id, receiver_id, data]):
             raise ValueError("sender_id, receiver_id, and data are required")
         if sender_id == receiver_id:
             raise ValueError("Cannot send message to yourself")
+        if rental_id is None:
+            raise ValueError("rental_id is required")
         
-        message = Message(sender_id=sender_id, receiver_id=receiver_id, data=data)
+        message = Message(
+            sender_id=sender_id,
+            receiver_id=receiver_id,
+            rental_id=rental_id,
+            data=data,
+        )
         db.session.add(message)
         db.session.commit()
         return message
@@ -38,12 +45,24 @@ class MessageService:
         return Message.query.filter_by(sender_id=sender_id).all()
 
     @staticmethod
-    def get_conversation(user_id1, user_id2):
+    def get_conversation(user_id1, user_id2, rental_id=None):
         """Get conversation between two users"""
-        return Message.query.filter(
+        if rental_id is None:
+            raise ValueError("rental_id is required")
+
+        query = Message.query.filter(
             ((Message.sender_id == user_id1) & (Message.receiver_id == user_id2)) |
             ((Message.sender_id == user_id2) & (Message.receiver_id == user_id1))
-        ).all()
+        )
+        if rental_id is not None:
+            query = query.filter(Message.rental_id == rental_id)
+
+        return query.order_by(Message.send_time.asc()).all()
+
+    @staticmethod
+    def get_messages_by_rental(rental_id):
+        """Get all messages associated with a rental"""
+        return Message.query.filter_by(rental_id=rental_id).order_by(Message.send_time.asc()).all()
 
     @staticmethod
     def delete_message(message_id):

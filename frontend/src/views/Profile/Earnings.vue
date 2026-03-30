@@ -8,6 +8,7 @@ import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, CategoryScale, L
 import { useAuthStore } from '../../stores/auth'
 import RentalService from '../../services/rentalService'
 import UserService from '../../services/userService'
+import AuthService from '../../services/authService'
 import 'chartjs-adapter-date-fns'
 
 const auth = useAuthStore()
@@ -21,11 +22,8 @@ const chartDataRentalsByMonth = ref([])
 const vendorId = computed(() => auth.user?.id)
 
 async function validateVendorStatus() {
-    // Get the current user's data
-    let userData = await UserService.getUser(vendorId.value)
-
     // Determine if the user is a vendor
-    if (userData.vendor == true) {
+    if (auth.user?.vendor == true) {
         isVendor.value = true
     }
     else {

@@ -17,15 +17,27 @@ class MessageService {
     return api.get(`/messages/sent/${senderId}`)
   }
 
-  async getConversation(userId1, userId2) {
-    return api.get(`/messages/conversation/${userId1}/${userId2}`)
+  async getConversation(userId1, userId2, options = {}) {
+    const params = new URLSearchParams()
+
+    if (options.rentalId != null) {
+      params.append('rental_id', options.rentalId)
+    }
+
+    const query = params.toString()
+    return api.get(`/messages/conversation/${userId1}/${userId2}${query ? `?${query}` : ''}`)
   }
 
-  async createMessage(senderId, receiverId, data) {
+  async getMessagesByRental(rentalId) {
+    return api.get(`/messages/rental/${rentalId}`)
+  }
+
+  async createMessage(senderId, receiverId, data, options = {}) {
     return api.post('/messages', {
       sender_id: senderId,
       receiver_id: receiverId,
       data,
+      rental_id: options.rentalId ?? null,
     })
   }
 

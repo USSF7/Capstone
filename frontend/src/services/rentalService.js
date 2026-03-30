@@ -9,8 +9,16 @@ class RentalService {
     return api.get(`/rentals/${rentalId}`)
   }
 
+  async getRentalWithEquipment(rentalId) {
+    return api.get(`/rentals/rental_equipment/${rentalId}`)
+  }
+
   async getRentalsByRenter(renterId) {
     return api.get(`/rentals/renter/${renterId}`)
+  }
+
+  async getRentalsWithEquipmentByRenter(renterId) {
+    return api.get(`/rentals/renter_equipment/${renterId}`)
   }
 
   async getRentalsByVendor(vendorId) {

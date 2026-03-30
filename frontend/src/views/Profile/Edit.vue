@@ -1,11 +1,12 @@
 <!-- Edit an account details view -->
 <script lang="js" setup>
 
-import { ref, computed, onMounted } from 'vue'
-import { FwbInput, FwbButton, FwbRadio, FwbSpinner } from 'flowbite-vue'
+import { ref, onMounted, computed } from 'vue'
+import { FwbInput, FwbButton, FwbCheckbox, FwbSpinner } from 'flowbite-vue'
 import { AsYouType } from 'libphonenumber-js'
 import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
+import AuthService from '../../services/authService'
 import router from '../../router'
 
 const auth = useAuthStore()
@@ -18,10 +19,15 @@ const city = ref('')
 const state = ref('')
 const zipCode = ref('')
 const dateOfBirth = ref('')
-const siteUsage = ref('')
+const vendorStatus = ref(false)
+const renterStatus = ref(false)
 const userDataLoaded = ref(false)
 
 const userId = computed(() => auth.user?.id)
+
+const isUserTypeValid = computed(() => {
+    return vendorStatus.value || renterStatus.value
+})
 
 function formatPhoneNumber(event) {
     const digits = event.target.value.replace(/\D/g, '').slice(0, 10)
@@ -50,13 +56,8 @@ async function loadUserData() {
         state.value = userData.state
         zipCode.value = String(userData.zip_code)
         dateOfBirth.value = userData.date_of_birth
-        
-        if (userData.vendor == true) {
-            siteUsage.value = "Vendor"
-        }
-        else {
-            siteUsage.value = "Renter"
-        }
+        vendorStatus.value = userData.vendor
+        renterStatus.value = userData.renter
 
         // Displaying the page to the user
         userDataLoaded.value = true
@@ -84,15 +85,15 @@ async function updateAccount(event) {
             city.value,
             state.value,
             zipCode.value,
-            siteUsage.value == "Vendor",
-            siteUsage.value == "Renter"
+            vendorStatus.value,
+            renterStatus.value
         )
 
         // Successful account update
         alert("Account has been successfully updated.")
 
         // Going back to the view profile page
-        router.push({ name: 'view_profile' })
+        router.push({ name: 'view_profile', params: { id: userId.value } })
     }
     catch (error) {
         console.error("Error updating user:", error)
@@ -103,7 +104,7 @@ async function updateAccount(event) {
 }
 
 function cancelUpdate() {
-    router.push({ name: 'view_profile' })
+    router.push({ name: 'view_profile', params: { id: userId.value } })
 }
 
 onMounted(async () => {
@@ -187,23 +188,21 @@ onMounted(async () => {
             <div class="space-y-2">
                 <label class="block text-sm font-medium">Site Usage</label>
                 <div class="flex w-48">
-                    <fwb-radio
-                        v-model="siteUsage"
+                    <fwb-checkbox
+                        v-model="vendorStatus"
                         name="vendor"
                         label="Vendor"
-                        value="Vendor"
                     />
-                    <fwb-radio
-                        v-model="siteUsage"
+                    <fwb-checkbox
+                        v-model="renterStatus"
                         name="renter"
                         label="Renter"
-                        value="Renter"
                     />
                 </div>
             </div>
             <div class="flex gap-3">
                 <fwb-button class="w-24" color="default" pill @click="cancelUpdate">Cancel</fwb-button>
-                <fwb-button class="w-24" color="default" pill type="submit">Save</fwb-button>
+                <fwb-button :disabled="!isUserTypeValid" class="disabled:opacity-50 w-24" color="default" pill type="submit">Save</fwb-button>
             </div>
         </form>
     </div>

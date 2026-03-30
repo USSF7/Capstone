@@ -67,6 +67,9 @@
           <router-link :to="{ name: 'equipment-edit', params: { id: equipment.id } }">
             <fwb-button color="Yellow" pill>Edit</fwb-button>
           </router-link>
+          <router-link :to="{ name: 'equipment-view', params: { id: equipment.id }}">
+            <fwb-button color="black" pill>View</fwb-button>
+          </router-link>
           <fwb-button color="Red" pill @click="deleteEquipment(equipment.id)">Delete</fwb-button>
         </div>
 

@@ -248,17 +248,29 @@ def seed_reviews(users, equipment_list, num_reviews=100):
     db.session.commit()
     print(f"✓ Created {num_reviews} reviews")
 
-def seed_messages(users, num_messages=50):
-    """Create sample messages"""
+def seed_messages(rentals, num_messages=50):
+    """Create sample messages tied to real rentals and participants"""
     print(f"Creating {num_messages} messages...")
+
+    if not rentals:
+        print("! No rentals found; skipping message seeding")
+        return
     
     for _ in range(num_messages):
-        sender = choice(users)
-        receiver = choice([u for u in users if u.id != sender.id])
+        rental = choice(rentals)
+
+        # Messages are only between the two users participating in the rental.
+        if randint(0, 1) == 0:
+            sender_id = rental.renter_id
+            receiver_id = rental.vendor_id
+        else:
+            sender_id = rental.vendor_id
+            receiver_id = rental.renter_id
         
         message = Message(
-            sender_id=sender.id,
-            receiver_id=receiver.id,
+            sender_id=sender_id,
+            receiver_id=receiver_id,
+            rental_id=rental.id,
             data=fake.text(max_nb_chars=300),
             send_time=fake.date_time_this_year()
         )
@@ -297,6 +309,35 @@ def seed_rentals(users, equipment_list, num_rentals=25):
     print(f"✓ Created {num_rentals} rentals")
     return rentals
 
+def seed_test_rental_between_test_users(test_users):
+    """Create one guaranteed rental between renter@test.com and vendor@test.com."""
+    print("Creating guaranteed rental between test renter and test vendor...")
+
+    renter = next((user for user in test_users if user.email == 'renter@test.com'), None)
+    vendor = next((user for user in test_users if user.email == 'vendor@test.com'), None)
+
+    if not renter or not vendor:
+        raise ValueError("Test renter/vendor accounts were not found")
+
+    start_date = datetime.utcnow().date()
+    end_date = start_date + timedelta(days=2)
+
+    rental = Rental(
+        renter_id=renter.id,
+        vendor_id=vendor.id,
+        location='123 Test Ave, Austin, TX 73301',
+        agreed_price=99.99,
+        start_date=start_date,
+        end_date=end_date,
+        status='requesting',
+        deleted=False
+    )
+    db.session.add(rental)
+    db.session.commit()
+
+    print(f"✓ Created guaranteed test rental (id={rental.id})")
+    return rental
+
 def seed_rental_equipment(rentals, equipment_list):
     """Link exactly one equipment item to each rental"""
     print(f"Creating rental-equipment links...")
@@ -328,9 +369,11 @@ def seed_db():
             users = test_users + users
             equipment_list = seed_equipment(users, 30)
             seed_reviews(users, equipment_list, 40)
-            seed_messages(users, 50)
-            rentals = seed_rentals(users, equipment_list, 1000)
+            rentals = seed_rentals(users, equipment_list, 75)
+            test_rental = seed_test_rental_between_test_users(test_users)
+            rentals.append(test_rental)
             seed_rental_equipment(rentals, equipment_list)
+            seed_messages(rentals, 50)
             
             print("\n" + "="*50)
             print("✓ Database seeding completed successfully!")
