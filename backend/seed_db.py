@@ -132,6 +132,8 @@ def seed_test_users():
         city='Austin',
         state='Texas',
         zip_code=73301,
+        latitude=30.2672,
+        longitude=-97.7431,
         vendor=False,
         renter=True
     )
@@ -148,6 +150,8 @@ def seed_test_users():
         city='Austin',
         state='Texas',
         zip_code=73301,
+        latitude=30.2500,
+        longitude=-97.7500,
         vendor=True,
         renter=False
     )

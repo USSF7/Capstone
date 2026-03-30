@@ -104,6 +104,11 @@ const routes = [
     component: () => import('./views/Profile/Calendar.vue')
   },
   {
+    path: '/equipment/search',
+    name: 'equipment-search',
+    component: () => import('./views/Equipment/Search.vue'),
+  },
+  {
     path: '/rentals',
     name: 'rentals',
     component: RentalIndex
@@ -112,6 +117,11 @@ const routes = [
     path: '/rentals/view/:id',
     name: 'rental_view',
     component: RentalView
+  },
+  {
+    path: '/rentals/:id/meeting',
+    name: 'rental-meeting',
+    component: () => import('./views/Rental/MeetingLocation.vue'),
   }
 ]
 

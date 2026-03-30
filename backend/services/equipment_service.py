@@ -97,6 +97,32 @@ class EquipmentService:
         return result
 
     @staticmethod
+    def search_equipment_nearby(lat, lng, radius_miles=25, name_filter=None):
+        """Find equipment whose owner is within radius_miles of (lat, lng)."""
+        from services.location_service import LocationService
+
+        query = db.session.query(Equipment, User).join(User, Equipment.owner_id == User.id)
+        query = query.filter(User.latitude.isnot(None), User.longitude.isnot(None))
+
+        if name_filter:
+            query = query.filter(Equipment.name.ilike(f'%{name_filter}%'))
+
+        results = []
+        for equipment, owner in query.all():
+            distance = LocationService.haversine_distance(lat, lng, owner.latitude, owner.longitude)
+            if distance <= radius_miles:
+                data = equipment.to_dict()
+                data['distance_miles'] = round(distance, 1)
+                data['owner_city'] = owner.city
+                data['owner_state'] = owner.state
+                data['owner_lat'] = round(owner.latitude, 2)
+                data['owner_lng'] = round(owner.longitude, 2)
+                results.append(data)
+
+        results.sort(key=lambda x: x['distance_miles'])
+        return results
+
+    @staticmethod
     def update_equipment(equipment_id, name=None, owner_id=None, price=None, description=None, picture=None):
         """Update equipment"""
         equipment = Equipment.query.get(equipment_id)

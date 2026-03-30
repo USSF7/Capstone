@@ -19,6 +19,17 @@ class UserService:
         user = User(name=name, email=email, phone=phone, date_of_birth=date_of_birth, street_address=street_address, city=city, state=state, zip_code=zip_code, vendor=vendor, renter=renter)
         if password:
             user.set_password(password)
+
+        # Geocode address to lat/lng
+        if street_address and city and state and zip_code:
+            try:
+                from services.location_service import LocationService
+                coords = LocationService.geocode_address(street_address, city, state, zip_code)
+                if coords:
+                    user.latitude, user.longitude = coords
+            except Exception:
+                pass  # Geocoding failure is non-fatal
+
         db.session.add(user)
         db.session.commit()
         return user
@@ -67,7 +78,21 @@ class UserService:
         
         user.vendor = vendor
         user.renter = renter
-        
+
+        # Re-geocode if address fields changed
+        addr = user.street_address
+        c = user.city
+        s = user.state
+        z = user.zip_code
+        if addr and c and s and z:
+            try:
+                from services.location_service import LocationService
+                coords = LocationService.geocode_address(addr, c, s, z)
+                if coords:
+                    user.latitude, user.longitude = coords
+            except Exception:
+                pass  # Geocoding failure is non-fatal
+
         db.session.commit()
         return user
 

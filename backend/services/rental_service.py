@@ -94,12 +94,12 @@ class RentalService:
         return Rental.query.filter_by(vendor_id=vendor_id, status=status).all()
 
     @staticmethod
-    def update_rental(rental_id, status=None, location=None, agreed_price=None, deleted=None):
+    def update_rental(rental_id, status=None, location=None, agreed_price=None, deleted=None, meeting_lat=None, meeting_lng=None):
         """Update a rental"""
         rental = Rental.query.get(rental_id)
         if not rental:
             raise ValueError("Rental not found")
-        
+
         if status:
             if status not in VALID_RENTAL_STATUSES:
                 raise ValueError("Invalid rental status")
@@ -110,7 +110,11 @@ class RentalService:
             rental.agreed_price = agreed_price
         if deleted is not None:
             rental.deleted = deleted
-        
+        if meeting_lat is not None:
+            rental.meeting_lat = meeting_lat
+        if meeting_lng is not None:
+            rental.meeting_lng = meeting_lng
+
         db.session.commit()
         return rental
 

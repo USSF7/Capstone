@@ -95,6 +95,26 @@ def create_app(config_name='development'):
         except Exception:
             db.session.rollback()
 
+        # Add lat/lng columns to users
+        for col_name, col_type in [("latitude", "DOUBLE PRECISION"), ("longitude", "DOUBLE PRECISION")]:
+            try:
+                db.session.execute(text(
+                    f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        # Add meeting location columns to rentals
+        for col_name, col_type in [("meeting_lat", "DOUBLE PRECISION"), ("meeting_lng", "DOUBLE PRECISION")]:
+            try:
+                db.session.execute(text(
+                    f"ALTER TABLE rentals ADD COLUMN {col_name} {col_type}"
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
     return app
 
 if __name__ == '__main__':
