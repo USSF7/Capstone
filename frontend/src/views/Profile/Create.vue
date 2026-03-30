@@ -3,8 +3,7 @@
 
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { FwbInput, FwbCheckbox, FwbA, FwbButton, FwbRadio } from 'flowbite-vue'
-import { AsYouType } from 'libphonenumber-js'
+import { FwbInput, FwbCheckbox, FwbA, FwbButton } from 'flowbite-vue'
 import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
 import authService from '../../services/authService'
@@ -20,8 +19,17 @@ const city = ref('')
 const state = ref('')
 const zipCode = ref('')
 const dateOfBirth = ref('')
-const siteUsage = ref('')
 const termsAndConditions = ref(false)
+const vendorStatus = ref(false)
+const renterStatus = ref(false)
+
+const isUserTypeValid = computed(() => {
+    return vendorStatus.value || renterStatus.value
+})
+
+const isTermsConditionsValid = computed(() => {
+    return termsAndConditions.value
+})
 
 onMounted(() => {
     if (!auth.isAuthenticated) {
@@ -60,8 +68,8 @@ async function submitProfile() {
             city.value,
             state.value,
             zipCode.value,
-            siteUsage.value === "Vendor",
-            siteUsage.value === "Renter"
+            vendorStatus.value,
+            renterStatus.value
         )
 
         // Refresh user data in the auth store
@@ -148,27 +156,25 @@ async function submitProfile() {
             <div class="space-y-2">
                 <label class="block text-sm font-medium">I want to use the site as a:</label>
                 <div class="flex w-48">
-                    <fwb-radio
-                        v-model="siteUsage"
-                        name="siteUsage"
+                    <fwb-checkbox
+                        v-model="vendorStatus"
+                        name="vendor"
                         label="Vendor"
-                        value="Vendor"
                     />
-                    <fwb-radio
-                        v-model="siteUsage"
-                        name="siteUsage"
+                    <fwb-checkbox
+                        v-model="renterStatus"
+                        name="renter"
                         label="Renter"
-                        value="Renter"
                     />
                 </div>
             </div>
-            <fwb-checkbox v-model="termsAndConditions" required>
+            <fwb-checkbox v-model="termsAndConditions">
                 I agree with
                 <fwb-a class="text-blue-600 hover:underline" href="#">
                     terms and conditions.
                 </fwb-a>
             </fwb-checkbox>
-            <fwb-button class="w-full" color="default" type="submit">Complete Profile</fwb-button>
+            <fwb-button :disabled="!isUserTypeValid || !isTermsConditionsValid" class="disabled:opacity-50 w-full" color="default" type="submit">Complete Profile</fwb-button>
         </form>
     </div>
 </template>
