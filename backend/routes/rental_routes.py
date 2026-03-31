@@ -89,6 +89,20 @@ def get_rentals_by_vendor_and_status(vendor_id, status):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@rental_bp.route('/vendor/<int:vendor_id>/equipment-availability', methods=['GET'])
+@jwt_required()
+def get_vendor_equipment_availability(vendor_id):
+    """Get all vendor equipment with availability for a date range."""
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        equipment = RentalService.get_vendor_equipment_with_availability(vendor_id, start_date, end_date)
+        return jsonify({'equipment': equipment}), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @rental_bp.route('/average-price', methods=['GET'])
 def get_average_price():
     """Get average price for equipment in a location"""
@@ -109,19 +123,24 @@ def get_average_price():
         return jsonify({'error': str(e)}), 500
 
 @rental_bp.route('/', methods=['POST'])
+@jwt_required()
 def create_rental():
     """Create a new rental"""
     try:
         data = request.get_json()
+        renter_id = int(get_jwt_identity())
         rental = RentalService.create_rental(
-            data.get('renter_id'),
+            renter_id,
             data.get('vendor_id'),
             data.get('agreed_price'),
             data.get('start_date'),
             data.get('end_date'),
             data.get('location'),
-            data.get('status', 'requesting'),
-            data.get('deleted', False)
+            'requesting',
+            data.get('deleted', False),
+            data.get('equipment_ids'),
+            data.get('meeting_lat'),
+            data.get('meeting_lng')
         )
         return jsonify(rental.to_dict()), 201
     except ValueError as e:
@@ -130,16 +149,24 @@ def create_rental():
         return jsonify({'error': str(e)}), 500
 
 @rental_bp.route('/<int:rental_id>', methods=['PUT'])
+@jwt_required()
 def update_rental(rental_id):
     """Update a rental"""
     try:
         data = request.get_json()
+        actor_user_id = int(get_jwt_identity())
         rental = RentalService.update_rental(
             rental_id,
             data.get('status'),
             data.get('location'),
             data.get('agreed_price'),
-            data.get('deleted')
+            data.get('deleted'),
+            data.get('meeting_lat'),
+            data.get('meeting_lng'),
+            data.get('start_date'),
+            data.get('end_date'),
+            actor_user_id,
+            data.get('approve', False)
         )
         return jsonify(rental.to_dict()), 200
     except ValueError as e:

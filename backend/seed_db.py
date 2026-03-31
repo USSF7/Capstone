@@ -129,11 +129,11 @@ def seed_test_users():
         phone='(555) 234-5678',
         date_of_birth='1994-06-15',
         street_address='742 Evergreen Terrace',
-        city='Austin',
+        city='College Station',
         state='Texas',
-        zip_code=73301,
-        latitude=30.2672,
-        longitude=-97.7431,
+        zip_code=77840,
+        latitude=30.6295,
+        longitude=-96.3365,
         vendor=False,
         renter=True
     )
@@ -147,13 +147,14 @@ def seed_test_users():
         phone='(555) 876-5432',
         date_of_birth='1988-11-23',
         street_address='1200 Lakeshore Drive',
-        city='Austin',
+        city='Bryan',
         state='Texas',
-        zip_code=73301,
-        latitude=30.2500,
-        longitude=-97.7500,
+        zip_code=77801,
+        latitude=30.6728,
+        longitude=-96.3687,
         vendor=True,
-        renter=False
+        renter=False,
+        max_travel_distance=10
     )
     vendor.set_password('password')
     test_users.append(vendor)
@@ -164,15 +165,27 @@ def seed_test_users():
     return test_users
 
 
-def seed_users(num_users=20):
+def seed_users(num_users=40):
     """Create sample users"""
     print(f"Creating {num_users} users...")
     users = []
+    # Bryan/College Station, Texas area center points with realistic spread
+    bryan_cs_area = [
+        {'city': 'College Station', 'zip': 77840, 'lat': 30.6295, 'lon': -96.3365},
+        {'city': 'Bryan', 'zip': 77801, 'lat': 30.6728, 'lon': -96.3687},
+        {'city': 'College Station', 'zip': 77843, 'lat': 30.6250, 'lon': -96.3400},
+        {'city': 'Bryan', 'zip': 77802, 'lat': 30.6700, 'lon': -96.3650},
+    ]
 
     for _ in range(num_users):
         randomNum = randint(1, 100)
         isVendor = bool(randomNum % 2)
         isRenter = not isVendor
+        location = choice(bryan_cs_area)
+        
+        # Add random variation to coordinates for realistic spread (approximately 0.01 degrees = ~1km)
+        lat_offset = (randint(-100, 100) / 1000)
+        lon_offset = (randint(-100, 100) / 1000)
 
         user = User(
             name=fake.name(),
@@ -180,11 +193,14 @@ def seed_users(num_users=20):
             phone=fake.numerify("(###) ###-####"),
             date_of_birth=fake.date_of_birth(minimum_age=18, maximum_age=80),
             street_address=fake.street_address(),
-            city=fake.city(),
-            state=fake.state(),
-            zip_code=fake.zipcode(),
+            city=location['city'],
+            state='Texas',
+            zip_code=location['zip'],
+            latitude=round(location['lat'] + lat_offset, 4),
+            longitude=round(location['lon'] + lon_offset, 4),
             vendor=isVendor,
-            renter=isRenter
+            renter=isRenter,
+            max_travel_distance=randint(0, 20) if isVendor else None
         )
 
         user.set_password(fake.password())
@@ -195,14 +211,21 @@ def seed_users(num_users=20):
     print(f"✓ Created {num_users} users")
     return users
 
-def seed_equipment(users, num_items=30):
+def seed_equipment(users, num_items=60):
     """Create sample equipment"""
     print(f"Creating {num_items} equipment items...")
     equipment_list = []
     
+    # Filter to only vendors
+    vendors = [user for user in users if user.vendor]
+    
+    if not vendors:
+        print("! No vendors found; skipping equipment seeding")
+        return []
+    
     for _ in range(num_items):
         equipment = Equipment(
-            owner_id=choice(users).id,
+            owner_id=choice(vendors).id,
             name=choice(EQUIPMENT_NAMES),
             price=round(randint(10, 1000) + randint(0, 99) / 100, 2),
             description=fake.sentence(nb_words=12),
@@ -287,15 +310,40 @@ def seed_rentals(users, equipment_list, num_rentals=25):
     """
     print(f"Creating {num_rentals} rentals...")
     rentals = []
-
-    statuses = ['requesting', 'accepted', 'active', 'returned', 'disputed', 'denied']
+    today = datetime.utcnow().date()
 
     for _ in range(num_rentals):
         equipment = choice(equipment_list)
         vendor_id = equipment.owner_id
         renter = choice([u for u in users if u.id != vendor_id])
-        start_date = fake.date_between(start_date='-1y', end_date='today')
+        start_date = fake.date_between(start_date='-1y', end_date='+60d')
         end_date = start_date + timedelta(days=randint(1, 7))
+
+        # Status logic based on rental timing:
+        # - any rental can be denied
+        # - past rentals are returned
+        # - future rentals are requesting or active
+        # - ongoing rentals are active
+        if randint(1, 100) <= 15:
+            status = 'denied'
+            renter_approved = True
+            vendor_approved = False
+        elif end_date < today:
+            status = 'returned'
+            renter_approved = True
+            vendor_approved = True
+        elif start_date > today:
+            status = choice(['requesting', 'active'])
+            if status == 'active':
+                renter_approved = True
+                vendor_approved = True
+            else:
+                renter_approved = True
+                vendor_approved = False
+        else:
+            status = 'active'
+            renter_approved = True
+            vendor_approved = True
 
         rental = Rental(
             renter_id=renter.id,
@@ -304,7 +352,9 @@ def seed_rentals(users, equipment_list, num_rentals=25):
             agreed_price=round(randint(50, 500) + randint(0, 99) / 100, 2),
             start_date=start_date,
             end_date=end_date,
-            status=choice(statuses),
+            status=status,
+            renter_approved=renter_approved,
+            vendor_approved=vendor_approved,
             deleted=False
         )
         db.session.add(rental)
@@ -347,13 +397,13 @@ def seed_test_rental_between_test_users(test_users, equipment_list):
     else:
         equipment = choice(vendor_equipment)
 
-    start_date = datetime.utcnow().date()
+    start_date = datetime.utcnow().date() + timedelta(days=7)  # future rental
     end_date = start_date + timedelta(days=2)
 
     rental = Rental(
         renter_id=renter.id,
         vendor_id=vendor.id,
-        location='123 Test Ave, Austin, TX 73301',
+        location='123 Test Ave, College Station, TX 77840',
         agreed_price=99.99,
         start_date=start_date,
         end_date=end_date,
@@ -371,6 +421,60 @@ def seed_test_rental_between_test_users(test_users, equipment_list):
     db.session.commit()
 
     print(f"✓ Created guaranteed test rental (id={rental.id})")
+    return rental
+
+
+def seed_test_active_past_due_rental_between_test_users(test_users, equipment_list):
+    """Create one guaranteed active rental between test users with an end date in the past."""
+    print("Creating guaranteed active past-due rental between test renter and test vendor...")
+
+    renter = next((user for user in test_users if user.email == 'renter@test.com'), None)
+    vendor = next((user for user in test_users if user.email == 'vendor@test.com'), None)
+
+    if not renter or not vendor:
+        raise ValueError("Test renter/vendor accounts were not found")
+
+    vendor_equipment = [e for e in equipment_list if e.owner_id == vendor.id]
+    if not vendor_equipment:
+        equipment = Equipment(
+            owner_id=vendor.id,
+            name=choice(EQUIPMENT_NAMES),
+            price=149.99,
+            description='Test equipment for guaranteed active past-due rental',
+            picture='/images/equipment/test-active-past-due.jpg'
+        )
+        db.session.add(equipment)
+        db.session.flush()
+    else:
+        equipment = choice(vendor_equipment)
+
+    today = datetime.utcnow().date()
+    start_date = today - timedelta(days=5)
+    end_date = today - timedelta(days=1)
+
+    rental = Rental(
+        renter_id=renter.id,
+        vendor_id=vendor.id,
+        location='123 Test Ave, College Station, TX 77840',
+        agreed_price=149.99,
+        start_date=start_date,
+        end_date=end_date,
+        status='active',
+        renter_approved=True,
+        vendor_approved=True,
+        deleted=False
+    )
+    db.session.add(rental)
+    db.session.flush()
+
+    link = RentalHasEquipment(
+        equipment_id=equipment.id,
+        rental_id=rental.id
+    )
+    db.session.add(link)
+    db.session.commit()
+
+    print(f"✓ Created guaranteed active past-due test rental (id={rental.id})")
     return rental
 
 
@@ -392,7 +496,9 @@ def seed_db():
             seed_reviews(users, equipment_list, 40)
             rentals = seed_rentals(users, equipment_list, 75)
             test_rental = seed_test_rental_between_test_users(test_users, equipment_list)
+            test_active_past_due_rental = seed_test_active_past_due_rental_between_test_users(test_users, equipment_list)
             rentals.append(test_rental)
+            rentals.append(test_active_past_due_rental)
             seed_messages(rentals, 50)
             
             print("\n" + "="*50)

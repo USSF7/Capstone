@@ -28,7 +28,8 @@ const mapStatusToPercent = new Map([
     ["active", 70.0],
     ["returned", 100.0],
     ["disputed", 90.0],
-    ["denied", 100.0]
+    ["denied", 100.0],
+    ["cancelled", 100.0]
 ])
 
 const mapStatusToText = new Map([
@@ -37,12 +38,14 @@ const mapStatusToText = new Map([
     ["active", "Rental is active"],
     ["returned", "Rental has been completed"],
     ["disputed", "Rental is being disputed"],
-    ["denied", "Vendor has denied the rental"]
+    ["denied", "Vendor has denied the rental"],
+    ["cancelled", "Renter canceled the rental request"]
 ])
 
 const router = useRouter()
 const userData = ref()
 const userRentalsData = ref()
+const vendorOpenRequestsData = ref([])
 const activeTab = ref('active rentals')
 const userDataLoaded = ref(false)
 
@@ -63,15 +66,41 @@ async function sortRentalsByStartDateDescending() {
     userRentalsData.value.sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
 }
 
+async function sortVendorRequestsByStartDateDescending() {
+    vendorOpenRequestsData.value.sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
+}
+
 async function loadUserRentalsData() {
     try {
         // Loading in the user's data
         userData.value = await AuthService.getMe()
 
-        // Loading in the user's rentals
-        userRentalsData.value = await RentalService.getRentalsWithEquipmentByRenter(userData.value.id)
+        // Load all rentals where this user is involved (renter or vendor).
+        const renterRentals = await RentalService.getRentalsWithEquipmentByRenter(userData.value.id)
+        let vendorRentals = []
+        if (userData.value.vendor) {
+            const vendorRentalsBasic = await RentalService.getRentalsByVendor(userData.value.id)
+            vendorRentals = await Promise.all(
+                vendorRentalsBasic.map((rental) => RentalService.getRentalWithEquipment(rental.id))
+            )
+        }
+
+        const rentalsById = new Map()
+        for (const rental of [...renterRentals, ...vendorRentals]) {
+            rentalsById.set(rental.id, rental)
+        }
+
+        userRentalsData.value = Array.from(rentalsById.values())
         await filterOutDeletedRentals()
         await sortRentalsByStartDateDescending()
+
+        if (userData.value.vendor) {
+            vendorOpenRequestsData.value = userRentalsData.value.filter(
+                (rental) => rental.vendor_id === userData.value.id && rental.status === 'requesting'
+            )
+            await sortVendorRequestsByStartDateDescending()
+            activeTab.value = 'open vendor requests'
+        }
 
         // Displaying the page to the user
         userDataLoaded.value = true
@@ -93,7 +122,9 @@ const filterCompletedRentals = computed(() => {
 })
 
 const filterRejectedDisputedRentals = computed(() => {
-    return userRentalsData.value.filter(rental => (rental.status === 'disputed') || (rental.status === 'denied'))
+    return userRentalsData.value.filter(
+        rental => (rental.status === 'disputed') || (rental.status === 'denied') || (rental.status === 'cancelled')
+    )
 })
 
 onMounted(async () => {
@@ -109,6 +140,36 @@ onMounted(async () => {
     <div v-else>
         <h1 class="text-3xl font-bold text-gray-800 mb-6">My Rentals</h1>
         <fwb-tabs v-model="activeTab" class="p-5">
+            <fwb-tab
+                v-if="userData.vendor"
+                name="open vendor requests"
+                :title="`Open Requests (${vendorOpenRequestsData.length})`"
+            >
+                <div class="space-y-4">
+                    <fwb-card
+                        v-for="rental in vendorOpenRequestsData"
+                        :key="rental.id"
+                        class="!max-w-full cursor-pointer hover:shadow-lg transition-shadow"
+                        @click="router.push({ name: 'rental_view', params:{ id: rental.id } })"
+                    >
+                        <div class="flex flex-col p-5 gap-4">
+                            <div class="flex gap-4">
+                                <fwb-img
+                                    alt="flowbite-vue"
+                                    img-class="w-48 rounded-lg"
+                                    src="../../../image.jpg"
+                                />
+                                <div class="flex flex-col space-y-2">
+                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment?.length ? rental.equipment.map(e => e.name).join(', ') : 'Equipment request' }}</h5>
+                                    <p class="font-normal text-gray-700 dark:text-gray-400"><b>Offered Price:</b> ${{ rental.agreed_price }}</p>
+                                    <p class="font-normal text-gray-700 dark:text-gray-400"><b>Dates:</b> {{ dateFormatting(rental.start_date) }} through {{ dateFormatting(rental.end_date) }}</p>
+                                </div>
+                            </div>
+                            <fwb-progress class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rental.status)" size="md" label="Awaiting your approval" />
+                        </div>
+                    </fwb-card>
+                </div>
+            </fwb-tab>
             <fwb-tab name="active rentals" title="Active Rentals">
                 <div class="space-y-4">
                     <fwb-card
@@ -125,7 +186,7 @@ onMounted(async () => {
                                     src="../../../image.jpg"
                                 />
                                 <div class="flex flex-col space-y-2">
-                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment[0].name }}</h5>
+                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment?.length ? rental.equipment.map(e => e.name).join(', ') : 'Equipment request' }}</h5>
                                     <p class="font-normal text-gray-700 dark:text-gray-400"><b>Price:</b> ${{ rental.agreed_price }}</p>
                                     <p class="font-normal text-gray-700 dark:text-gray-400"><b>Dates:</b> {{ dateFormatting(rental.start_date) }} through {{ dateFormatting(rental.end_date) }}</p>
                                 </div>
@@ -151,7 +212,7 @@ onMounted(async () => {
                                     src="../../../image.jpg"
                                 />
                                 <div class="flex flex-col space-y-2">
-                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment[0].name }}</h5>
+                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment?.length ? rental.equipment.map(e => e.name).join(', ') : 'Equipment request' }}</h5>
                                     <p class="font-normal text-gray-700 dark:text-gray-400"><b>Price:</b> ${{ rental.agreed_price }}</p>
                                     <p class="font-normal text-gray-700 dark:text-gray-400"><b>Dates:</b> {{ dateFormatting(rental.start_date) }} through {{ dateFormatting(rental.end_date) }}</p>
                                 </div>
@@ -177,7 +238,7 @@ onMounted(async () => {
                                     src="../../../image.jpg"
                                 />
                                 <div class="flex flex-col space-y-2">
-                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment[0].name }}</h5>
+                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment?.length ? rental.equipment.map(e => e.name).join(', ') : 'Equipment request' }}</h5>
                                     <p class="font-normal text-gray-700 dark:text-gray-400"><b>Price:</b> ${{ rental.agreed_price }}</p>
                                     <p class="font-normal text-gray-700 dark:text-gray-400"><b>Dates:</b> {{ dateFormatting(rental.start_date) }} through {{ dateFormatting(rental.end_date) }}</p>
                                 </div>

@@ -1,0 +1,273 @@
+<script setup>
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { FwbCard, FwbProgress, FwbButton, FwbListGroup, FwbListGroupItem } from 'flowbite-vue'
+import RentalService from '../../../services/rentalService'
+
+const props = defineProps({
+  rentalData: { type: Object, required: true },
+  currentUserId: { type: Number, required: true },
+})
+
+const emit = defineEmits(['open-review-equipment', 'open-review-user', 'rental-updated'])
+const router = useRouter()
+
+const isDisputedOrDenied = computed(() =>
+  props.rentalData.status === 'denied' || props.rentalData.status === 'disputed' || props.rentalData.status === 'cancelled'
+)
+const isReturned = computed(() => props.rentalData.status === 'returned')
+const isVendorViewer = computed(() => props.currentUserId === props.rentalData?.vendor_id)
+const isRenterViewer = computed(() => props.currentUserId === props.rentalData?.renter_id)
+const isPendingVendorDecision = computed(
+  () => isVendorViewer.value && props.rentalData?.status === 'requesting'
+)
+const isAwaitingMyApproval = computed(() => {
+  if (!['requesting', 'accepted'].includes(props.rentalData?.status)) return false
+  if (isVendorViewer.value) return !props.rentalData?.vendor_approved
+  if (isRenterViewer.value) return !props.rentalData?.renter_approved
+  return false
+})
+const isAwaitingCounterpartyApproval = computed(() => {
+  if (!['requesting', 'accepted'].includes(props.rentalData?.status)) return false
+  if (isVendorViewer.value) return !!props.rentalData?.vendor_approved && !props.rentalData?.renter_approved
+  if (isRenterViewer.value) return !!props.rentalData?.renter_approved && !props.rentalData?.vendor_approved
+  return false
+})
+const canMarkReturned = computed(() => {
+  if (!isVendorViewer.value) return false
+  if (props.rentalData?.status !== 'active') return false
+  if (!props.rentalData?.end_date) return false
+
+  const today = new Date()
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const rentalEndDate = new Date(props.rentalData.end_date)
+  return todayOnly > rentalEndDate
+})
+const reviewUserLabel = computed(() => (isVendorViewer.value ? 'Review Renter' : 'Review Vendor'))
+const canReviewEquipment = computed(() => !isVendorViewer.value)
+const rentalDurationDays = computed(() => {
+  if (!props.rentalData?.start_date || !props.rentalData?.end_date) return 1
+
+  const start = new Date(props.rentalData.start_date)
+  const end = new Date(props.rentalData.end_date)
+  const msPerDay = 1000 * 60 * 60 * 24
+  const dayDiff = Math.ceil((end - start) / msPerDay)
+  return Number.isFinite(dayDiff) && dayDiff > 0 ? dayDiff : 1
+})
+const totalPrice = computed(() => Number(props.rentalData?.agreed_price) || 0)
+const perDayPrice = computed(() => totalPrice.value / rentalDurationDays.value)
+
+const mapStatusToPercent = new Map([
+  ['requesting', 10.0],
+  ['accepted', 40.0],
+  ['active', 70.0],
+  ['returned', 100.0],
+  ['disputed', 90.0],
+  ['denied', 100.0],
+  ['cancelled', 100.0],
+])
+
+const mapStatusToText = new Map([
+  ['requesting', 'Details updated; waiting for approvals'],
+  ['accepted', 'Details updated; waiting for approvals'],
+  ['active', 'Rental is active'],
+  ['returned', 'Rental has been completed'],
+  ['disputed', 'Rental is being disputed'],
+  ['denied', 'Vendor has denied the rental'],
+  ['cancelled', 'Renter has canceled the rental request'],
+])
+
+function getStatusPercent(status) {
+  return mapStatusToPercent.get(status) || 0
+}
+
+function getStatusText(status) {
+  return mapStatusToText.get(status) || 'Rental status updated'
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
+function dateFormatting(isoDate) {
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ]
+
+  const date = new Date(isoDate)
+  const day = date.getDate()
+  const month = date.getMonth()
+  const year = date.getFullYear()
+  return `${months[month]} ${day}, ${year}`
+}
+
+async function updateRequestStatus(nextStatus) {
+  try {
+    const updated = await RentalService.updateRental(
+      props.rentalData.id,
+      nextStatus,
+      props.rentalData.location,
+      props.rentalData.agreed_price,
+      props.rentalData.deleted
+    )
+    emit('rental-updated', updated)
+  } catch (error) {
+    console.error('Failed to update rental status:', error)
+    alert('Could not update this request. Please try again.')
+  }
+}
+
+async function approveChanges() {
+  try {
+    const updated = await RentalService.updateRental(
+      props.rentalData.id,
+      props.rentalData.status,
+      props.rentalData.location,
+      props.rentalData.agreed_price,
+      props.rentalData.deleted,
+      true
+    )
+    emit('rental-updated', updated)
+  } catch (error) {
+    console.error('Failed to approve rental changes:', error)
+    alert('Could not approve these changes. Please try again.')
+  }
+}
+
+function goToEditDetails() {
+  router.push({ name: 'rental-edit', params: { id: props.rentalData.id } })
+}
+
+function confirmAndDenyRequest() {
+  const confirmed = window.confirm(
+    'Are you sure you want to deny this rental request? This will notify the renter and mark the request as denied.'
+  )
+  if (!confirmed) return
+  updateRequestStatus('denied')
+}
+
+function confirmAndCancelRequest() {
+  const confirmed = window.confirm(
+    'Are you sure you want to cancel this rental request? This will notify the vendor and mark the request as canceled.'
+  )
+  if (!confirmed) return
+  updateRequestStatus('cancelled')
+}
+
+function confirmAndMarkReturned() {
+  const confirmed = window.confirm(
+    'Mark this rental as returned and complete the agreement? This action updates the rental to completed.'
+  )
+  if (!confirmed) return
+  updateRequestStatus('returned')
+}
+</script>
+
+<template>
+  <fwb-card class="!max-w-full">
+    <div class="p-5 space-y-2">
+      <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Logistics</h5>
+      <fwb-list-group class="w-auto">
+        <fwb-list-group-item>
+          <b class="mr-1">Dates:</b>
+          {{ dateFormatting(rentalData.start_date) }} through {{ dateFormatting(rentalData.end_date) }}
+        </fwb-list-group-item>
+        <fwb-list-group-item>
+          <b class="mr-1">Total Price:</b>
+          {{ formatCurrency(totalPrice) }}
+        </fwb-list-group-item>
+        <fwb-list-group-item>
+          <b class="mr-1">Price Per Day:</b>
+          {{ formatCurrency(perDayPrice) }}
+          <span class="ml-1 text-xs text-gray-500">({{ rentalDurationDays }} day{{ rentalDurationDays === 1 ? '' : 's' }})</span>
+        </fwb-list-group-item>
+        <fwb-list-group-item class="!flex !flex-col !items-start">
+          <b class="mr-1">Meeting Location:</b>
+          <span>{{ rentalData.location }}</span>
+        </fwb-list-group-item>
+      </fwb-list-group>
+
+      <fwb-progress
+        v-if="isDisputedOrDenied"
+        class="font-normal text-gray-700 dark:text-gray-400"
+        :progress="getStatusPercent(rentalData.status)"
+        size="md"
+        color="red"
+        :label="getStatusText(rentalData.status)"
+      />
+      <fwb-progress
+        v-else-if="isReturned"
+        class="font-normal text-gray-700 dark:text-gray-400"
+        :progress="getStatusPercent(rentalData.status)"
+        size="md"
+        color="green"
+        :label="getStatusText(rentalData.status)"
+      />
+      <fwb-progress
+        v-else
+        class="font-normal text-gray-700 dark:text-gray-400"
+        :progress="getStatusPercent(rentalData.status)"
+        size="md"
+        :label="getStatusText(rentalData.status)"
+      />
+
+      <div v-if="isReturned" class="flex space-x-3 mt-4">
+        <fwb-button
+          v-if="canReviewEquipment"
+          color="default"
+          class="flex-1"
+          @click="$emit('open-review-equipment')"
+        >
+          Review Equipment
+        </fwb-button>
+        <fwb-button
+          color="default"
+          class="flex-1"
+          @click="$emit('open-review-user')"
+        >
+          {{ reviewUserLabel }}
+        </fwb-button>
+      </div>
+
+      <div v-if="isAwaitingMyApproval" class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        <p class="text-sm font-medium text-amber-900 mb-2">Approval Needed</p>
+        <div class="flex flex-wrap gap-2">
+          <fwb-button color="green" @click="approveChanges">Approve Changes</fwb-button>
+          <fwb-button v-if="isVendorViewer" color="red" @click="confirmAndDenyRequest">Deny Request</fwb-button>
+          <fwb-button v-if="isRenterViewer" color="red" @click="confirmAndCancelRequest">Cancel Request</fwb-button>
+          <fwb-button color="light" @click="goToEditDetails">Edit Details</fwb-button>
+        </div>
+      </div>
+
+      <div v-if="isAwaitingCounterpartyApproval" class="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+        <p class="text-sm text-gray-700 mb-2">You approved these details. Waiting on the other party to approve.</p>
+        <div class="flex flex-wrap gap-2">
+          <fwb-button v-if="isVendorViewer" color="red" @click="confirmAndDenyRequest">Deny Request</fwb-button>
+          <fwb-button v-if="isRenterViewer" color="red" @click="confirmAndCancelRequest">Cancel Request</fwb-button>
+          <fwb-button color="light" @click="goToEditDetails">Edit Details</fwb-button>
+        </div>
+      </div>
+
+      <div v-if="canMarkReturned" class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+        <p class="text-sm text-green-800 mb-2">The rental period has ended. You can mark this rental as returned.</p>
+        <fwb-button color="green" @click="confirmAndMarkReturned">Mark as Returned</fwb-button>
+      </div>
+    </div>
+  </fwb-card>
+</template>

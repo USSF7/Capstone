@@ -97,6 +97,7 @@ export default {
   width: 100%;
   height: 100%;
   background: rgba(0,0,0,0.5);
+    z-index: 9999;
 
   display: flex;
   justify-content: center;
@@ -104,6 +105,8 @@ export default {
 }
 
 .card {
+    position: relative;
+    z-index: 10000;
   background: white;
   padding: 20px;
   border-radius: 10px;

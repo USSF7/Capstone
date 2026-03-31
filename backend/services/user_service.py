@@ -45,7 +45,7 @@ class UserService:
         return User.query.all()
 
     @staticmethod
-    def update_user(user_id, name=None, email=None, phone=None, date_of_birth=None, street_address=None, city=None, state=None, zip_code=None, vendor=None, renter=None):
+    def update_user(user_id, name=None, email=None, phone=None, date_of_birth=None, street_address=None, city=None, state=None, zip_code=None, vendor=None, renter=None, max_travel_distance=None):
         """Update a user"""
         user = User.query.get(user_id)
         if not user:
@@ -78,6 +78,9 @@ class UserService:
         
         user.vendor = vendor
         user.renter = renter
+        
+        if max_travel_distance is not None:
+            user.max_travel_distance = max_travel_distance
 
         # Re-geocode if address fields changed
         addr = user.street_address

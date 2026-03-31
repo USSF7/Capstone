@@ -21,6 +21,7 @@ const zipCode = ref('')
 const dateOfBirth = ref('')
 const vendorStatus = ref(false)
 const renterStatus = ref(false)
+const maxTravelDistance = ref(0)
 const userDataLoaded = ref(false)
 
 const userId = computed(() => auth.user?.id)
@@ -58,6 +59,7 @@ async function loadUserData() {
         dateOfBirth.value = userData.date_of_birth
         vendorStatus.value = userData.vendor
         renterStatus.value = userData.renter
+        maxTravelDistance.value = userData.max_travel_distance || 0
 
         // Displaying the page to the user
         userDataLoaded.value = true
@@ -86,7 +88,8 @@ async function updateAccount(event) {
             state.value,
             zipCode.value,
             vendorStatus.value,
-            renterStatus.value
+            renterStatus.value,
+            maxTravelDistance.value
         )
 
         // Successful account update
@@ -199,6 +202,16 @@ onMounted(async () => {
                         label="Renter"
                     />
                 </div>
+            </div>
+            <div v-if="vendorStatus" class="space-y-2">
+                <fwb-input
+                    v-model.number="maxTravelDistance"
+                    placeholder="Enter maximum travel distance in miles"
+                    label="Max Travel Distance (miles)"
+                    type="number"
+                    min="0"
+                    hint="Leave as 0 if you only meet at your location"
+                />
             </div>
             <div class="flex gap-3">
                 <fwb-button class="w-24" color="default" pill @click="cancelUpdate">Cancel</fwb-button>

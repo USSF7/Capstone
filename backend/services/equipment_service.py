@@ -1,6 +1,7 @@
 import json
+from sqlalchemy import func
 
-from models import Equipment, Rental, RentalHasEquipment
+from models import Equipment, Rental, RentalHasEquipment, Review
 from models.user import User
 from database import db
 from pathlib import Path
@@ -111,12 +112,21 @@ class EquipmentService:
         for equipment, owner in query.all():
             distance = LocationService.haversine_distance(lat, lng, owner.latitude, owner.longitude)
             if distance <= radius_miles:
+                avg_rating, rating_count = (
+                    db.session.query(func.avg(Review.rating), func.count(Review.id))
+                    .filter(Review.model_type == 'user', Review.model_id == owner.id)
+                    .first()
+                )
+
                 data = equipment.to_dict()
                 data['distance_miles'] = round(distance, 1)
+                data['owner_name'] = owner.name
                 data['owner_city'] = owner.city
                 data['owner_state'] = owner.state
                 data['owner_lat'] = round(owner.latitude, 2)
                 data['owner_lng'] = round(owner.longitude, 2)
+                data['owner_rating'] = round(float(avg_rating), 1) if avg_rating is not None else None
+                data['owner_rating_count'] = int(rating_count or 0)
                 results.append(data)
 
         results.sort(key=lambda x: x['distance_miles'])

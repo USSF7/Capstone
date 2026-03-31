@@ -90,9 +90,19 @@ const routes = [
     component: RentalIndex
   },
   {
+    path: '/rentals/create',
+    name: 'rental_create',
+    component: () => import('./views/Rental/Create.vue')
+  },
+  {
     path: '/rentals/view/:id',
     name: 'rental_view',
     component: RentalView
+  },
+  {
+    path: '/rentals/:id/edit',
+    name: 'rental-edit',
+    component: () => import('./views/Rental/Edit.vue'),
   },
   {
     path: '/rentals/:id/meeting',

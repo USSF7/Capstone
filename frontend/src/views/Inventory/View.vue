@@ -147,6 +147,12 @@ onMounted(async () => {
                     <span>{{ equipmentData.description }}</span>
                 </fwb-list-group-item>
             </fwb-list-group>
+            <router-link
+                :to="{ name: 'rental_create', query: { vendorId: ownerData.id, equipmentId: equipmentData.id } }"
+                class="inline-block text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5"
+            >
+                Request This Equipment
+            </router-link>
             <hr class="h-px my-8 bg-gray-200 border-0 dark:bg-gray-700" />
             <h1 id="ReviewsTitle" class="text-2xl font-bold text-gray-800 mb-6">Reviews</h1>
             <div v-if="numRatings == 0" class="space-y-4">

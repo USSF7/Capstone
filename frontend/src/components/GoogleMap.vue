@@ -13,6 +13,8 @@ const props = defineProps({
   height: { type: String, default: '400px' },
 })
 
+const emit = defineEmits(['marker-click'])
+
 const { center, markers, showDirections, origin, destination } = toRefs(props)
 
 const mapContainer = ref(null)
@@ -58,11 +60,31 @@ function updateMarkers() {
   clearMarkers()
   const bounds = new google.maps.LatLngBounds()
   props.markers.forEach((m) => {
-    const marker = new google.maps.Marker({
+    const markerOptions = {
       position: { lat: m.lat, lng: m.lng },
       map,
       title: m.title || '',
+    }
+
+    if (m.color || m.selected) {
+      markerOptions.icon = {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: m.selected ? 9 : 7,
+        fillColor: m.color || '#2563EB',
+        fillOpacity: 1,
+        strokeColor: '#FFFFFF',
+        strokeWeight: 1.5,
+      }
+    }
+
+    const marker = new google.maps.Marker({
+      ...markerOptions,
     })
+
+    marker.addListener('click', () => {
+      emit('marker-click', m)
+    })
+
     if (m.label) {
       const infoWindow = new google.maps.InfoWindow({ content: m.label })
       marker.addListener('click', () => infoWindow.open(map, marker))
