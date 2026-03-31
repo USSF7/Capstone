@@ -104,16 +104,29 @@ onMounted(() => {
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <fwb-card v-for="item in results" :key="item.id" class="p-4">
-          <div v-if="item.picture" class="mb-3">
-            <img :src="item.picture" :alt="item.name" class="w-full h-32 object-cover rounded" />
-          </div>
-          <h3 class="font-semibold text-gray-900">{{ item.name }}</h3>
-          <p class="text-sm text-gray-500 mt-1">{{ item.description }}</p>
-          <div class="flex items-center justify-between mt-3">
-            <span class="text-lg font-bold text-blue-600">${{ item.price }}/day</span>
-            <span class="text-sm text-gray-500">{{ item.distance_miles }} mi away</span>
-          </div>
-          <p class="text-xs text-gray-400 mt-1">{{ item.owner_city }}, {{ item.owner_state }}</p>
+          <router-link
+            :to="{ name: 'rental_create', query: { vendorId: item.owner_id, equipmentId: item.id } }"
+            class="block -m-4 p-4 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <div v-if="item.picture" class="mb-3">
+              <img :src="item.picture" :alt="item.name" class="w-full h-32 object-cover rounded" />
+            </div>
+            <h3 class="font-semibold text-gray-900">{{ item.name }}</h3>
+            <p class="text-sm text-gray-500 mt-1">{{ item.description }}</p>
+            <p class="text-sm text-gray-700 mt-2">
+              <span class="font-medium">Vendor:</span> {{ item.owner_name || 'Unknown vendor' }}
+            </p>
+            <p class="text-xs text-gray-500 mt-1">
+              <span class="font-medium">Rating:</span>
+              <span v-if="item.owner_rating != null">{{ item.owner_rating }}/5 ({{ item.owner_rating_count }} review{{ item.owner_rating_count === 1 ? '' : 's' }})</span>
+              <span v-else>No ratings yet</span>
+            </p>
+            <div class="flex items-center justify-between mt-3">
+              <span class="text-lg font-bold text-blue-600">${{ item.price }}/day</span>
+              <span class="text-sm text-gray-500">{{ item.distance_miles }} mi away</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">{{ item.owner_city }}, {{ item.owner_state }}</p>
+          </router-link>
         </fwb-card>
       </div>
     </div>

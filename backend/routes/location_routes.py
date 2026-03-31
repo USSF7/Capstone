@@ -37,6 +37,25 @@ def geocode():
         return jsonify({'error': str(e)}), 500
 
 
+@location_bp.route('/geocode-freeform', methods=['POST'])
+@jwt_required()
+def geocode_freeform():
+    """Geocode a freeform address string to lat/lng coordinates."""
+    data = request.get_json()
+    address = data.get('address')
+
+    if not address:
+        return jsonify({'error': 'address is required'}), 400
+
+    try:
+        coords = LocationService.geocode_freeform(address)
+        if coords:
+            return jsonify({'lat': coords[0], 'lng': coords[1]}), 200
+        return jsonify({'error': 'Could not geocode address'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @location_bp.route('/equipment/search', methods=['GET'])
 @jwt_required()
 def search_equipment_nearby():
@@ -66,6 +85,10 @@ def get_meeting_suggestions(rental_id):
     if not rental:
         return jsonify({'error': 'Rental not found'}), 404
 
+    current_user_id = int(get_jwt_identity())
+    if current_user_id not in [rental.renter_id, rental.vendor_id]:
+        return jsonify({'error': 'Not authorized to view meeting suggestions for this rental'}), 403
+
     renter = UserService.get_user(rental.renter_id)
     vendor = UserService.get_user(rental.vendor_id)
 
@@ -80,12 +103,52 @@ def get_meeting_suggestions(rental_id):
             renter.latitude, renter.longitude,
             vendor.latitude, vendor.longitude
         )
-        suggestions = LocationService.find_nearby_places(mid_lat, mid_lng)
+        suggestions = LocationService.find_balanced_meeting_places(
+            renter.latitude,
+            renter.longitude,
+            vendor.latitude,
+            vendor.longitude,
+            max_results=8,
+        )
         return jsonify({
             'midpoint': {'lat': mid_lat, 'lng': mid_lng},
             'suggestions': suggestions,
             'vendor': {'city': vendor.city, 'state': vendor.state},
             'renter': {'city': renter.city, 'state': renter.state},
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@location_bp.route('/meeting-suggestions', methods=['GET'])
+@jwt_required()
+def get_meeting_suggestions_for_points():
+    """Calculate midpoint and suggest meeting locations using provided renter/vendor coordinates."""
+    renter_lat = request.args.get('renter_lat', type=float)
+    renter_lng = request.args.get('renter_lng', type=float)
+    vendor_lat = request.args.get('vendor_lat', type=float)
+    vendor_lng = request.args.get('vendor_lng', type=float)
+
+    if None in (renter_lat, renter_lng, vendor_lat, vendor_lng):
+        return jsonify({'error': 'renter_lat, renter_lng, vendor_lat, and vendor_lng are required'}), 400
+
+    try:
+        mid_lat, mid_lng = LocationService.compute_midpoint(
+            renter_lat,
+            renter_lng,
+            vendor_lat,
+            vendor_lng,
+        )
+        suggestions = LocationService.find_balanced_meeting_places(
+            renter_lat,
+            renter_lng,
+            vendor_lat,
+            vendor_lng,
+            max_results=8,
+        )
+        return jsonify({
+            'midpoint': {'lat': mid_lat, 'lng': mid_lng},
+            'suggestions': suggestions,
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -99,7 +162,7 @@ def set_meeting_location(rental_id):
     if not rental:
         return jsonify({'error': 'Rental not found'}), 404
 
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     if current_user_id not in (rental.renter_id, rental.vendor_id):
         return jsonify({'error': 'Not authorized to modify this rental'}), 403
 
@@ -117,6 +180,7 @@ def set_meeting_location(rental_id):
         rental_id,
         location=location_str,
         meeting_lat=lat,
-        meeting_lng=lng
+        meeting_lng=lng,
+        actor_user_id=current_user_id,
     )
     return jsonify(updated.to_dict()), 200

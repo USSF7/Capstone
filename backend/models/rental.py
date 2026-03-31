@@ -13,7 +13,9 @@ class Rental(db.Model):
     agreed_price = db.Column(db.Numeric(10, 2), nullable=False)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.String(50), default='requesting')  # requesting, accepted, active, returned, disputed, denied
+    status = db.Column(db.String(50), default='requesting')  # requesting, accepted, active, returned, disputed, denied, cancelled
+    renter_approved = db.Column(db.Boolean, nullable=False, default=False)
+    vendor_approved = db.Column(db.Boolean, nullable=False, default=False)
     deleted = db.Column(db.Boolean, nullable=False, default=False)
 
     # Relationships
@@ -31,6 +33,9 @@ class Rental(db.Model):
             'start_date': self.start_date.isoformat(),
             'end_date': self.end_date.isoformat(),
             'status': self.status,
+            'renter_approved': self.renter_approved,
+            'vendor_approved': self.vendor_approved,
+            'mutual_approved': self.renter_approved and self.vendor_approved,
             'deleted': self.deleted
         }
 

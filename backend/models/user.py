@@ -22,6 +22,7 @@ class User(db.Model):
     longitude = db.Column(db.Float, nullable=True)
     vendor = db.Column(db.Boolean, nullable=True)
     renter = db.Column(db.Boolean, nullable=True)
+    max_travel_distance = db.Column(db.Integer, default=0, nullable=True)
 
     # Relationships
     equipment = db.relationship('Equipment', foreign_keys='Equipment.owner_id', backref='owner')
@@ -69,6 +70,7 @@ class User(db.Model):
             'longitude': self.longitude,
             'vendor': self.vendor,
             'renter': self.renter,
+            'max_travel_distance': self.max_travel_distance,
             'profile_complete': self.profile_complete,
         }
 
