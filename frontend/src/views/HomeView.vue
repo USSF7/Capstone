@@ -35,7 +35,13 @@ const statusColor = { requesting: 'yellow', accepted: 'blue', active: 'green' }
 const hasLocation = computed(() => auth.user?.latitude != null && auth.user?.longitude != null)
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 async function loadRentals() {

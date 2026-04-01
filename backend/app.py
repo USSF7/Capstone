@@ -115,6 +115,15 @@ def create_app(config_name='development'):
             except Exception:
                 db.session.rollback()
 
+        for col_name in ["start_date", "end_date"]:
+            try:
+                db.session.execute(text(
+                    f"ALTER TABLE rentals ALTER COLUMN {col_name} TYPE TIMESTAMP USING {col_name}::timestamp"
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
     return app
 
 if __name__ == '__main__':

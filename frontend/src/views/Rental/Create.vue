@@ -33,6 +33,33 @@ const loadingEquipment = ref(false)
 const error = ref('')
 
 const userId = computed(() => auth.user?.id)
+const minimumLeadTimeHours = 2
+const minimumStartDate = ref('')
+
+function pad(value) {
+	return String(value).padStart(2, '0')
+}
+
+function addHours(date, hours) {
+	const result = new Date(date)
+	result.setHours(result.getHours() + hours)
+	return result
+}
+
+function toDateTimeLocalValue(value) {
+	if (!value) return ''
+	const date = new Date(value)
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function fromDateTimeLocalValue(value) {
+	return value ? new Date(value) : null
+}
+
+function toUtcIsoString(value) {
+	if (!value) return ''
+	return new Date(value).toISOString()
+}
 
 function parsePositiveInt(value) {
 	const parsed = Number.parseInt(value, 10)
@@ -64,10 +91,11 @@ async function loadContext() {
 
 
 		const today = new Date()
-		const tomorrow = new Date(today)
-		tomorrow.setDate(today.getDate() + 1)
-		startDate.value = today.toISOString().split('T')[0]
-		endDate.value = tomorrow.toISOString().split('T')[0]
+		const earliestStart = addHours(today, minimumLeadTimeHours + 1)
+		const defaultEnd = addHours(earliestStart, 24)
+		minimumStartDate.value = toDateTimeLocalValue(earliestStart)
+		startDate.value = minimumStartDate.value
+		endDate.value = toDateTimeLocalValue(defaultEnd)
 
 		pickupLocation.value = [auth.user?.street_address, auth.user?.city, auth.user?.state, auth.user?.zip_code]
 			.filter(Boolean)
@@ -86,7 +114,11 @@ async function loadEquipmentAvailability() {
 
 	try {
 		loadingEquipment.value = true
-		const response = await RentalService.getVendorEquipmentAvailability(vendorId.value, startDate.value, endDate.value)
+		const response = await RentalService.getVendorEquipmentAvailability(
+			vendorId.value,
+			toUtcIsoString(startDate.value),
+			toUtcIsoString(endDate.value)
+		)
 		vendorEquipment.value = response.equipment || []
 
 		const availableIds = new Set(vendorEquipment.value.filter((item) => item.available).map((item) => item.id))
@@ -144,7 +176,12 @@ async function submitRequest() {
 		return
 	}
 
-	if (endDate.value <= startDate.value) {
+	if (minimumStartDate.value && fromDateTimeLocalValue(startDate.value) < fromDateTimeLocalValue(minimumStartDate.value)) {
+		error.value = 'Start date must be at least 2 hours in the future.'
+		return
+	}
+
+	if (new Date(endDate.value) <= new Date(startDate.value)) {
 		error.value = 'End date must be after start date.'
 		return
 	}
@@ -179,8 +216,8 @@ async function submitRequest() {
 		const rental = await RentalService.createRentalRequestWithEquipment(
 			vendorId.value,
 			Number(agreedPrice.value),
-			startDate.value,
-			endDate.value,
+			toUtcIsoString(startDate.value),
+			toUtcIsoString(endDate.value),
 			pickupLocation.value.trim(),
 			selectedEquipmentIds.value,
 			finalMeetingLat,
@@ -218,15 +255,16 @@ onMounted(loadContext)
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<fwb-input
 						v-model="startDate"
-						type="date"
-						label="Start Date"
+						type="datetime-local"
+						label="Start Date and Time"
+						:min="minimumStartDate"
 						required
 						@change="onDateChange"
 					/>
 					<fwb-input
 						v-model="endDate"
-						type="date"
-						label="End Date"
+						type="datetime-local"
+						label="End Date and Time"
 						required
 						@change="onDateChange"
 					/>

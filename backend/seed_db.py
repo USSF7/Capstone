@@ -310,14 +310,14 @@ def seed_rentals(users, equipment_list, num_rentals=25):
     """
     print(f"Creating {num_rentals} rentals...")
     rentals = []
-    today = datetime.utcnow().date()
+    now = datetime.utcnow()
 
     for _ in range(num_rentals):
         equipment = choice(equipment_list)
         vendor_id = equipment.owner_id
         renter = choice([u for u in users if u.id != vendor_id])
-        start_date = fake.date_between(start_date='-1y', end_date='+60d')
-        end_date = start_date + timedelta(days=randint(1, 7))
+        start_date = fake.date_time_between(start_date='-1y', end_date='+60d')
+        end_date = start_date + timedelta(days=randint(1, 7), hours=randint(0, 12))
 
         # Status logic based on rental timing:
         # - any rental can be denied
@@ -328,11 +328,11 @@ def seed_rentals(users, equipment_list, num_rentals=25):
             status = 'denied'
             renter_approved = True
             vendor_approved = False
-        elif end_date < today:
+        elif end_date < now:
             status = 'returned'
             renter_approved = True
             vendor_approved = True
-        elif start_date > today:
+        elif start_date > now:
             status = choice(['requesting', 'active'])
             if status == 'active':
                 renter_approved = True
@@ -397,7 +397,7 @@ def seed_test_rental_between_test_users(test_users, equipment_list):
     else:
         equipment = choice(vendor_equipment)
 
-    start_date = datetime.utcnow().date() + timedelta(days=7)  # future rental
+    start_date = datetime.utcnow() + timedelta(days=7)  # future rental
     end_date = start_date + timedelta(days=2)
 
     rental = Rental(
@@ -448,9 +448,9 @@ def seed_test_active_past_due_rental_between_test_users(test_users, equipment_li
     else:
         equipment = choice(vendor_equipment)
 
-    today = datetime.utcnow().date()
-    start_date = today - timedelta(days=5)
-    end_date = today - timedelta(days=1)
+    now = datetime.utcnow()
+    start_date = now - timedelta(days=5)
+    end_date = now - timedelta(days=1)
 
     rental = Rental(
         renter_id=renter.id,

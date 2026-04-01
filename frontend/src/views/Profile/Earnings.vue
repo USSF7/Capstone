@@ -124,6 +124,16 @@ function getUserName(userId) {
     return userName
 }
 
+function formatDateTime(value) {
+    return new Date(value).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+    })
+}
+
 // Setting up the monthly earnings line graph
 ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, TimeScale)
 
@@ -211,8 +221,8 @@ const chartOptions = {
                             <fwb-table-cell>{{ getUserName(Number(rental.renter_id)) }}</fwb-table-cell>
                             <fwb-table-cell>{{ rental.location }}</fwb-table-cell>
                             <fwb-table-cell>${{ rental.agreed_price.toFixed(2) }}</fwb-table-cell>
-                            <fwb-table-cell>{{ rental.start_date }}</fwb-table-cell>
-                            <fwb-table-cell>{{ rental.end_date }}</fwb-table-cell>
+                            <fwb-table-cell>{{ formatDateTime(rental.start_date) }}</fwb-table-cell>
+                            <fwb-table-cell>{{ formatDateTime(rental.end_date) }}</fwb-table-cell>
                         </fwb-table-row>
                     </fwb-table-body>
                 </fwb-table>
