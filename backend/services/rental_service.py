@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from models import Rental
 from database import db
 from sqlalchemy import func
@@ -13,14 +13,45 @@ BLOCKING_STATUSES = {'requesting', 'accepted', 'active'}
 class RentalService:
     """Service layer for Rental business logic"""
 
+    MIN_REQUEST_LEAD_TIME = timedelta(hours=2)
+
     @staticmethod
-    def _normalize_date(date_value, field_name):
-        if isinstance(date_value, str):
+    def _normalize_datetime(date_value, field_name):
+        if date_value is None:
+            return None
+
+        if isinstance(date_value, datetime):
+            value = date_value
+        elif isinstance(date_value, date):
+            value = datetime.combine(date_value, time.min)
+        elif isinstance(date_value, str):
+            normalized_value = date_value.strip().replace('Z', '+00:00')
             try:
-                return datetime.strptime(date_value, '%Y-%m-%d').date()
+                value = datetime.fromisoformat(normalized_value)
             except ValueError:
-                raise ValueError(f"Invalid {field_name} format. Use YYYY-MM-DD")
-        return date_value
+                try:
+                    parsed_date = datetime.strptime(date_value, '%Y-%m-%d').date()
+                except ValueError:
+                    raise ValueError(f"Invalid {field_name} format. Use ISO 8601 datetime values")
+                value = datetime.combine(parsed_date, time.min)
+        else:
+            raise ValueError(f"Invalid {field_name} format. Use ISO 8601 datetime values")
+
+        if value.tzinfo is not None:
+            value = value.astimezone(timezone.utc).replace(tzinfo=None)
+
+        return value
+
+    @staticmethod
+    def _format_datetime(value):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        else:
+            value = value.astimezone(timezone.utc)
+        hour = value.hour % 12 or 12
+        minute = f'{value.minute:02d}'
+        period = 'AM' if value.hour < 12 else 'PM'
+        return f"{value.strftime('%b')} {value.day}, {value.year}, {hour}:{minute} {period} UTC"
 
     @staticmethod
     def _equipment_has_conflict(equipment_id, start_date, end_date):
@@ -58,15 +89,21 @@ class RentalService:
         if renter_id == vendor_id:
             raise ValueError("Renter and vendor cannot be the same user")
 
+        minimum_start_date = datetime.utcnow() + RentalService.MIN_REQUEST_LEAD_TIME
+
         # If dates are omitted by the request flow, default to a 1-day request window.
         if not start_date:
-            start_date = datetime.utcnow().date()
+            start_date = minimum_start_date
+        else:
+            start_date = RentalService._normalize_datetime(start_date, 'start_date')
+
         if not end_date:
             end_date = start_date + timedelta(days=1)
+        else:
+            end_date = RentalService._normalize_datetime(end_date, 'end_date')
 
-        # Normalize string dates from API payloads.
-        start_date = RentalService._normalize_date(start_date, 'start_date')
-        end_date = RentalService._normalize_date(end_date, 'end_date')
+        if start_date < minimum_start_date:
+            raise ValueError("Start date must be at least 2 hours in the future")
 
         if end_date <= start_date:
             raise ValueError("End date must be after start date")
@@ -174,8 +211,8 @@ class RentalService:
 
     @staticmethod
     def get_vendor_equipment_with_availability(vendor_id, start_date, end_date):
-        start_date = RentalService._normalize_date(start_date, 'start_date')
-        end_date = RentalService._normalize_date(end_date, 'end_date')
+        start_date = RentalService._normalize_datetime(start_date, 'start_date')
+        end_date = RentalService._normalize_datetime(end_date, 'end_date')
         if not start_date or not end_date:
             raise ValueError("start_date and end_date are required")
         if end_date <= start_date:
@@ -188,7 +225,7 @@ class RentalService:
             data = equipment.to_dict()
             data['available'] = conflict is None
             data['unavailable_reason'] = None if conflict is None else (
-                f"Booked {conflict.start_date.isoformat()} to {conflict.end_date.isoformat()} ({conflict.status})"
+                f"Booked {RentalService._format_datetime(conflict.start_date)} to {RentalService._format_datetime(conflict.end_date)} ({conflict.status})"
             )
             result.append(data)
 
@@ -260,8 +297,8 @@ class RentalService:
                 if rental.status != 'active':
                     raise ValueError("Only active rentals can be marked as returned")
 
-                today = datetime.utcnow().date()
-                if today <= rental.end_date:
+                now = datetime.utcnow()
+                if now <= rental.end_date:
                     raise ValueError("Rental can only be marked as returned after the end date has passed")
 
             rental.status = status
@@ -276,9 +313,14 @@ class RentalService:
         if meeting_lng is not None:
             rental.meeting_lng = meeting_lng
         if start_date is not None:
-            rental.start_date = RentalService._normalize_date(start_date, 'start_date')
+            rental.start_date = RentalService._normalize_datetime(start_date, 'start_date')
         if end_date is not None:
-            rental.end_date = RentalService._normalize_date(end_date, 'end_date')
+            rental.end_date = RentalService._normalize_datetime(end_date, 'end_date')
+
+        if start_date is not None or end_date is not None:
+            minimum_start_date = datetime.utcnow() + RentalService.MIN_REQUEST_LEAD_TIME
+            if rental.start_date < minimum_start_date:
+                raise ValueError("Start date must be at least 2 hours in the future")
 
         if rental.end_date <= rental.start_date:
             raise ValueError("End date must be after start date")

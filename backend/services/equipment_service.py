@@ -1,4 +1,5 @@
 import json
+from datetime import timezone
 from sqlalchemy import func
 
 from models import Equipment, Rental, RentalHasEquipment, Review
@@ -71,6 +72,16 @@ class EquipmentService:
         """Get all equipment owned by a user with active rental details"""
         equipment_list = Equipment.query.filter_by(owner_id=owner_id).all()
         result = []
+
+        def to_utc_iso(value):
+            if value is None:
+                return None
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=timezone.utc)
+            else:
+                value = value.astimezone(timezone.utc)
+            return value.isoformat().replace('+00:00', 'Z')
+
         for equip in equipment_list:
             data = equip.to_dict()
             # Find active rental for this equipment
@@ -89,8 +100,8 @@ class EquipmentService:
                 data['active_rental'] = {
                     'rental_id': rental.id,
                     'renter_name': renter_name,
-                    'start_date': rental.start_date.isoformat(),
-                    'end_date': rental.end_date.isoformat(),
+                    'start_date': to_utc_iso(rental.start_date),
+                    'end_date': to_utc_iso(rental.end_date),
                 }
             else:
                 data['active_rental'] = None

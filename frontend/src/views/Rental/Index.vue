@@ -54,8 +54,10 @@ function dateFormatting(isoDate) {
     let day = date.getDate()
     let month = date.getMonth()
     let year = date.getFullYear()
+    let hour = String(date.getHours()).padStart(2, '0')
+    let minute = String(date.getMinutes()).padStart(2, '0')
 
-    return months[month] + " " + day.toString() + ", " + year.toString()
+    return months[month] + " " + day.toString() + ", " + year.toString() + " " + hour + ":" + minute
 }
 
 async function filterOutDeletedRentals() {

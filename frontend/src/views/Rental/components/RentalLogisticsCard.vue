@@ -38,10 +38,7 @@ const canMarkReturned = computed(() => {
   if (props.rentalData?.status !== 'active') return false
   if (!props.rentalData?.end_date) return false
 
-  const today = new Date()
-  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const rentalEndDate = new Date(props.rentalData.end_date)
-  return todayOnly > rentalEndDate
+  return new Date() > new Date(props.rentalData.end_date)
 })
 const reviewUserLabel = computed(() => (isVendorViewer.value ? 'Review Renter' : 'Review Vendor'))
 const canReviewEquipment = computed(() => !isVendorViewer.value)
@@ -85,6 +82,16 @@ function getStatusText(status) {
   return mapStatusToText.get(status) || 'Rental status updated'
 }
 
+function formatDateTime(value) {
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 function formatCurrency(value) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -92,29 +99,6 @@ function formatCurrency(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value)
-}
-
-function dateFormatting(isoDate) {
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ]
-
-  const date = new Date(isoDate)
-  const day = date.getDate()
-  const month = date.getMonth()
-  const year = date.getFullYear()
-  return `${months[month]} ${day}, ${year}`
 }
 
 async function updateRequestStatus(nextStatus) {
@@ -186,7 +170,7 @@ function confirmAndMarkReturned() {
       <fwb-list-group class="w-auto">
         <fwb-list-group-item>
           <b class="mr-1">Dates:</b>
-          {{ dateFormatting(rentalData.start_date) }} through {{ dateFormatting(rentalData.end_date) }}
+          {{ formatDateTime(rentalData.start_date) }} through {{ formatDateTime(rentalData.end_date) }}
         </fwb-list-group-item>
         <fwb-list-group-item>
           <b class="mr-1">Total Price:</b>

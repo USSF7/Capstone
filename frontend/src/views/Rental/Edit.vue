@@ -25,6 +25,28 @@ const endDate = ref('')
 const location = ref('')
 const meetingLat = ref(null)
 const meetingLng = ref(null)
+const minimumStartDate = ref('')
+
+function pad(value) {
+	return String(value).padStart(2, '0')
+}
+
+function addHours(date, hours) {
+	const result = new Date(date)
+	result.setHours(result.getHours() + hours)
+	return result
+}
+
+function toDateTimeLocalValue(value) {
+	if (!value) return ''
+	const date = new Date(value)
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function toUtcIsoString(value) {
+	if (!value) return ''
+	return new Date(value).toISOString()
+}
 
 async function loadData() {
 	try {
@@ -39,8 +61,9 @@ async function loadData() {
 		}
 
 		agreedPrice.value = String(rental.value.agreed_price)
-		startDate.value = rental.value.start_date
-		endDate.value = rental.value.end_date
+		startDate.value = toDateTimeLocalValue(rental.value.start_date)
+		endDate.value = toDateTimeLocalValue(rental.value.end_date)
+		minimumStartDate.value = toDateTimeLocalValue(addHours(new Date(), 2))
 		location.value = rental.value.location || ''
 		meetingLat.value = rental.value.meeting_lat ?? null
 		meetingLng.value = rental.value.meeting_lng ?? null
@@ -62,7 +85,12 @@ async function saveChanges() {
 		return
 	}
 
-	if (endDate.value <= startDate.value) {
+	if (minimumStartDate.value && new Date(startDate.value) < new Date(minimumStartDate.value)) {
+		error.value = 'Start date must be at least 2 hours in the future.'
+		return
+	}
+
+	if (new Date(endDate.value) <= new Date(startDate.value)) {
 		error.value = 'End date must be after start date.'
 		return
 	}
@@ -93,8 +121,8 @@ async function saveChanges() {
 			meeting_lat: finalMeetingLat,
 			meeting_lng: finalMeetingLng,
 			agreed_price: Number(agreedPrice.value),
-			start_date: startDate.value,
-			end_date: endDate.value,
+			start_date: toUtcIsoString(startDate.value),
+			end_date: toUtcIsoString(endDate.value),
 			deleted: rental.value.deleted,
 		})
 
@@ -124,14 +152,15 @@ onMounted(loadData)
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<fwb-input
 						v-model="startDate"
-						type="date"
-						label="Start Date"
+						type="datetime-local"
+						label="Start Date and Time"
+						:min="minimumStartDate"
 						required
 					/>
 					<fwb-input
 						v-model="endDate"
-						type="date"
-						label="End Date"
+						type="datetime-local"
+						label="End Date and Time"
 						required
 					/>
 				</div>
