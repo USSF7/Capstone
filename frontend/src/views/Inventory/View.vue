@@ -6,6 +6,7 @@ import { FwbSpinner, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbCard,
 import EquipmentService from '../../services/equipmentService'
 import UserService from '../../services/userService'
 import ReviewService from '../../services/reviewService'
+import aiService from '../../services/aiService'
 
 const months = [
     "January", 
@@ -32,6 +33,9 @@ const dataLoaded = ref(false)
 const numRatingsText = ref('')
 const numRatings = ref(0)
 const averageRating = ref(0.0)
+const reviewSummary = ref('')
+const reviewSummaryLoading = ref(false)
+const submitterNameCache = new Map()
 
 function reviewDateFormatting(isoDate) {
     const date = new Date(isoDate)
@@ -47,12 +51,27 @@ async function sortEquipmentReviewsDescending() {
 }
 
 async function addSubmitterName() {
-    for (let i = 0; i < equipmentReviews.value.length; i++) {
-        // Getting the submitter's user information
-        let userInfo = await UserService.getUser(equipmentReviews.value[i].submitter_id)
+    if (!equipmentReviews.value?.length) {
+        return
+    }
 
-        // Adding the submitter's name to the dictionary
-        equipmentReviews.value[i].submitter_name = userInfo.name;
+    try {
+        const submitterIds = [...new Set(equipmentReviews.value.map(r => r.submitter_id).filter(Boolean))]
+
+        await Promise.all(submitterIds.map(async (submitterId) => {
+            if (!submitterNameCache.has(submitterId)) {
+                const userInfo = await UserService.getUser(submitterId)
+                submitterNameCache.set(submitterId, userInfo?.name || 'Unknown user')
+            }
+        }))
+
+        for (let i = 0; i < equipmentReviews.value.length; i++) {
+            const submitterId = equipmentReviews.value[i].submitter_id
+            equipmentReviews.value[i].submitter_name = submitterNameCache.get(submitterId) || 'Unknown user'
+        }
+    }
+    catch (error) {
+        console.warn('Unable to enrich equipment review submitter names:', error)
     }
 }
 
@@ -80,25 +99,57 @@ async function computeReviewData() {
     }
 }
 
+async function loadReviewSummary() {
+    reviewSummary.value = ''
+
+    if (!equipmentData.value?.id || numRatings.value === 0) {
+        return
+    }
+
+    reviewSummaryLoading.value = true
+
+    try {
+        const response = await aiService.summarizeReviews('equipment', equipmentData.value.id)
+        reviewSummary.value = (response?.summary || '').trim()
+    }
+    catch (error) {
+        console.warn('Unable to load AI summary for equipment reviews:', error)
+        reviewSummary.value = ''
+    }
+    finally {
+        reviewSummaryLoading.value = false
+    }
+}
+
 async function loadData() {
     try {
+        dataLoaded.value = false
+        reviewSummary.value = ''
+        reviewSummaryLoading.value = false
+
         // Getting the equipment id from the route
         equipmentID.value = route.params.id
 
         // Getting the equipment data
         equipmentData.value = await EquipmentService.getEquipmentById(equipmentID.value)
 
-        // Getting the equipment reviews data
-        equipmentReviews.value = await ReviewService.getReviewsForModel("equipment", equipmentData.value.id)
-        await sortEquipmentReviewsDescending()
-        await addSubmitterName()
-        await computeReviewData()
+        // Fetch owner and reviews in parallel once equipment is available.
+        const [reviewsData, ownerInfo] = await Promise.all([
+            ReviewService.getReviewsForModel("equipment", equipmentData.value.id),
+            UserService.getUser(equipmentData.value.owner_id),
+        ])
 
-        // Getting the equipment owner's data
-        ownerData.value = await UserService.getUser(equipmentData.value.owner_id)
+        equipmentReviews.value = reviewsData
+        await sortEquipmentReviewsDescending()
+        await computeReviewData()
+        ownerData.value = ownerInfo
 
         // Displaying the page to the user
         dataLoaded.value = true
+
+        // Fill non-critical data after initial render to improve perceived speed.
+        addSubmitterName()
+        loadReviewSummary()
     }
     catch (error) {
         console.error("Error loading equipment data:", error)
@@ -159,6 +210,14 @@ onMounted(async () => {
                 <p class="font-normal text-gray-700 dark:text-gray-400">This equipment has not been reviewed</p>
             </div>
             <div v-else class="space-y-4">
+                <fwb-card class="!max-w-full border border-blue-100 bg-blue-50/60">
+                    <div class="space-y-2 p-5">
+                        <p class="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-400">AI Summary</p>
+                        <p v-if="reviewSummaryLoading" class="font-normal text-gray-700 dark:text-gray-400">Generating summary...</p>
+                        <p v-else-if="reviewSummary" class="font-normal text-gray-700 dark:text-gray-400">{{ reviewSummary }}</p>
+                        <p v-else class="font-normal text-gray-700 dark:text-gray-400">Summary unavailable right now.</p>
+                    </div>
+                </fwb-card>
                 <fwb-card v-for="review in equipmentReviews" :key="review.id" class="!max-w-full">
                     <div class="space-y-3 p-5">
                         <div class="flex items-center space-x-4">
