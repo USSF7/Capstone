@@ -7,6 +7,7 @@ import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton, FwbCar
 import UserService from '../../services/userService'
 import reviewService from '../../services/reviewService'
 import authService from '../../services/authService'
+import aiService from '../../services/aiService'
 import router from '../../router'
 
 const months = [
@@ -30,6 +31,8 @@ const userData = ref()
 const viewingUserData = ref()
 const userDataLoaded = ref(false)
 const userReviews = ref()
+const reviewSummary = ref('')
+const reviewSummaryLoading = ref(false)
 const numRatings = ref(0)
 const numRatingsText = ref('')
 const averageRating = ref(0.0)
@@ -120,6 +123,29 @@ async function computeReviewData() {
     }
 }
 
+async function loadReviewSummary() {
+    reviewSummary.value = ''
+
+    // Only summarize vendor reviews and only when there is at least one review.
+    if (!userData.value?.vendor || numRatings.value === 0) {
+        return
+    }
+
+    reviewSummaryLoading.value = true
+
+    try {
+        const response = await aiService.summarizeReviews('user', userData.value.id)
+        reviewSummary.value = (response?.summary || '').trim()
+    }
+    catch (error) {
+        console.warn('Unable to load AI summary for vendor reviews:', error)
+        reviewSummary.value = ''
+    }
+    finally {
+        reviewSummaryLoading.value = false
+    }
+}
+
 async function loadUserData() {
     try {
         // Getting the viewing user's data 
@@ -132,6 +158,7 @@ async function loadUserData() {
         await sortUserReviewsDescending()
         await addSubmitterName()
         await computeReviewData()
+        await loadReviewSummary()
 
         // Displaying the page to the user
         userDataLoaded.value = true
@@ -200,6 +227,14 @@ onMounted(async () => {
                 <p class="font-normal text-gray-700 dark:text-gray-400">This user has not been reviewed</p>
             </div>
             <div v-else class="space-y-4">
+                <fwb-card v-if="userData.vendor == true" class="!max-w-full border border-blue-100 bg-blue-50/60">
+                    <div class="space-y-2 p-5">
+                        <p class="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-400">AI Summary</p>
+                        <p v-if="reviewSummaryLoading" class="font-normal text-gray-700 dark:text-gray-400">Generating summary...</p>
+                        <p v-else-if="reviewSummary" class="font-normal text-gray-700 dark:text-gray-400">{{ reviewSummary }}</p>
+                        <p v-else class="font-normal text-gray-700 dark:text-gray-400">Summary unavailable right now.</p>
+                    </div>
+                </fwb-card>
                 <fwb-card v-for="review in userReviews" :key="review.id" class="!max-w-full">
                     <div class="space-y-3 p-5">
                         <div class="flex items-center space-x-4">
