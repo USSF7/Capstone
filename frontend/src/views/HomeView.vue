@@ -111,7 +111,9 @@ async function loadVendorRentals() {
         const rentalWithEquipment = await RentalService.getRentalWithEquipment(rental.id)
         return {
           ...rental,
-          equipment_name: rentalWithEquipment.equipment?.[0]?.name || `Rental #${rental.id}`,
+          equipment_name: rentalWithEquipment.equipment?.length
+            ? rentalWithEquipment.equipment.map(e => e.name).join(', ')
+            : 'Equipment request',
           renter_name: renterNameById[rental.renter_id] || 'Unknown renter',
         }
       })
