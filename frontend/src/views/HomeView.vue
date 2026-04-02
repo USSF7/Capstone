@@ -279,7 +279,7 @@ onMounted(() => {
               </div>
               <div class="flex-1 min-w-0">
                 <h3 class="text-lg font-semibold text-gray-900 truncate">
-                  {{ rental.equipment?.[0]?.name || 'Equipment' }}
+                  {{ rental.equipment?.length ? rental.equipment.map(e => e.name).join(', ') : 'Equipment request' }}
                 </h3>
                 <p class="text-sm text-gray-500 mt-1">
                   {{ formatDate(rental.start_date) }} — {{ formatDate(rental.end_date) }}
