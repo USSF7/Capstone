@@ -142,8 +142,8 @@ async function computeReviewData() {
 async function loadReviewSummary() {
     reviewSummary.value = ''
 
-    // Only summarize vendor reviews and only when there is at least one review.
-    if (!userData.value?.vendor || numRatings.value === 0) {
+    // Only summarize when there is at least one review.
+    if (numRatings.value === 0) {
         return
     }
 
@@ -258,7 +258,7 @@ watch(() => route.params.id, async (newId) => {
                 <p class="font-normal text-gray-700 dark:text-gray-400">This user has not been reviewed</p>
             </div>
             <div v-else class="space-y-4">
-                <fwb-card v-if="userData.vendor == true" class="!max-w-full border border-blue-100 bg-blue-50/60">
+                <fwb-card class="!max-w-full border border-blue-100 bg-blue-50/60">
                     <div class="space-y-2 p-5">
                         <p class="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-400">AI Summary</p>
                         <p v-if="reviewSummaryLoading" class="font-normal text-gray-700 dark:text-gray-400">Generating summary...</p>
