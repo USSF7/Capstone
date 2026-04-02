@@ -258,7 +258,7 @@ watch(() => route.params.id, async (newId) => {
                 <p class="font-normal text-gray-700 dark:text-gray-400">This user has not been reviewed</p>
             </div>
             <div v-else class="space-y-4">
-                <fwb-card class="!max-w-full border border-blue-100 bg-blue-50/60">
+                <fwb-card class="!max-w-full border border-gray-200 bg-gray-100/70">
                     <div class="space-y-2 p-5">
                         <p class="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-400">AI Summary</p>
                         <p v-if="reviewSummaryLoading" class="font-normal text-gray-700 dark:text-gray-400">Generating summary...</p>
