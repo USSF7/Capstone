@@ -1,12 +1,13 @@
 <!-- View a specific users profile details -->
 <script lang="js" setup>
 
-import { ref, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton, FwbCard, FwbSpinner } from 'flowbite-vue'
 import UserService from '../../services/userService'
 import reviewService from '../../services/reviewService'
 import authService from '../../services/authService'
+import aiService from '../../services/aiService'
 import router from '../../router'
 
 const months = [
@@ -30,9 +31,12 @@ const userData = ref()
 const viewingUserData = ref()
 const userDataLoaded = ref(false)
 const userReviews = ref()
+const reviewSummary = ref('')
+const reviewSummaryLoading = ref(false)
 const numRatings = ref(0)
 const numRatingsText = ref('')
 const averageRating = ref(0.0)
+const submitterNameCache = new Map()
 
 function dateFormatting(isoDate) {
     const date = new Date(isoDate)
@@ -87,12 +91,27 @@ async function sortUserReviewsDescending() {
 }
 
 async function addSubmitterName() {
-    for (let i = 0; i < userReviews.value.length; i++) {
-        // Getting the submitter's user information
-        let userInfo = await UserService.getUser(userReviews.value[i].submitter_id)
+    if (!userReviews.value?.length) {
+        return
+    }
 
-        // Adding the submitter's name to the dictionary
-        userReviews.value[i].submitter_name = userInfo.name;
+    try {
+        const submitterIds = [...new Set(userReviews.value.map(r => r.submitter_id).filter(Boolean))]
+
+        await Promise.all(submitterIds.map(async (submitterId) => {
+            if (!submitterNameCache.has(submitterId)) {
+                const userInfo = await UserService.getUser(submitterId)
+                submitterNameCache.set(submitterId, userInfo?.name || 'Unknown user')
+            }
+        }))
+
+        for (let i = 0; i < userReviews.value.length; i++) {
+            const submitterId = userReviews.value[i].submitter_id
+            userReviews.value[i].submitter_name = submitterNameCache.get(submitterId) || 'Unknown user'
+        }
+    }
+    catch (error) {
+        console.warn('Unable to enrich review submitter names:', error)
     }
 }
 
@@ -120,21 +139,54 @@ async function computeReviewData() {
     }
 }
 
+async function loadReviewSummary() {
+    reviewSummary.value = ''
+
+    // Only summarize when there is at least one review.
+    if (numRatings.value === 0) {
+        return
+    }
+
+    reviewSummaryLoading.value = true
+
+    try {
+        const response = await aiService.summarizeReviews('user', userData.value.id)
+        reviewSummary.value = (response?.summary || '').trim()
+    }
+    catch (error) {
+        console.warn('Unable to load AI summary for vendor reviews:', error)
+        reviewSummary.value = ''
+    }
+    finally {
+        reviewSummaryLoading.value = false
+    }
+}
+
 async function loadUserData() {
     try {
-        // Getting the viewing user's data 
-        viewingUserData.value = await authService.getMe()
+        userDataLoaded.value = false
+        reviewSummary.value = ''
+        reviewSummaryLoading.value = false
 
-        // Getting the user's data
+        // Fetch viewer + target profile in parallel.
         userID.value = route.params.id
-        userData.value = await UserService.getUser(userID.value)
+        const [viewerData, targetUserData] = await Promise.all([
+            authService.getMe(),
+            UserService.getUser(userID.value),
+        ])
+
+        viewingUserData.value = viewerData
+        userData.value = targetUserData
         userReviews.value = await reviewService.getReviewsForModel("user", userData.value.id)
         await sortUserReviewsDescending()
-        await addSubmitterName()
         await computeReviewData()
 
         // Displaying the page to the user
         userDataLoaded.value = true
+
+        // Fill non-critical data after initial render to reduce perceived load time.
+        addSubmitterName()
+        loadReviewSummary()
     }
     catch (error) {
         console.error("Error getting user data:", error)
@@ -144,8 +196,14 @@ async function loadUserData() {
     }
 }
 
-onMounted(async () => {
+watch(() => route.params.id, async (newId) => {
+    if (!newId) {
+        return
+    }
+
     await loadUserData()
+}, {
+    immediate: true
 })
 
 </script>
@@ -200,6 +258,14 @@ onMounted(async () => {
                 <p class="font-normal text-gray-700 dark:text-gray-400">This user has not been reviewed</p>
             </div>
             <div v-else class="space-y-4">
+                <fwb-card class="!max-w-full border border-gray-200 bg-gray-100/70">
+                    <div class="space-y-2 p-5">
+                        <p class="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-400">AI Summary</p>
+                        <p v-if="reviewSummaryLoading" class="font-normal text-gray-700 dark:text-gray-400">Generating summary...</p>
+                        <p v-else-if="reviewSummary" class="font-normal text-gray-700 dark:text-gray-400">{{ reviewSummary }}</p>
+                        <p v-else class="font-normal text-gray-700 dark:text-gray-400">Summary unavailable right now.</p>
+                    </div>
+                </fwb-card>
                 <fwb-card v-for="review in userReviews" :key="review.id" class="!max-w-full">
                     <div class="space-y-3 p-5">
                         <div class="flex items-center space-x-4">
