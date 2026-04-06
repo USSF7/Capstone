@@ -232,21 +232,22 @@ async function pollForUpdates() {
         }
 
         const oldEquipmentId = primaryEquipment.value?.id
+        const newEquipmentId = latestRental?.equipment?.[0]?.id
 
         // Reset the rental data only if the primary equipment changed.
-        if (oldEquipmentId !== primaryEquipment.value?.id) {
+        if (oldEquipmentId !== newEquipmentId) {
             rentalData.value = latestRental
         }
 
         // Re-fetch review aggregate only if the primary equipment changed.
-        if (oldEquipmentId !== primaryEquipment.value?.id) {
+        if (oldEquipmentId !== newEquipmentId) {
             for (let i = 0; i < rentalData.value.equipment.length; i++) {
                 if (primaryEquipment.value) {
                     rentalData.value.equipment[i].equipmentReviews = await ReviewService.getReviewsForModel('equipment', rentalData.value.equipment[i].id)
                 } else {
                     rentalData.value.equipment[i].equipmentReviews = []
                 }
-                await computeReviewData()
+                await computeEquipmentReviewData()
             }
         }
     }
@@ -254,6 +255,11 @@ async function pollForUpdates() {
         // Silent during polling to avoid disrupting users with transient failures.
         console.warn('Rental polling failed:', error?.message || error)
     }
+}
+
+async function handleRentalUpdated() {
+  // Re-fetch full rental with equipment
+  await loadData()
 }
 
 onMounted(async () => {
@@ -317,7 +323,7 @@ onUnmounted(() => {
                     :renterData="renterData"
                     @open-review-equipment="showReviewEquipmentModal = true"
                     @open-review-user="showReviewUserModal = true"
-                    @rental-updated="rentalData = $event"
+                    @rental-updated="handleRentalUpdated"
                 />
 
                 <fwb-card class="!max-w-full">
