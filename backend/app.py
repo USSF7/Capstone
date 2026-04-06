@@ -46,6 +46,13 @@ def create_app(config_name='development'):
     with app.app_context():
         db.create_all()
 
+        # Enable pg_trgm for fuzzy search
+        try:
+            db.session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
         # Add auth columns to users table if they don't exist
         columns_to_add = [
             ("password_hash", "VARCHAR(255)"),
