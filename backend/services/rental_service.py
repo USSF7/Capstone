@@ -153,7 +153,10 @@ class RentalService:
             status=status,
             renter_approved=True,
             vendor_approved=False,
-            deleted=deleted
+            deleted=deleted,
+            renter_reviewed=False,
+            vendor_reviewed=False,
+            equipment_reviewed=False
         )
         db.session.add(rental)
         db.session.flush()
@@ -245,6 +248,45 @@ class RentalService:
     def get_rentals_by_vendor_and_status(vendor_id, status):
         """Get all rentals offered by a vendor with a specific status"""
         return Rental.query.filter_by(vendor_id=vendor_id, status=status).all()
+
+    @staticmethod
+    def switch_renter_review_status(rental_id, status):
+        """Switch the renter review status"""
+        rental = Rental.query.get(rental_id)
+        if not rental:
+            raise ValueError("Rental not found")
+        
+        statusUpdate = True if status in [True, "true", "True", 1] else False
+        rental.renter_reviewed = statusUpdate
+
+        db.session.commit()
+        return rental
+    
+    @staticmethod
+    def switch_vendor_review_status(rental_id, status):
+        """Switch the vendor review status"""
+        rental = Rental.query.get(rental_id)
+        if not rental:
+            raise ValueError("Rental not found")
+        
+        statusUpdate = True if status in [True, "true", "True", 1] else False
+        rental.vendor_reviewed = statusUpdate
+
+        db.session.commit()
+        return rental
+    
+    @staticmethod
+    def switch_equipment_review_status(rental_id, status):
+        """Switch the equipment review status"""
+        rental = Rental.query.get(rental_id)
+        if not rental:
+            raise ValueError("Rental not found")
+        
+        statusUpdate = True if status in [True, "true", "True", 1] else False
+        rental.equipment_reviewed = statusUpdate
+
+        db.session.commit()
+        return rental
 
     @staticmethod
     def update_rental(

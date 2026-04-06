@@ -28,6 +28,15 @@
       </div>
 
       <div class="mb-4">
+        <fwb-select
+          v-model="form.condition"
+          :options="conditions"
+          label="Condition"
+          size="md"
+        />
+      </div>
+
+      <div class="mb-4">
         <fwb-input
           v-model="form.description"
           label="Description"
@@ -59,9 +68,16 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { FwbInput } from 'flowbite-vue'
+import { FwbInput, FwbSelect } from 'flowbite-vue'
 import { useAuthStore } from '../../stores/auth'
 import equipmentService from '../../services/equipmentService'
+
+const conditions = [
+  { value: 'Mint', name: '🔵 Mint' },
+  { value: 'Above Average', name: '🟢 Above Average' },
+  { value: 'Average', name: '🟡 Average' },
+  { value: 'Below Average', name: '🔴 Below Average' }
+]
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -73,6 +89,7 @@ const OWNER_ID = computed(() => auth.user?.id)
 const form = ref({
   equipmentName: '',
   price: 0,
+  condition: '',
   description: '',
   picture: '',
 })
@@ -86,6 +103,7 @@ onMounted(async () => {
       form.value.price = equipment.price
       form.value.description = equipment.description || ''
       form.value.picture = equipment.picture || ''
+      form.value.condition = equipment.condition
     } catch (e) {
       error.value = 'Unable to load equipment for editing'
       console.error(e)
@@ -112,6 +130,7 @@ const submitForm = async () => {
       form.value.price,
       form.value.description,
       form.value.picture,
+      form.value.condition
     )
 
     router.push({ name: 'inventory' })

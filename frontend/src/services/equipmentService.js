@@ -17,23 +17,25 @@ class EquipmentService {
     return api.get(`/equipment/owner/${ownerId}/with-rentals`)
   }
 
-  async createEquipment(ownerId, name, price, description, picture) {
+  async createEquipment(ownerId, name, price, description, picture, condition) {
     return api.post('/equipment', {
       owner_id: ownerId,
       name,
       price,
       description,
       picture,
+      condition
     })
   }
 
-  async updateEquipment(equipmentId, name, ownerId, price, description, picture) {
+  async updateEquipment(equipmentId, name, ownerId, price, description, picture, condition) {
     return api.put(`/equipment/${equipmentId}`, {
       name,
       owner_id: ownerId,
       price,
       description,
       picture,
+      condition
     })
   }
 

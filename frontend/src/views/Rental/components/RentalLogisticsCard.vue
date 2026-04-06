@@ -1,11 +1,13 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { FwbCard, FwbProgress, FwbButton, FwbListGroup, FwbListGroupItem } from 'flowbite-vue'
+import { FwbCard, FwbProgress, FwbButton, FwbListGroup, FwbListGroupItem, FwbRating } from 'flowbite-vue'
 import RentalService from '../../../services/rentalService'
 
 const props = defineProps({
   rentalData: { type: Object, required: true },
+  vendorData: { type: Object, required: true },
+  renterData: { type: Object, required: true },
   currentUserId: { type: Number, required: true },
 })
 
@@ -42,6 +44,19 @@ const canMarkReturned = computed(() => {
 })
 const reviewUserLabel = computed(() => (isVendorViewer.value ? 'Review Renter' : 'Review Vendor'))
 const canReviewEquipment = computed(() => !isVendorViewer.value)
+
+const userAlreadyReviewed = computed(() => {
+  const renterReviewed = props.rentalData?.renter_reviewed === true
+  const vendorReviewed = props.rentalData?.vendor_reviewed === true
+
+  return ((isRenterViewer.value && renterReviewed) || (isVendorViewer.value && vendorReviewed))
+})
+
+const equipmentAlreadyReviewed = computed(() => {
+  const equipmentReviewed = props.rentalData?.equipment_reviewed === true
+  return equipmentReviewed
+})
+
 const rentalDurationDays = computed(() => {
   if (!props.rentalData?.start_date || !props.rentalData?.end_date) return 1
 
@@ -53,6 +68,9 @@ const rentalDurationDays = computed(() => {
 })
 const totalPrice = computed(() => Number(props.rentalData?.agreed_price) || 0)
 const perDayPrice = computed(() => totalPrice.value / rentalDurationDays.value)
+
+const counterpartyLabel = computed(() => (isVendorViewer.value ? 'Renter' : 'Vendor'))
+const counterpartyData = computed(() => (isVendorViewer.value ? props.renterData : props.vendorData))
 
 const mapStatusToPercent = new Map([
   ['requesting', 10.0],
@@ -168,9 +186,9 @@ function confirmAndMarkReturned() {
     <div class="p-5 space-y-2">
       <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Logistics</h5>
       <fwb-list-group class="w-auto">
-        <fwb-list-group-item>
+        <fwb-list-group-item class="!flex !flex-col !items-start">
           <b class="mr-1">Dates:</b>
-          {{ formatDateTime(rentalData.start_date) }} through {{ formatDateTime(rentalData.end_date) }}
+          <span>{{ formatDateTime(rentalData.start_date) }} through {{ formatDateTime(rentalData.end_date) }}</span>
         </fwb-list-group-item>
         <fwb-list-group-item>
           <b class="mr-1">Total Price:</b>
@@ -184,6 +202,16 @@ function confirmAndMarkReturned() {
         <fwb-list-group-item class="!flex !flex-col !items-start">
           <b class="mr-1">Meeting Location:</b>
           <span>{{ rentalData.location }}</span>
+        </fwb-list-group-item>
+        <fwb-list-group-item>
+          <b class="mr-1">{{ counterpartyLabel }}:</b>
+          <router-link
+            :to="{ name: 'view_profile', params: { id: counterpartyData.id } }"
+            class="mr-1 text-blue-600 hover:underline"
+          >
+            {{ counterpartyData.name }}
+          </router-link>
+          <fwb-rating size="sm" :rating=counterpartyData.averageRating />
         </fwb-list-group-item>
       </fwb-list-group>
 
@@ -213,7 +241,7 @@ function confirmAndMarkReturned() {
 
       <div v-if="isReturned" class="flex space-x-3 mt-4">
         <fwb-button
-          v-if="canReviewEquipment"
+          v-if="(canReviewEquipment === true) && (equipmentAlreadyReviewed === false)"
           color="default"
           class="flex-1"
           @click="$emit('open-review-equipment')"
@@ -221,9 +249,28 @@ function confirmAndMarkReturned() {
           Review Equipment
         </fwb-button>
         <fwb-button
+          v-else-if="canReviewEquipment"
+          color="default"
+          class="flex-1"
+          @click="$emit('open-review-equipment')"
+          disabled
+        >
+          Review Equipment
+        </fwb-button>
+        <fwb-button
+          v-if="userAlreadyReviewed === false"
           color="default"
           class="flex-1"
           @click="$emit('open-review-user')"
+        >
+          {{ reviewUserLabel }}
+        </fwb-button>
+        <fwb-button
+          v-else
+          color="default"
+          class="flex-1"
+          @click="$emit('open-review-user')"
+          disabled
         >
           {{ reviewUserLabel }}
         </fwb-button>

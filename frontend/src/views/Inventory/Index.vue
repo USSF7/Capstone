@@ -75,7 +75,7 @@
 
         <div class="p-5">
           <h5 class="mb-2 text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Equipment name: {{ equipment.name }}
+            {{ equipment.name }}
           </h5>
           <ul>
             <li><strong>Status:</strong> {{ equipment.status }}</li>

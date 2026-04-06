@@ -2,11 +2,14 @@
 
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { FwbSpinner, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbCard, FwbAvatar } from 'flowbite-vue'
+import { FwbSpinner, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbCard, FwbAvatar, FwbBadge, FwbButton } from 'flowbite-vue'
+import { PencilIcon, TrashIcon } from '@heroicons/vue/24/solid'
+import authService from '../../services/authService'
 import EquipmentService from '../../services/equipmentService'
 import UserService from '../../services/userService'
 import ReviewService from '../../services/reviewService'
 import aiService from '../../services/aiService'
+import ReviewEquipmentEdit from '../Rental/ReviewEquipmentEdit.vue'
 
 const months = [
     "January", 
@@ -25,6 +28,7 @@ const months = [
 
 const route = useRoute()
 const router = useRouter()
+const viewingUserData = ref()
 const ownerData = ref()
 const equipmentData = ref()
 const equipmentReviews = ref()
@@ -36,6 +40,31 @@ const averageRating = ref(0.0)
 const reviewSummary = ref('')
 const reviewSummaryLoading = ref(false)
 const submitterNameCache = new Map()
+const showReviewEquipmentModal = ref(false)
+const popUpReviewId = ref(0)
+const popUpReviewRating = ref(0.0)
+const popUpReviewText = ref('')
+
+async function deleteReview(reviewId) {
+    // Deleting the user's review
+    await ReviewService.switchDeletedReviewStatus(reviewId, true)
+
+    // Reloading user data
+    window.location.reload()
+}
+
+async function editReview(reviewId) {
+    // Get the review data
+    let review = await ReviewService.getReview(reviewId)
+
+    // Store review information
+    popUpReviewId.value = reviewId
+    popUpReviewRating.value = review.rating
+    popUpReviewText.value = review.review
+
+    // Open pop-up menu
+    showReviewEquipmentModal.value = true
+}
 
 function reviewDateFormatting(isoDate) {
     const date = new Date(isoDate)
@@ -95,7 +124,38 @@ async function computeReviewData() {
         for (let i = 0; i < equipmentReviews.value.length; i++) {
             sumRatings += equipmentReviews.value[i].rating
         }
-        averageRating.value = sumRatings / numRatings.value
+        let avgRating = sumRatings / numRatings.value
+        averageRating.value = avgRating.toFixed(2)
+    }
+}
+
+async function computeUserReviewData(userData) {
+    if (!userData.value.userReviews) {
+        userData.value.userReviews = []
+    }
+
+    // Computing the total number of ratings
+    let numRatings = userData.value.userReviews.length
+
+    if (numRatings == 1) {
+        userData.value.numRatingsText = numRatings.toString() + " review"
+    }
+    else {
+        userData.value.numRatingsText = numRatings.toString() + " reviews"
+    }
+
+    // Computing the average rating
+    if (numRatings == 0) {
+        userData.value.averageRating = 0.0
+    }
+    else {
+        let sumRatings = 0.0
+        for (let i = 0; i < userData.value.userReviews.length; i++) {
+            sumRatings += userData.value.userReviews[i].rating
+        }
+
+        let avgRating = sumRatings / numRatings
+        userData.value.averageRating = avgRating.toFixed(2)
     }
 }
 
@@ -127,6 +187,9 @@ async function loadData() {
         reviewSummary.value = ''
         reviewSummaryLoading.value = false
 
+        // Getting the viewing user data
+        viewingUserData.value = await authService.getMe()
+
         // Getting the equipment id from the route
         equipmentID.value = route.params.id
 
@@ -143,6 +206,9 @@ async function loadData() {
         await sortEquipmentReviewsDescending()
         await computeReviewData()
         ownerData.value = ownerInfo
+
+        ownerData.value.userReviews = await ReviewService.getReviewsForModel("user", ownerData.value.id)
+        await computeUserReviewData(ownerData)
 
         // Displaying the page to the user
         dataLoaded.value = true
@@ -171,6 +237,16 @@ onMounted(async () => {
     </div>
     <div v-else>
         <div class="space-y-4">
+            <review-equipment-edit
+                v-if="showReviewEquipmentModal"
+                :equipmentName="equipmentData.name"
+                :equipmentID="equipmentData.id"
+                :submitterID="viewingUserData.id"
+                :reviewId="popUpReviewId"
+                :reviewRating="popUpReviewRating"
+                :reviewText="popUpReviewText"
+                @close="showReviewEquipmentModal = false"
+            />
             <fwb-img
                 alt="flowbite-vue"
                 size="max-w-md"
@@ -185,6 +261,10 @@ onMounted(async () => {
                     </p>
                 </template>
             </fwb-rating>
+            <fwb-badge v-if="equipmentData.condition === 'Mint'" class="inline-block" size="sm" type="default"> {{ equipmentData.condition }} Condition </fwb-badge>
+            <fwb-badge v-else-if="equipmentData.condition === 'Above Average'" class="inline-block" size="sm" type="green"> {{ equipmentData.condition }} Condition </fwb-badge>
+            <fwb-badge v-else-if="equipmentData.condition === 'Average'" class="inline-block" size="sm" type="yellow"> {{ equipmentData.condition }} Condition </fwb-badge>
+            <fwb-badge v-else class="inline-block" size="sm" type="red"> {{ equipmentData.condition }} Condition </fwb-badge>
             <fwb-list-group class="w-auto">
                 <fwb-list-group-item><b class="mr-1">Price:</b> ${{ equipmentData.price }}</fwb-list-group-item>
                 <fwb-list-group-item>
@@ -192,6 +272,7 @@ onMounted(async () => {
                     <router-link :to="{ name: 'view_profile', params: { id: ownerData.id } }" class="text-blue-600 hover:underline">
                         {{ ownerData.name }}
                     </router-link>
+                    <fwb-rating class="ml-1" size="sm" :rating=ownerData.averageRating />
                 </fwb-list-group-item>
                 <fwb-list-group-item class="!flex !flex-col !items-start">
                     <b class="mr-1">Description:</b>
@@ -220,7 +301,21 @@ onMounted(async () => {
                 </fwb-card>
                 <fwb-card v-for="review in equipmentReviews" :key="review.id" class="!max-w-full">
                     <div class="space-y-3 p-5">
-                        <div class="flex items-center space-x-4">
+                        <div v-if="review.submitter_id == viewingUserData.id" class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <fwb-avatar size="md" img="" rounded />
+                                <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <fwb-button @click="editReview(review.id)" color="blue" size="md" square>
+                                    <PencilIcon class="w-4 h-4" />
+                                </fwb-button>
+                                <fwb-button @click="deleteReview(review.id)" color="red" size="md" square>
+                                    <TrashIcon class="w-5 h-5" />
+                                </fwb-button>
+                            </div>
+                        </div>
+                        <div v-else class="flex items-center space-x-4">
                             <fwb-avatar size="md" img="" rounded />
                             <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
                         </div>

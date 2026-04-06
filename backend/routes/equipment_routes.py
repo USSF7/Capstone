@@ -62,7 +62,8 @@ def create_equipment():
             data.get('name'),
             data.get('price'),
             data.get('description'),
-            data.get('picture')
+            data.get('picture'),
+            data.get('condition')
         )
         return jsonify(equipment.to_dict()), 201
     except ValueError as e:
@@ -88,7 +89,8 @@ def update_equipment(equipment_id):
             data.get('owner_id'),
             data.get('price'),
             data.get('description'),
-            data.get('picture')
+            data.get('picture'),
+            data.get('condition')
         )
         return jsonify(equipment.to_dict()), 200
     except ValueError as e:

@@ -31,6 +31,10 @@ class ReviewService {
     return api.put(`/reviews/${reviewId}`, { rating, review })
   }
 
+  async switchDeletedReviewStatus(reviewId, status) {
+    return api.put(`/reviews/switch-deleted-review-status/${reviewId}`, { deleted_status: status })
+  }
+
   async deleteReview(reviewId) {
     return api.delete(`/reviews/${reviewId}`)
   }

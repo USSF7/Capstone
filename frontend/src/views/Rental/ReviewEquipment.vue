@@ -2,6 +2,7 @@
 
 import { FwbImg, FwbButton, FwbTextarea } from 'flowbite-vue'
 import ReviewService from '../../services/reviewService'
+import RentalService from '../../services/rentalService'
 
 export default {
     components: {
@@ -13,7 +14,8 @@ export default {
     props: {
         equipmentName: String,
         equipmentID: Number,
-        submitterID: Number
+        submitterID: Number,
+        rentalID: Number
     },
     data() {
         return {
@@ -31,11 +33,17 @@ export default {
                 // Creating the review
                 await ReviewService.createReview(this.submitterID, "equipment", this.equipmentID, this.rating, this.message)
 
+                // Switching the equipment reviewed status
+                RentalService.switchEquipmentReviewedStatus(this.rentalID, true)
+
                 // Closing the popup
                 this.$emit('close')
 
                 // Successful review submitted
                 alert("Review was successfully submitted.")
+
+                // Reloading the page
+                window.location.reload()
             }
             catch (error) {
                 console.error("Error submitting review:", error)

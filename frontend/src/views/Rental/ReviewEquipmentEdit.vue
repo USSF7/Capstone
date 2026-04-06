@@ -1,22 +1,26 @@
 <script>
 
-import { FwbAvatar, FwbButton, FwbTextarea } from 'flowbite-vue'
+import { FwbImg, FwbButton, FwbTextarea } from 'flowbite-vue'
 import ReviewService from '../../services/reviewService'
-import RentalService from '../../services/rentalService'
-import UserService from '../../services/userService'
 
 export default {
     components: {
         FwbButton,
-        FwbAvatar,
+        FwbImg,
         FwbTextarea,
         ReviewService
     },
     props: {
-        userName: String,
-        userID: Number,
+        equipmentName: String,
+        equipmentID: Number,
         submitterID: Number,
-        rentalID: Number
+        reviewId: Number,
+        reviewRating: Number,
+        reviewText: String
+    },
+    mounted() {
+        this.rating = this.reviewRating || 0
+        this.message = this.reviewText || ''
     },
     data() {
         return {
@@ -32,24 +36,13 @@ export default {
         async submitReview() {
             try {
                 // Creating the review
-                await ReviewService.createReview(this.submitterID, "user", this.userID, this.rating, this.message)
-
-                // Switching the user reviewed status
-                let submitterUser = await UserService.getUser(this.submitterID)
-                let renterStatus = submitterUser.renter
-
-                if (renterStatus === true) {
-                    await RentalService.switchRenterReviewedStatus(this.rentalID, true)
-                }
-                else {
-                    await RentalService.switchVendorReviewedStatus(this.rentalID, true)
-                }
+                await ReviewService.updateReview(this.reviewId, this.rating, this.message)
 
                 // Closing the popup
                 this.$emit('close')
 
-                // Successful review submitted
-                alert("Review was successfully submitted.")
+                // Successful review update
+                alert("Review was successfully updated.")
 
                 // Reloading the page
                 window.location.reload()
@@ -57,8 +50,8 @@ export default {
             catch (error) {
                 console.error("Error submitting review:", error)
 
-                // Unsuccessful review submitted
-                alert("Review was not properly submitted. Please try again.")
+                // Unsuccessful review update
+                alert("Review was not properly updated. Please try again.")
             }
         }
     }
@@ -69,13 +62,12 @@ export default {
 <template>
     <div class="overlay" @click.self="$emit('close')">
         <div class="card space-y-3">
-            <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Review on {{ userName }}</h5>
-            <div class="flex justify-center">
-                <fwb-avatar
-                    size="xl"
-                    img=""
-                />
-            </div>
+            <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Review on {{ equipmentName }}</h5>
+            <fwb-img
+                alt="flowbite-vue"
+                img-class="rounded-lg w-64 mx-auto"
+                src="../../../image.jpg"
+            />
             <div class="flex justify-center space-x-1">
                 <span
                     v-for="star in 5"
@@ -99,7 +91,7 @@ export default {
             </div>
             <div class="flex justify-center space-x-3">
                 <fwb-button color="red" @click="$emit('close')">Cancel</fwb-button>
-                <fwb-button color="green" @click="submitReview()">Submit</fwb-button>
+                <fwb-button color="green" @click="submitReview()">Update</fwb-button>
             </div>
         </div>
     </div>

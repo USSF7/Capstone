@@ -73,6 +73,24 @@ class RentalService {
     })
   }
 
+  async switchRenterReviewedStatus(rentalId, renterReviewedStatus) {
+    return api.put(`/rentals/switch-renter-review-status/${rentalId}`, {
+      renter_review_status: Boolean(renterReviewedStatus)
+    })
+  }
+
+  async switchVendorReviewedStatus(rentalId, vendorReviewedStatus) {
+    return api.put(`/rentals/switch-vendor-review-status/${rentalId}`, {
+      vendor_review_status: Boolean(vendorReviewedStatus)
+    })
+  }
+
+  async switchEquipmentReviewedStatus(rentalId, equipmentReviewedStatus) {
+    return api.put(`/rentals/switch-equipment-review-status/${rentalId}`, {
+      equipment_review_status: Boolean(equipmentReviewedStatus)
+    })
+  }
+
   async updateRentalDetails(rentalId, payload) {
     return api.put(`/rentals/${rentalId}`, payload)
   }

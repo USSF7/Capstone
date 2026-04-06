@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { FwbButton, FwbInput, FwbCard, FwbSpinner } from 'flowbite-vue'
+import { FwbButton, FwbInput, FwbCard, FwbSpinner, FwbBadge } from 'flowbite-vue'
 import { useAuthStore } from '../../stores/auth'
 import locationService from '../../services/locationService'
 import GoogleMap from '../../components/GoogleMap.vue'
@@ -112,6 +112,10 @@ onMounted(() => {
               <img :src="item.picture" :alt="item.name" class="w-full h-32 object-cover rounded" />
             </div>
             <h3 class="font-semibold text-gray-900">{{ item.name }}</h3>
+            <fwb-badge v-if="item.condition === 'Mint'" class="inline-block mt-1 mb-1" size="sm" type="default"> {{ item.condition }} Condition </fwb-badge>
+            <fwb-badge v-else-if="item.condition === 'Above Average'" class="inline-block mt-1 mb-1" size="sm" type="green"> {{ item.condition }} Condition </fwb-badge>
+            <fwb-badge v-else-if="item.condition === 'Average'" class="inline-block mt-1 mb-1" size="sm" type="yellow"> {{ item.condition }} Condition </fwb-badge>
+            <fwb-badge v-else class="inline-block mt-1 mb-1" size="sm" type="red"> {{ item.condition }} Condition </fwb-badge>
             <p class="text-sm text-gray-500 mt-1">{{ item.description }}</p>
             <p class="text-sm text-gray-700 mt-2">
               <span class="font-medium">Vendor:</span> {{ item.owner_name || 'Unknown vendor' }}

@@ -4,11 +4,13 @@
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton, FwbCard, FwbSpinner } from 'flowbite-vue'
+import { PencilIcon, TrashIcon } from '@heroicons/vue/24/solid'
 import UserService from '../../services/userService'
 import reviewService from '../../services/reviewService'
 import authService from '../../services/authService'
 import aiService from '../../services/aiService'
 import router from '../../router'
+import ReviewUserEdit from '../Rental/ReviewUserEdit.vue'
 
 const months = [
     "January", 
@@ -37,6 +39,10 @@ const numRatings = ref(0)
 const numRatingsText = ref('')
 const averageRating = ref(0.0)
 const submitterNameCache = new Map()
+const showReviewUserModal = ref(false)
+const popUpReviewId = ref(0)
+const popUpReviewRating = ref(0.0)
+const popUpReviewText = ref('')
 
 function dateFormatting(isoDate) {
     const date = new Date(isoDate)
@@ -84,6 +90,27 @@ function displayUserSiteStatus() {
 
 function editAccount() {
     router.push({ name: 'edit_profile' })
+}
+
+async function deleteReview(reviewId) {
+    // Deleting the user's review
+    await reviewService.switchDeletedReviewStatus(reviewId, true)
+
+    // Reloading user data
+    window.location.reload()
+}
+
+async function editReview(reviewId) {
+    // Get the review data
+    let review = await reviewService.getReview(reviewId)
+
+    // Store review information
+    popUpReviewId.value = reviewId
+    popUpReviewRating.value = review.rating
+    popUpReviewText.value = review.review
+
+    // Open pop-up menu
+    showReviewUserModal.value = true
 }
 
 async function sortUserReviewsDescending() {
@@ -135,7 +162,8 @@ async function computeReviewData() {
         for (let i = 0; i < userReviews.value.length; i++) {
             sumRatings += userReviews.value[i].rating
         }
-        averageRating.value = sumRatings / numRatings.value
+        let avgRating = sumRatings / numRatings.value
+        averageRating.value = avgRating.toFixed(2)
     }
 }
 
@@ -214,6 +242,16 @@ watch(() => route.params.id, async (newId) => {
     </div>
     <div v-else>
         <div class="space-y-4">
+            <review-user-edit
+                v-if="showReviewUserModal"
+                :userName="userData.name"
+                :userID="userData.id"
+                :submitterID="viewingUserData.id"
+                :reviewId="popUpReviewId"
+                :reviewRating="popUpReviewRating"
+                :reviewText="popUpReviewText"
+                @close="showReviewUserModal = false"
+            />
 
             <!-- ************************************************* -->
             <!-- Avatar code needs to be updated in a later sprint -->
@@ -268,7 +306,21 @@ watch(() => route.params.id, async (newId) => {
                 </fwb-card>
                 <fwb-card v-for="review in userReviews" :key="review.id" class="!max-w-full">
                     <div class="space-y-3 p-5">
-                        <div class="flex items-center space-x-4">
+                        <div v-if="review.submitter_id == viewingUserData.id" class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <fwb-avatar size="md" img="" rounded />
+                                <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <fwb-button @click="editReview(review.id)" color="blue" size="md" square>
+                                    <PencilIcon class="w-4 h-4" />
+                                </fwb-button>
+                                <fwb-button @click="deleteReview(review.id)" color="red" size="md" square>
+                                    <TrashIcon class="w-5 h-5" />
+                                </fwb-button>
+                            </div>
+                        </div>
+                        <div v-else class="flex items-center space-x-4">
                             <fwb-avatar size="md" img="" rounded />
                             <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
                         </div>

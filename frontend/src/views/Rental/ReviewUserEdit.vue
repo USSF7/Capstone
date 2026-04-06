@@ -2,8 +2,6 @@
 
 import { FwbAvatar, FwbButton, FwbTextarea } from 'flowbite-vue'
 import ReviewService from '../../services/reviewService'
-import RentalService from '../../services/rentalService'
-import UserService from '../../services/userService'
 
 export default {
     components: {
@@ -16,7 +14,9 @@ export default {
         userName: String,
         userID: Number,
         submitterID: Number,
-        rentalID: Number
+        reviewId: Number,
+        reviewRating: Number,
+        reviewText: String
     },
     data() {
         return {
@@ -25,6 +25,10 @@ export default {
             message: ''
         }
     },
+    mounted() {
+        this.rating = this.reviewRating || 0
+        this.message = this.reviewText || ''
+    },
     methods: {
         setRating(value) {
             this.rating = value
@@ -32,24 +36,13 @@ export default {
         async submitReview() {
             try {
                 // Creating the review
-                await ReviewService.createReview(this.submitterID, "user", this.userID, this.rating, this.message)
-
-                // Switching the user reviewed status
-                let submitterUser = await UserService.getUser(this.submitterID)
-                let renterStatus = submitterUser.renter
-
-                if (renterStatus === true) {
-                    await RentalService.switchRenterReviewedStatus(this.rentalID, true)
-                }
-                else {
-                    await RentalService.switchVendorReviewedStatus(this.rentalID, true)
-                }
+                await ReviewService.updateReview(this.reviewId, this.rating, this.message)
 
                 // Closing the popup
                 this.$emit('close')
 
-                // Successful review submitted
-                alert("Review was successfully submitted.")
+                // Successful review update
+                alert("Review was successfully Updated.")
 
                 // Reloading the page
                 window.location.reload()
@@ -57,8 +50,8 @@ export default {
             catch (error) {
                 console.error("Error submitting review:", error)
 
-                // Unsuccessful review submitted
-                alert("Review was not properly submitted. Please try again.")
+                // Unsuccessful review update
+                alert("Review was not properly updated. Please try again.")
             }
         }
     }
@@ -99,7 +92,7 @@ export default {
             </div>
             <div class="flex justify-center space-x-3">
                 <fwb-button color="red" @click="$emit('close')">Cancel</fwb-button>
-                <fwb-button color="green" @click="submitReview()">Submit</fwb-button>
+                <fwb-button color="green" @click="submitReview()">Update</fwb-button>
             </div>
         </div>
     </div>

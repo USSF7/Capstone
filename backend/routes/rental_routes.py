@@ -148,6 +148,45 @@ def create_rental():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@rental_bp.route('/switch-renter-review-status/<int:rental_id>', methods=['PUT'])
+@jwt_required()
+def switch_renter_review_status(rental_id):
+    """Switch the renter review status"""
+    try:
+        data = request.get_json()
+        rental = RentalService.switch_renter_review_status(rental_id, data.get("renter_review_status"))
+        return jsonify(rental.to_dict()), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@rental_bp.route('/switch-vendor-review-status/<int:rental_id>', methods=['PUT'])
+@jwt_required()
+def switch_vendor_review_status(rental_id):
+    """Switch the vendor review status"""
+    try:
+        data = request.get_json()
+        rental = RentalService.switch_vendor_review_status(rental_id, data.get("vendor_review_status"))
+        return jsonify(rental.to_dict()), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@rental_bp.route('/switch-equipment-review-status/<int:rental_id>', methods=['PUT'])
+@jwt_required()
+def switch_equipment_review_status(rental_id):
+    """Switch the equipment review status"""
+    try:
+        data = request.get_json()
+        rental = RentalService.switch_equipment_review_status(rental_id, data.get("equipment_review_status"))
+        return jsonify(rental.to_dict()), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @rental_bp.route('/<int:rental_id>', methods=['PUT'])
 @jwt_required()
 def update_rental(rental_id):

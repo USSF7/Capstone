@@ -5,14 +5,14 @@ class ReviewService:
     """Service layer for Review business logic"""
 
     @staticmethod
-    def create_review(submitter_id, model_type, model_id, rating, review=None):
+    def create_review(submitter_id, model_type, model_id, rating, review=None, deleted=False):
         """Create a new review"""
         if not all([submitter_id, model_type, model_id, rating]):
             raise ValueError("submitter_id, model_type, model_id, and rating are required")
         if rating < 1 or rating > 5:
             raise ValueError("Rating must be between 1 and 5")
         
-        rev = Review(submitter_id=submitter_id, model_type=model_type, model_id=model_id, rating=rating, review=review)
+        rev = Review(submitter_id=submitter_id, model_type=model_type, model_id=model_id, rating=rating, review=review, deleted=deleted)
         db.session.add(rev)
         db.session.commit()
         return rev
@@ -25,20 +25,20 @@ class ReviewService:
     @staticmethod
     def get_all_reviews():
         """Get all reviews"""
-        return Review.query.all()
+        return Review.query.filter_by(deleted=False).all()
 
     @staticmethod
     def get_reviews_for_model(model_type, model_id):
         """Get all reviews for a specific model"""
-        return Review.query.filter_by(model_type=model_type, model_id=model_id).all()
+        return Review.query.filter_by(model_type=model_type, model_id=model_id, deleted=False).all()
 
     @staticmethod
     def get_reviews_by_submitter(submitter_id):
         """Get all reviews by a user"""
-        return Review.query.filter_by(submitter_id=submitter_id).all()
+        return Review.query.filter_by(submitter_id=submitter_id, deleted=False).all()
 
     @staticmethod
-    def update_review(review_id, rating=None, review=None):
+    def update_review(review_id, rating=None, review=None, deleted=False):
         """Update a review"""
         rev = Review.query.get(review_id)
         if not rev:
@@ -50,6 +50,8 @@ class ReviewService:
             rev.rating = rating
         if review is not None:
             rev.review = review
+        if deleted:
+            rev.deleted = deleted
         
         db.session.commit()
         return rev

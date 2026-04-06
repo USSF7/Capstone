@@ -28,6 +28,15 @@
       </div>
 
       <div class="mb-4">
+        <fwb-select
+          v-model="form.condition"
+          :options="conditions"
+          label="Condition"
+          size="md"
+        />
+      </div>
+
+      <div class="mb-4">
         <fwb-input
           v-model="form.description"
           label="Description"
@@ -59,9 +68,16 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { FwbInput } from 'flowbite-vue'
+import { FwbInput, FwbSelect } from 'flowbite-vue'
 import { useAuthStore } from '../../stores/auth'
 import equipmentService from '../../services/equipmentService'
+
+const conditions = [
+  { value: 'Mint', name: '🔵 Mint' },
+  { value: 'Above Average', name: '🟢 Above Average' },
+  { value: 'Average', name: '🟡 Average' },
+  { value: 'Below Average', name: '🔴 Below Average' }
+]
 
 const auth = useAuthStore()
 const OWNER_ID = computed(() => auth.user?.id)
@@ -73,6 +89,7 @@ const error = ref('')
 const form = ref({
   equipmentName: '',
   price: 0,
+  condition: '',
   description: '',
   picture: '',
 })
@@ -88,6 +105,7 @@ const submitForm = async () => {
       form.value.price,
       form.value.description,
       form.value.picture,
+      form.value.condition
     )
     router.push({ name: 'inventory' })
   } catch (err) {
