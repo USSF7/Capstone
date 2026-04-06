@@ -16,6 +16,8 @@ def init_db():
         try:
             print("Enabling PostGIS extension...")
             db.session.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+            print("Enabling pg_trgm extension...")
+            db.session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
             db.session.commit()
 
             print("Dropping all tables...")

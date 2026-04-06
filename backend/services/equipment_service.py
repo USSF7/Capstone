@@ -111,14 +111,27 @@ class EquipmentService:
 
     @staticmethod
     def search_equipment_nearby(lat, lng, radius_miles=25, name_filter=None):
-        """Find equipment whose owner is within radius_miles of (lat, lng)."""
+        """Find equipment whose owner is within radius_miles of (lat, lng).
+
+        When name_filter is provided, results include both exact substring
+        matches (via ILIKE) and fuzzy matches (via pg_trgm similarity),
+        so typos like "trcktor" still find "Tractor".
+        """
         from services.location_service import LocationService
+
+        similarity_threshold = 0.3
 
         query = db.session.query(Equipment, User).join(User, Equipment.owner_id == User.id)
         query = query.filter(User.latitude.isnot(None), User.longitude.isnot(None))
 
         if name_filter:
-            query = query.filter(Equipment.name.ilike(f'%{name_filter}%'))
+            similarity_score = func.similarity(Equipment.name, name_filter)
+            query = query.filter(
+                db.or_(
+                    Equipment.name.ilike(f'%{name_filter}%'),
+                    similarity_score >= similarity_threshold,
+                )
+            )
 
         results = []
         for equipment, owner in query.all():
