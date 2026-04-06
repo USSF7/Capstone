@@ -11,6 +11,7 @@ class Review(db.Model):
     rating = db.Column(db.Integer, nullable=False)
     review = db.Column(db.Text, nullable=True)
     date = db.Column(db.DateTime, default=datetime.utcnow)
+    deleted = db.Column(db.Boolean, nullable=False, default=False)
 
     def to_dict(self):
         return {
@@ -20,7 +21,8 @@ class Review(db.Model):
             'model_id': self.model_id,
             'rating': self.rating,
             'review': self.review,
-            'date': self.date.isoformat()
+            'date': self.date.isoformat(),
+            'deleted': self.deleted
         }
 
     def __repr__(self):

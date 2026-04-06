@@ -70,6 +70,18 @@ def update_review(review_id):
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@review_bp.route('switch-deleted-review-status/<int:review_id>', methods=['PUT'])
+def switch_deleted_review_status(review_id):
+    """Switch the deleted review status"""
+    try:
+        data = request.get_json()
+        review = ReviewService.update_review(review_id, deleted=data.get('deleted_status'))
+        return jsonify(review.to_dict()), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @review_bp.route('/<int:review_id>', methods=['DELETE'])
 def delete_review(review_id):

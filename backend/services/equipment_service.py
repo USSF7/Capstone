@@ -29,7 +29,7 @@ class EquipmentService:
     """Service layer for Equipment business logic"""
 
     @staticmethod
-    def create_equipment(owner_id, name, price, description=None, picture=None):
+    def create_equipment(owner_id, name, price, description=None, picture=None, condition=None):
         """Create new equipment"""
         if not owner_id or not name:
             raise ValueError("Owner ID and name are required")
@@ -41,7 +41,8 @@ class EquipmentService:
             name=name,
             price=price,
             description=description,
-            picture=picture
+            picture=picture,
+            condition=condition
         )
         db.session.add(equipment)
         db.session.commit()
@@ -144,7 +145,7 @@ class EquipmentService:
         return results
 
     @staticmethod
-    def update_equipment(equipment_id, name=None, owner_id=None, price=None, description=None, picture=None):
+    def update_equipment(equipment_id, name=None, owner_id=None, price=None, description=None, picture=None, condition=None):
         """Update equipment"""
         equipment = Equipment.query.get(equipment_id)
         if not equipment:
@@ -160,6 +161,8 @@ class EquipmentService:
             equipment.description = description
         if picture is not None:
             equipment.picture = picture
+        if condition is not None:
+            equipment.condition = condition
         
         db.session.commit()
         return equipment

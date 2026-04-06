@@ -17,6 +17,9 @@ class Rental(db.Model):
     status = db.Column(db.String(50), default='requesting')  # requesting, accepted, active, returned, disputed, denied, cancelled
     renter_approved = db.Column(db.Boolean, nullable=False, default=False)
     vendor_approved = db.Column(db.Boolean, nullable=False, default=False)
+    renter_reviewed = db.Column(db.Boolean, nullable=False, default=False)
+    vendor_reviewed = db.Column(db.Boolean, nullable=False, default=False)
+    equipment_reviewed = db.Column(db.Boolean, nullable=False, default=False)
     deleted = db.Column(db.Boolean, nullable=False, default=False)
 
     # Relationships
@@ -46,6 +49,9 @@ class Rental(db.Model):
             'renter_approved': self.renter_approved,
             'vendor_approved': self.vendor_approved,
             'mutual_approved': self.renter_approved and self.vendor_approved,
+            'renter_reviewed': self.renter_reviewed,
+            'vendor_reviewed': self.vendor_reviewed,
+            'equipment_reviewed': self.equipment_reviewed,
             'deleted': self.deleted
         }
 

@@ -215,6 +215,9 @@ def seed_equipment(users, num_items=60):
     """Create sample equipment"""
     print(f"Creating {num_items} equipment items...")
     equipment_list = []
+
+    # Equipment conditions
+    conditions = ["Mint", "Above Average", "Average", "Below Average"]
     
     # Filter to only vendors
     vendors = [user for user in users if user.vendor]
@@ -223,13 +226,14 @@ def seed_equipment(users, num_items=60):
         print("! No vendors found; skipping equipment seeding")
         return []
     
-    for _ in range(num_items):
+    for i in range(num_items):
         equipment = Equipment(
             owner_id=choice(vendors).id,
             name=choice(EQUIPMENT_NAMES),
             price=round(randint(10, 1000) + randint(0, 99) / 100, 2),
             description=fake.sentence(nb_words=12),
-            picture=f"/images/equipment/{fake.uuid4()}.jpg"
+            picture=f"/images/equipment/{fake.uuid4()}.jpg",
+            condition=conditions[i % len(conditions)]
         )
         equipment_list.append(equipment)
         db.session.add(equipment)

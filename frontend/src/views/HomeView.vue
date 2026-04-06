@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { FwbCard, FwbProgress, FwbSpinner, FwbButton } from 'flowbite-vue'
+import { FwbCard, FwbProgress, FwbSpinner, FwbButton, FwbBadge } from 'flowbite-vue'
 import { useAuthStore } from '../stores/auth'
 import RentalService from '../services/rentalService'
 import LocationService from '../services/locationService'
@@ -345,6 +345,10 @@ onMounted(() => {
               </svg>
             </div>
             <h3 class="font-semibold text-gray-900 truncate">{{ item.name }}</h3>
+            <fwb-badge v-if="item.condition === 'Mint'" class="inline-block mt-1 mb-1" size="sm" type="default"> {{ item.condition }} Condition </fwb-badge>
+            <fwb-badge v-else-if="item.condition === 'Above Average'" class="inline-block mt-1 mb-1" size="sm" type="green"> {{ item.condition }} Condition </fwb-badge>
+            <fwb-badge v-else-if="item.condition === 'Average'" class="inline-block mt-1 mb-1" size="sm" type="yellow"> {{ item.condition }} Condition </fwb-badge>
+            <fwb-badge v-else class="inline-block mt-1 mb-1" size="sm" type="red"> {{ item.condition }} Condition </fwb-badge>
             <p v-if="item.description" class="text-sm text-gray-500 mt-1 line-clamp-2">{{ item.description }}</p>
             <div class="flex items-center justify-between mt-3">
               <span class="text-lg font-bold text-blue-600">${{ item.price }}/day</span>

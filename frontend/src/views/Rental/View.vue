@@ -24,10 +24,6 @@ const renterData = ref()
 const userData = ref()
 const otherParticipantID = ref(null)
 const dataLoaded = ref(false)
-const equipmentReviews = ref()
-const numRatings = ref(0)
-const numRatingsText = ref('')
-const averageRating = ref(0.0)
 const showReviewEquipmentModal = ref(false)
 const showReviewUserModal = ref(false)
 let pollIntervalId = null
@@ -101,31 +97,65 @@ const mapCenter = computed(() => {
     return null
 })
 
-async function computeReviewData() {
-    if (!equipmentReviews.value) {
-        equipmentReviews.value = []
+async function computeEquipmentReviewData() {
+    for (let i = 0; i < rentalData.value.equipment.length; i++) {
+        if (!rentalData.value.equipment[i].equipmentReviews) {
+            rentalData.value.equipment[i].equipmentReviews = []
+        }
+
+        // Computing the total number of ratings
+        let numRatings = rentalData.value.equipment[i].equipmentReviews.length
+
+        if (numRatings == 1) {
+            rentalData.value.equipment[i].numRatingsText = numRatings.toString() + " review"
+        }
+        else {
+            rentalData.value.equipment[i].numRatingsText = numRatings.toString() + " reviews"
+        }
+
+        // Computing the average rating
+        if (numRatings == 0) {
+            rentalData.value.equipment[i].averageRating = 0.0
+        }
+        else {
+            let sumRatings = 0.0
+            for (let j = 0; j < rentalData.value.equipment[i].equipmentReviews.length; j++) {
+                sumRatings += rentalData.value.equipment[i].equipmentReviews[j].rating
+            }
+
+            let avgRating = sumRatings / numRatings
+            rentalData.value.equipment[i].averageRating = avgRating.toFixed(2)
+        }
+    }
+}
+
+async function computeUserReviewData(userData) {
+    if (!userData.value.userReviews) {
+        userData.value.userReviews = []
     }
 
     // Computing the total number of ratings
-    numRatings.value = equipmentReviews.value.length
+    let numRatings = userData.value.userReviews.length
 
-    if (numRatings.value == 1) {
-        numRatingsText.value = numRatings.value.toString() + " review"
+    if (numRatings == 1) {
+        userData.value.numRatingsText = numRatings.toString() + " review"
     }
     else {
-        numRatingsText.value = numRatings.value.toString() + " reviews"
+        userData.value.numRatingsText = numRatings.toString() + " reviews"
     }
 
     // Computing the average rating
-    if (numRatings.value == 0) {
-        averageRating.value = 0.0
+    if (numRatings == 0) {
+        userData.value.averageRating = 0.0
     }
     else {
         let sumRatings = 0.0
-        for (let i = 0; i < equipmentReviews.value.length; i++) {
-            sumRatings += equipmentReviews.value[i].rating
+        for (let i = 0; i < userData.value.userReviews.length; i++) {
+            sumRatings += userData.value.userReviews[i].rating
         }
-        averageRating.value = sumRatings / numRatings.value
+
+        let avgRating = sumRatings / numRatings
+        userData.value.averageRating = avgRating.toFixed(2)
     }
 }
 
@@ -156,13 +186,21 @@ async function loadData() {
         vendorData.value = await UserService.getUser(rentalData.value.vendor_id)
         renterData.value = await UserService.getUser(rentalData.value.renter_id)
 
-        // Getting the equipment reviews data for the first selected item (if any)
-        if (primaryEquipment.value) {
-            equipmentReviews.value = await ReviewService.getReviewsForModel("equipment", primaryEquipment.value.id)
-        } else {
-            equipmentReviews.value = []
+        // Getting the equipment reviews data for the all of the equipment items
+        for (let i = 0; i < rentalData.value.equipment.length; i++) {
+            if (primaryEquipment.value) {
+                rentalData.value.equipment[i].equipmentReviews = await ReviewService.getReviewsForModel("equipment", rentalData.value.equipment[i].id)
+            } else {
+                rentalData.value.equipment[i].equipmentReviews = []
+            }
         }
-        await computeReviewData()
+        await computeEquipmentReviewData()
+
+        // Getting the reviews for the renter and the vendor
+        vendorData.value.userReviews = await ReviewService.getReviewsForModel("user", vendorData.value.id)
+        renterData.value.userReviews = await ReviewService.getReviewsForModel("user", renterData.value.id)
+        await computeUserReviewData(vendorData)
+        await computeUserReviewData(renterData)
 
         // Displaying the page to the user
         dataLoaded.value = true
@@ -194,16 +232,22 @@ async function pollForUpdates() {
         }
 
         const oldEquipmentId = primaryEquipment.value?.id
-        rentalData.value = latestRental
+
+        // Reset the rental data only if the primary equipment changed.
+        if (oldEquipmentId !== primaryEquipment.value?.id) {
+            rentalData.value = latestRental
+        }
 
         // Re-fetch review aggregate only if the primary equipment changed.
         if (oldEquipmentId !== primaryEquipment.value?.id) {
-            if (primaryEquipment.value) {
-                equipmentReviews.value = await ReviewService.getReviewsForModel('equipment', primaryEquipment.value.id)
-            } else {
-                equipmentReviews.value = []
+            for (let i = 0; i < rentalData.value.equipment.length; i++) {
+                if (primaryEquipment.value) {
+                    rentalData.value.equipment[i].equipmentReviews = await ReviewService.getReviewsForModel('equipment', rentalData.value.equipment[i].id)
+                } else {
+                    rentalData.value.equipment[i].equipmentReviews = []
+                }
+                await computeReviewData()
             }
-            await computeReviewData()
         }
     }
     catch (error) {
@@ -239,25 +283,23 @@ onUnmounted(() => {
                 v-if="showReviewEquipmentModal && primaryEquipment"
                 :equipmentName="primaryEquipment.name"
                 :equipmentID="primaryEquipment.id"
-                :submitterID=userData.id
+                :submitterID="userData.id"
+                :rentalID="rentalData.id"
                 @close="showReviewEquipmentModal = false"
             />
             <review-user 
                 v-if="showReviewUserModal && reviewUserTarget"
                 :userName="reviewUserTarget.name"
                 :userID="reviewUserTarget.id"
-                :submitterID=userData.id
+                :submitterID="userData.id"
+                :rentalID="rentalData.id"
                 @close="showReviewUserModal = false"
             />
 
             <div class="grid grid-cols-2 gap-4" v-if="vendorData && renterData">
                 <rental-equipment-card
                     :rental-data="rentalData"
-                    :vendor-data="vendorData"
-                    :renter-data="renterData"
                     :current-user-id="userData.id"
-                    :average-rating="averageRating"
-                    :num-ratings-text="numRatingsText"
                 />
 
                 <rental-messaging-card
@@ -269,8 +311,10 @@ onUnmounted(() => {
 
             <div class="grid grid-cols-2 gap-4" v-if="vendorData && renterData">
                 <rental-logistics-card
-                    :rental-data="rentalData"
-                    :current-user-id="userData.id"
+                    :rentalData="rentalData"
+                    :currentUserId="userData.id"
+                    :vendorData="vendorData"
+                    :renterData="renterData"
                     @open-review-equipment="showReviewEquipmentModal = true"
                     @open-review-user="showReviewUserModal = true"
                     @rental-updated="rentalData = $event"
@@ -278,7 +322,7 @@ onUnmounted(() => {
 
                 <fwb-card class="!max-w-full">
                     <div class="p-5 space-y-2">
-                        <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Google Maps</h5>
+                        <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Meeting Location</h5>
                         <GoogleMap
                             v-if="mapCenter && mapMarkers.length"
                             :center="mapCenter"
