@@ -92,6 +92,14 @@ async function updateAccount(event) {
             maxTravelDistance.value
         )
 
+        // Refresh user data in the auth store
+        const user = await AuthService.getMe()
+        auth.setAuth({
+            access_token: auth.accessToken,
+            refresh_token: auth.refreshToken,
+            user
+        })
+
         // Successful account update
         alert("Account has been successfully updated.")
 
