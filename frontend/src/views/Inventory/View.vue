@@ -253,7 +253,7 @@ onMounted(async () => {
                 img-class="rounded-lg"
                 src="../../../image.jpg" 
             />
-            <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ equipmentData.name }}</h5>
+            <span class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ equipmentData.name }}</span>
             <fwb-rating :rating="averageRating" review-link="#ReviewsTitle" :review-text="numRatingsText">
                 <template #besideText>
                     <p class="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -280,6 +280,7 @@ onMounted(async () => {
                 </fwb-list-group-item>
             </fwb-list-group>
             <router-link
+                v-if="viewingUserData?.id !== ownerData?.id"
                 :to="{ name: 'rental_create', query: { vendorId: ownerData.id, equipmentId: equipmentData.id } }"
                 class="inline-block text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-5 py-2.5"
             >

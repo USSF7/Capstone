@@ -1,62 +1,105 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { FwbCard, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbBadge } from 'flowbite-vue'
-import { useScroll } from '@vueuse/core'
 
 const props = defineProps({
   rentalData: { type: Object, required: true },
   currentUserId: { type: Number, required: true }
 })
 
-const el = ref(null)
-const y = useScroll(el)
+const currentPage = ref(0)
+
+const equipmentList = computed(() => props.rentalData?.equipment || [])
+const currentEquipment = computed(() => equipmentList.value[currentPage.value] || null)
+const hasMultipleEquipment = computed(() => equipmentList.value.length > 1)
+
+watch(equipmentList, (newList) => {
+  if (currentPage.value >= newList.length) {
+    currentPage.value = 0
+  }
+})
+
+function goToPreviousPage() {
+  if (!hasMultipleEquipment.value) return
+  currentPage.value = (currentPage.value - 1 + equipmentList.value.length) % equipmentList.value.length
+}
+
+function goToNextPage() {
+  if (!hasMultipleEquipment.value) return
+  currentPage.value = (currentPage.value + 1) % equipmentList.value.length
+}
 
 </script>
 
 <template>
   <fwb-card class="!max-w-full">
-    <div ref="el" class="scroll-container p-5 space-y-2">
-      <div v-for="equipment in props.rentalData.equipment" :key="equipment.id" class="space-y-2">
-        <fwb-img alt="flowbite-vue" img-class="rounded-lg" src="../../../image.jpg" />
+    <div class="p-5 space-y-4">
+      <div v-if="currentEquipment" class="space-y-2">
+        <fwb-img :alt="currentEquipment.name" img-class="rounded-lg" :src="currentEquipment.picture || '/image.jpg'" />
 
-        <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-          {{ equipment.name }}
-        </h5>
+        <span class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+          {{ currentEquipment.name }}
+        </span>
 
         <fwb-rating
-          :rating="equipment.averageRating"
-          :review-link="equipment ? `/equipment/${equipment.id}/view` : '#'"
-          :review-text="equipment.numRatingsText"
+          :rating="currentEquipment.averageRating"
+          :review-link="currentEquipment ? `/equipment/${currentEquipment.id}/view` : '#'"
+          :review-text="currentEquipment.numRatingsText"
         >
           <template #besideText>
             <p class="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">
-              {{ equipment.averageRating }} out of 5
+              {{ currentEquipment.averageRating }} out of 5
             </p>
           </template>
         </fwb-rating>
 
-        <fwb-badge v-if="equipment.condition === 'Mint'" class="inline-block" size="sm" type="default"> {{ equipment.condition }} Condition </fwb-badge>
-        <fwb-badge v-else-if="equipment.condition === 'Above Average'" class="inline-block" size="sm" type="green"> {{ equipment.condition }} Condition </fwb-badge>
-        <fwb-badge v-else-if="equipment.condition === 'Average'" class="inline-block" size="sm" type="yellow"> {{ equipment.condition }} Condition </fwb-badge>
-        <fwb-badge v-else class="inline-block" size="sm" type="red"> {{ equipment.condition }} Condition </fwb-badge>
+        <fwb-badge v-if="currentEquipment.condition === 'Mint'" class="inline-block" size="sm" type="default"> {{ currentEquipment.condition }} Condition </fwb-badge>
+        <fwb-badge v-else-if="currentEquipment.condition === 'Above Average'" class="inline-block" size="sm" type="green"> {{ currentEquipment.condition }} Condition </fwb-badge>
+        <fwb-badge v-else-if="currentEquipment.condition === 'Average'" class="inline-block" size="sm" type="yellow"> {{ currentEquipment.condition }} Condition </fwb-badge>
+        <fwb-badge v-else class="inline-block" size="sm" type="red"> {{ currentEquipment.condition }} Condition </fwb-badge>
 
         <fwb-list-group class="w-auto">
           <fwb-list-group-item class="!flex !flex-col !items-start">
             <b class="mr-1">Description:</b>
-            <span>{{ equipment.description || 'No description provided.' }}</span>
+            <span>{{ currentEquipment.description || 'No description provided.' }}</span>
           </fwb-list-group-item>
         </fwb-list-group>
-        <hr class="h-px my-8 bg-gray-200 border-0 dark:bg-gray-700" />
       </div>
+
+      <div v-if="currentEquipment && hasMultipleEquipment" class="flex items-center justify-center gap-3 pt-2">
+        <button
+          type="button"
+          class="h-8 w-8 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          aria-label="Previous equipment"
+          @click="goToPreviousPage"
+        >
+          &#8592;
+        </button>
+
+        <button
+          v-for="(item, idx) in equipmentList"
+          :key="item.id"
+          type="button"
+          class="h-4 w-4 rounded-full transition-colors"
+          :class="idx === currentPage ? 'bg-blue-600' : 'bg-gray-300 hover:bg-gray-400'"
+          :aria-label="`Go to equipment ${idx + 1}`"
+          @click="currentPage = idx"
+        />
+
+        <button
+          type="button"
+          class="h-8 w-8 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          aria-label="Next equipment"
+          @click="goToNextPage"
+        >
+          &#8594;
+        </button>
+      </div>
+
+      <p v-else class="text-sm text-gray-500">No equipment attached to this rental.</p>
     </div>
   </fwb-card>
 </template>
 
 <style scoped>
-
-.scroll-container {
-  overflow-y: auto;
-  height: 596px;
-}
-
 </style>

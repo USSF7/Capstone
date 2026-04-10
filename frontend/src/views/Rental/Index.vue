@@ -3,28 +3,13 @@
 
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { FwbCard, FwbProgress, FwbImg, FwbTab, FwbTabs, FwbSpinner } from 'flowbite-vue'
+import { FwbTab, FwbTabs, FwbSpinner } from 'flowbite-vue'
 import RentalService from '../../services/rentalService'
 import AuthService from '../../services/authService'
-
-const months = [
-    "January", 
-    "February", 
-    "March", 
-    "April", 
-    "May", 
-    "June", 
-    "July", 
-    "August", 
-    "September", 
-    "October", 
-    "November", 
-    "December"
-]
+import RentalSummaryCard from './components/RentalSummaryCard.vue'
 
 const mapStatusToPercent = new Map([
     ["requesting", 10.0],
-    ["accepted", 40.0],
     ["active", 70.0],
     ["returned", 100.0],
     ["disputed", 90.0],
@@ -32,33 +17,11 @@ const mapStatusToPercent = new Map([
     ["cancelled", 100.0]
 ])
 
-const mapStatusToText = new Map([
-    ["requesting", "You have requested the rental"],
-    ["accepted", "Vendor has accepted the rental"],
-    ["active", "Rental is active"],
-    ["returned", "Rental has been completed"],
-    ["disputed", "Rental is being disputed"],
-    ["denied", "Vendor has denied the rental"],
-    ["cancelled", "Renter canceled the rental request"]
-])
-
 const router = useRouter()
 const userData = ref()
-const userRentalsData = ref()
-const vendorOpenRequestsData = ref([])
-const activeTab = ref('active rentals')
+const userRentalsData = ref([])
+const activeTab = ref('requested rentals')
 const userDataLoaded = ref(false)
-
-function dateFormatting(isoDate) {
-    const date = new Date(isoDate)
-    let day = date.getDate()
-    let month = date.getMonth()
-    let year = date.getFullYear()
-    let hour = String(date.getHours()).padStart(2, '0')
-    let minute = String(date.getMinutes()).padStart(2, '0')
-
-    return months[month] + " " + day.toString() + ", " + year.toString() + " " + hour + ":" + minute
-}
 
 async function filterOutDeletedRentals() {
     userRentalsData.value = userRentalsData.value.filter(rental => rental.deleted == false)
@@ -66,10 +29,6 @@ async function filterOutDeletedRentals() {
 
 async function sortRentalsByStartDateDescending() {
     userRentalsData.value.sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
-}
-
-async function sortVendorRequestsByStartDateDescending() {
-    vendorOpenRequestsData.value.sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
 }
 
 async function loadUserRentalsData() {
@@ -96,14 +55,6 @@ async function loadUserRentalsData() {
         await filterOutDeletedRentals()
         await sortRentalsByStartDateDescending()
 
-        if (userData.value.vendor) {
-            vendorOpenRequestsData.value = userRentalsData.value.filter(
-                (rental) => rental.vendor_id === userData.value.id && rental.status === 'requesting'
-            )
-            await sortVendorRequestsByStartDateDescending()
-            activeTab.value = 'open vendor requests'
-        }
-
         // Displaying the page to the user
         userDataLoaded.value = true
     }
@@ -115,17 +66,33 @@ async function loadUserRentalsData() {
     }
 }
 
-const filterActiveRentals = computed(() => {
-    return userRentalsData.value.filter(rental => (rental.status !== 'disputed') && (rental.status !== 'denied') && (rental.status !== 'returned'))
+const requestedRentals = computed(() => {
+    return userRentalsData.value.filter((rental) => rental.status === 'requesting')
 })
 
-const filterCompletedRentals = computed(() => {
-    return userRentalsData.value.filter(rental => rental.status === 'returned')
+const upcomingRentals = computed(() => {
+    const now = new Date()
+    return userRentalsData.value.filter((rental) => {
+        if (rental.status !== 'active') return false
+        return new Date(rental.start_date) > now
+    })
 })
 
-const filterRejectedDisputedRentals = computed(() => {
+const onLoanRentals = computed(() => {
+    const now = new Date()
+    return userRentalsData.value.filter((rental) => {
+        if (rental.status !== 'active') return false
+        return new Date(rental.start_date) <= now
+    })
+})
+
+const completedRentals = computed(() => {
+    return userRentalsData.value.filter((rental) => rental.status === 'returned')
+})
+
+const disputedRentals = computed(() => {
     return userRentalsData.value.filter(
-        rental => (rental.status === 'disputed') || (rental.status === 'denied') || (rental.status === 'cancelled')
+        (rental) => rental.status === 'disputed' || rental.status === 'denied' || rental.status === 'cancelled'
     )
 })
 
@@ -142,112 +109,71 @@ onMounted(async () => {
     <div v-else>
         <h1 class="text-3xl font-bold text-gray-800 mb-6">My Rentals</h1>
         <fwb-tabs v-model="activeTab" class="p-5">
-            <fwb-tab
-                v-if="userData.vendor"
-                name="open vendor requests"
-                :title="`Open Requests (${vendorOpenRequestsData.length})`"
-            >
+            <fwb-tab name="requested rentals" :title="`Requests (${requestedRentals.length})`">
                 <div class="space-y-4">
-                    <fwb-card
-                        v-for="rental in vendorOpenRequestsData"
+                    <rental-summary-card
+                        v-for="rental in requestedRentals"
                         :key="rental.id"
-                        class="!max-w-full cursor-pointer hover:shadow-lg transition-shadow"
-                        @click="router.push({ name: 'rental_view', params:{ id: rental.id } })"
-                    >
-                        <div class="flex flex-col p-5 gap-4">
-                            <div class="flex gap-4">
-                                <fwb-img
-                                    alt="flowbite-vue"
-                                    img-class="w-48 rounded-lg"
-                                    src="../../../image.jpg"
-                                />
-                                <div class="flex flex-col space-y-2">
-                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment?.length ? rental.equipment.map(e => e.name).join(', ') : 'Equipment request' }}</h5>
-                                    <p class="font-normal text-gray-700 dark:text-gray-400"><b>Offered Price:</b> ${{ rental.agreed_price }}</p>
-                                    <p class="font-normal text-gray-700 dark:text-gray-400"><b>Dates:</b> {{ dateFormatting(rental.start_date) }} through {{ dateFormatting(rental.end_date) }}</p>
-                                </div>
-                            </div>
-                            <fwb-progress class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rental.status)" size="md" label="Awaiting your approval" />
-                        </div>
-                    </fwb-card>
+                        :rental="rental"
+                        price-label="Offered Price"
+                        :progress="mapStatusToPercent.get(rental.status)"
+                        :progress-label="rental.status_text"
+                        @select="router.push({ name: 'rental_view', params:{ id: rental.id } })"
+                    />
                 </div>
             </fwb-tab>
-            <fwb-tab name="active rentals" title="Active Rentals">
+            <fwb-tab name="upcoming rentals" :title="`Upcoming (${upcomingRentals.length})`">
                 <div class="space-y-4">
-                    <fwb-card
-                        v-for="rental in filterActiveRentals"
+                    <rental-summary-card
+                        v-for="rental in upcomingRentals"
                         :key="rental.id"
-                        class="!max-w-full cursor-pointer hover:shadow-lg transition-shadow"
-                        @click="router.push({ name: 'rental_view', params:{ id: rental.id } })"
-                    >
-                        <div class="flex flex-col p-5 gap-4">
-                            <div class="flex gap-4">
-                                <fwb-img
-                                    alt="flowbite-vue"
-                                    img-class="w-48 rounded-lg"
-                                    src="../../../image.jpg"
-                                />
-                                <div class="flex flex-col space-y-2">
-                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment?.length ? rental.equipment.map(e => e.name).join(', ') : 'Equipment request' }}</h5>
-                                    <p class="font-normal text-gray-700 dark:text-gray-400"><b>Price:</b> ${{ rental.agreed_price }}</p>
-                                    <p class="font-normal text-gray-700 dark:text-gray-400"><b>Dates:</b> {{ dateFormatting(rental.start_date) }} through {{ dateFormatting(rental.end_date) }}</p>
-                                </div>
-                            </div>
-                            <fwb-progress class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rental.status)" size="md" :label=mapStatusToText.get(rental.status) />
-                        </div>
-                    </fwb-card>
+                        :rental="rental"
+                        price-label="Agreed Price"
+                        :progress="mapStatusToPercent.get(rental.status)"
+                        :progress-label="rental.status_text"
+                        @select="router.push({ name: 'rental_view', params:{ id: rental.id } })"
+                    />
                 </div>
             </fwb-tab>
-            <fwb-tab name="completed rentals" title="Completed Rentals">
+            <fwb-tab name="on-loan rentals" :title="`On Loan (${onLoanRentals.length})`">
                 <div class="space-y-4">
-                    <fwb-card
-                        v-for="rental in filterCompletedRentals"
+                    <rental-summary-card
+                        v-for="rental in onLoanRentals"
                         :key="rental.id"
-                        class="!max-w-full cursor-pointer hover:shadow-lg transition-shadow"
-                        @click="router.push({ name: 'rental_view', params:{ id: rental.id } })"
-                    >
-                        <div class="flex flex-col p-5 gap-4">
-                            <div class="flex gap-4">
-                                <fwb-img
-                                    alt="flowbite-vue"
-                                    img-class="w-48 rounded-lg"
-                                    src="../../../image.jpg"
-                                />
-                                <div class="flex flex-col space-y-2">
-                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment?.length ? rental.equipment.map(e => e.name).join(', ') : 'Equipment request' }}</h5>
-                                    <p class="font-normal text-gray-700 dark:text-gray-400"><b>Price:</b> ${{ rental.agreed_price }}</p>
-                                    <p class="font-normal text-gray-700 dark:text-gray-400"><b>Dates:</b> {{ dateFormatting(rental.start_date) }} through {{ dateFormatting(rental.end_date) }}</p>
-                                </div>
-                            </div>
-                            <fwb-progress class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rental.status)" size="md" color="green" :label=mapStatusToText.get(rental.status) />
-                        </div>
-                    </fwb-card>
+                        :rental="rental"
+                        price-label="Agreed Price"
+                        :progress="mapStatusToPercent.get(rental.status)"
+                        :progress-label="rental.status_text"
+                        @select="router.push({ name: 'rental_view', params:{ id: rental.id } })"
+                    />
                 </div>
             </fwb-tab>
-            <fwb-tab name="rejected and disputed rentals" title="Rejected / Disputed Rentals">
+            <fwb-tab name="completed rentals" :title="`Completed (${completedRentals.length})`">
                 <div class="space-y-4">
-                    <fwb-card
-                        v-for="rental in filterRejectedDisputedRentals"
+                    <rental-summary-card
+                        v-for="rental in completedRentals"
                         :key="rental.id"
-                        class="!max-w-full cursor-pointer hover:shadow-lg transition-shadow"
-                        @click="router.push({ name: 'rental_view', params:{ id: rental.id } })"
-                    >
-                        <div class="flex flex-col p-5 gap-4">
-                            <div class="flex gap-4">
-                                <fwb-img
-                                    alt="flowbite-vue"
-                                    img-class="w-48 rounded-lg"
-                                    src="../../../image.jpg"
-                                />
-                                <div class="flex flex-col space-y-2">
-                                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ rental.equipment?.length ? rental.equipment.map(e => e.name).join(', ') : 'Equipment request' }}</h5>
-                                    <p class="font-normal text-gray-700 dark:text-gray-400"><b>Price:</b> ${{ rental.agreed_price }}</p>
-                                    <p class="font-normal text-gray-700 dark:text-gray-400"><b>Dates:</b> {{ dateFormatting(rental.start_date) }} through {{ dateFormatting(rental.end_date) }}</p>
-                                </div>
-                            </div>
-                            <fwb-progress class="font-normal text-gray-700 dark:text-gray-400" :progress="mapStatusToPercent.get(rental.status)" size="md" color="red" :label=mapStatusToText.get(rental.status) />
-                        </div>
-                    </fwb-card>
+                        :rental="rental"
+                        price-label="Finalized Price"
+                        :progress="mapStatusToPercent.get(rental.status)"
+                        progress-color="green"
+                        :progress-label="rental.status_text"
+                        @select="router.push({ name: 'rental_view', params:{ id: rental.id } })"
+                    />
+                </div>
+            </fwb-tab>
+            <fwb-tab name="disputed rentals" :title="`Disputed (${disputedRentals.length})`">
+                <div class="space-y-4">
+                    <rental-summary-card
+                        v-for="rental in disputedRentals"
+                        :key="rental.id"
+                        :rental="rental"
+                        price-label="Finalized Price"
+                        :progress="mapStatusToPercent.get(rental.status)"
+                        progress-color="red"
+                        :progress-label="rental.status_text"
+                        @select="router.push({ name: 'rental_view', params:{ id: rental.id } })"
+                    />
                 </div>
             </fwb-tab>
         </fwb-tabs>

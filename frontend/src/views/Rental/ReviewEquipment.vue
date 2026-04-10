@@ -60,7 +60,7 @@ export default {
 <template>
     <div class="overlay" @click.self="$emit('close')">
         <div class="card space-y-3">
-            <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Review on {{ equipmentName }}</h5>
+            <span class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Review on {{ equipmentName }}</span>
             <fwb-img
                 alt="flowbite-vue"
                 img-class="rounded-lg w-64 mx-auto"

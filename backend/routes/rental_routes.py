@@ -40,34 +40,48 @@ def get_rental_with_equipment(rental_id):
         rental = RentalService.get_rental_with_equipment(rental_id)
         if not rental:
             return jsonify({'error': 'Rental not found'}), 404
+        # Add status_text to the response
+        rental['status_text'] = rental_record._get_status_text(current_user_id)
         return jsonify(rental), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @rental_bp.route('/renter/<int:renter_id>', methods=['GET'])
+@jwt_required()
 def get_rentals_by_renter(renter_id):
     """Get all rentals by a renter"""
     try:
+        current_user_id = int(get_jwt_identity())
         rentals = RentalService.get_rentals_by_renter(renter_id)
-        return jsonify([r.to_dict() for r in rentals]), 200
+        return jsonify([r.to_dict(viewer_id=current_user_id) for r in rentals]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
 @rental_bp.route('/renter_equipment/<int:renter_id>', methods=['GET'])
+@jwt_required()
 def get_rentals_with_equipment_by_renter(renter_id):
     """Get all rentals with equipment by a renter"""
     try:
+        current_user_id = int(get_jwt_identity())
         rentals = RentalService.get_rentals_by_renter_with_equipment(renter_id)
+        # Add status_text to each rental in the response
+        for rental_dict in rentals:
+            rental_id = rental_dict.get('id')
+            rental_obj = RentalService.get_rental(rental_id)
+            if rental_obj:
+                rental_dict['status_text'] = rental_obj._get_status_text(current_user_id)
         return jsonify(rentals), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @rental_bp.route('/vendor/<int:vendor_id>', methods=['GET'])
+@jwt_required()
 def get_rentals_by_vendor(vendor_id):
     """Get all rentals offered by a vendor"""
     try:
+        current_user_id = int(get_jwt_identity())
         rentals = RentalService.get_rentals_by_vendor(vendor_id)
-        return jsonify([r.to_dict() for r in rentals]), 200
+        return jsonify([r.to_dict(viewer_id=current_user_id) for r in rentals]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -81,11 +95,13 @@ def get_rentals_by_status(status):
         return jsonify({'error': str(e)}), 500
     
 @rental_bp.route('/vendor/<int:vendor_id>/status/<status>', methods=['GET'])
+@jwt_required()
 def get_rentals_by_vendor_and_status(vendor_id, status):
     """Get all rentals offered by a vendor with a specific status"""
     try:
+        current_user_id = int(get_jwt_identity())
         rentals = RentalService.get_rentals_by_vendor_and_status(vendor_id, status)
-        return jsonify([r.to_dict() for r in rentals]), 200
+        return jsonify([r.to_dict(viewer_id=current_user_id) for r in rentals]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

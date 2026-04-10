@@ -1,11 +1,12 @@
 <!-- View a specific users profile details -->
 <script lang="js" setup>
 
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton, FwbCard, FwbSpinner } from 'flowbite-vue'
 import { PencilIcon, TrashIcon } from '@heroicons/vue/24/solid'
 import UserService from '../../services/userService'
+import EquipmentService from '../../services/equipmentService'
 import reviewService from '../../services/reviewService'
 import authService from '../../services/authService'
 import aiService from '../../services/aiService'
@@ -43,11 +44,10 @@ const showReviewUserModal = ref(false)
 const popUpReviewId = ref(0)
 const popUpReviewRating = ref(0.0)
 const popUpReviewText = ref('')
-
-function dateFormatting(isoDate) {
-    const date = new Date(isoDate)
-    return date.toLocaleDateString()
-}
+const vendorEquipment = ref([])
+const hasVendorEquipment = computed(() => Array.isArray(vendorEquipment.value) && vendorEquipment.value.length > 0)
+const viewedUserIsVendor = computed(() => Boolean(userData.value?.vendor || hasVendorEquipment.value))
+const isViewingAnotherUser = computed(() => Number(userData.value?.id) !== Number(viewingUserData.value?.id))
 
 function reviewDateFormatting(isoDate) {
     const date = new Date(isoDate)
@@ -56,6 +56,11 @@ function reviewDateFormatting(isoDate) {
     let year = date.getFullYear()
 
     return months[month] + " " + day.toString() + ", " + year.toString()
+}
+
+function dateFormatting(isoDate) {
+    const date = new Date(isoDate)
+    return date.toLocaleDateString()
 }
 
 function computeAge(dateOfBirth) {
@@ -90,6 +95,10 @@ function displayUserSiteStatus() {
 
 function editAccount() {
     router.push({ name: 'edit_profile' })
+}
+
+function createEquipmentRequest() {
+    router.push({ name: 'rental_create', query: { vendorId: userData.value.id } })
 }
 
 async function deleteReview(reviewId) {
@@ -205,7 +214,14 @@ async function loadUserData() {
 
         viewingUserData.value = viewerData
         userData.value = targetUserData
-        userReviews.value = await reviewService.getReviewsForModel("user", userData.value.id)
+        const targetUserId = Number(userID.value)
+        const [reviews, vendorEquipmentData] = await Promise.all([
+            reviewService.getReviewsForModel("user", userData.value.id),
+            EquipmentService.getEquipmentByOwner(targetUserId),
+        ])
+
+        userReviews.value = reviews
+        vendorEquipment.value = Array.isArray(vendorEquipmentData) ? vendorEquipmentData : []
         await sortUserReviewsDescending()
         await computeReviewData()
 
@@ -252,13 +268,11 @@ watch(() => route.params.id, async (newId) => {
                 :reviewText="popUpReviewText"
                 @close="showReviewUserModal = false"
             />
-
-            <!-- ************************************************* -->
-            <!-- Avatar code needs to be updated in a later sprint -->
-            <!-- ************************************************* -->
+            
             <fwb-avatar bordered size="xl" img="" />
 
-            <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ userData.name }}</h1>
+            <h1 class="text-3xl font-bold text-gray-800">{{ userData.name }}</h1>
+            <p class="text-sm text-gray-600">{{ userData.email }}</p>
             <fwb-rating :rating="averageRating" review-link="#ReviewsTitle" :review-text="numRatingsText">
                 <template #besideText>
                     <p class="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -266,15 +280,46 @@ watch(() => route.params.id, async (newId) => {
                     </p>
                 </template>
             </fwb-rating>
-            <div v-if="userData.id != viewingUserData.id">
-                <fwb-list-group class="w-auto">
-                    <fwb-list-group-item><b>Email</b>: {{ userData.email }}</fwb-list-group-item>
-                    <fwb-list-group-item><b>Phone Number</b>: {{ userData.phone }}</fwb-list-group-item>
-                    <fwb-list-group-item><b>State</b>: {{ userData.state }}</fwb-list-group-item>
-                    <fwb-list-group-item><b>Age</b>: {{ computeAge(userData.date_of_birth) }} years</fwb-list-group-item>
-                    <fwb-list-group-item><b>User Type</b>: {{ (userData.vendor == true) ? 'Vendor' : 'Renter' }}</fwb-list-group-item>
-                    <fwb-list-group-item><b>Date Joined</b>: {{ dateFormatting(userData.created_at) }}</fwb-list-group-item>
-                </fwb-list-group>
+            <div v-if="isViewingAnotherUser && viewedUserIsVendor" class="space-y-4">
+                <div class="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">Available Equipment</h2>
+                        <p class="text-sm text-gray-600">{{ vendorEquipment.length }} item{{ vendorEquipment.length === 1 ? '' : 's' }} listed</p>
+                    </div>
+
+                    <ul v-if="hasVendorEquipment" class="space-y-3">
+                        <li
+                            v-for="item in vendorEquipment.slice(0, 6)"
+                            :key="item.id"
+                            class="rounded-md border border-gray-100"
+                        >
+                            <router-link
+                                :to="{ name: 'equipment-view', params: { id: item.id } }"
+                                class="p-3 block rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                            >
+                                <p class="font-medium text-gray-900 underline-offset-2">{{ item.name }}</p>
+                                <p class="text-sm text-gray-600">${{ item.price }}/day • {{ item.condition || 'Condition not set' }}</p>
+                                <fwb-rating size="sm" :rating="item.average_rating || 0" />
+                            </router-link>
+                        </li>
+                    </ul>
+
+                    <p v-else class="text-sm text-gray-500">This vendor has no equipment listed yet.</p>
+
+                    <p v-if="vendorEquipment.length > 6" class="text-xs text-gray-500">
+                        +{{ vendorEquipment.length - 6 }} more item{{ vendorEquipment.length - 6 === 1 ? '' : 's' }}
+                    </p>
+
+                    <fwb-button
+                        v-if="hasVendorEquipment"
+                        class="w-auto"
+                        color="default"
+                        pill
+                        @click="createEquipmentRequest"
+                    >
+                        Request Equipment
+                    </fwb-button>
+                </div>
             </div>
             <div v-else class="space-y-4">
                 <fwb-list-group class="w-auto">
@@ -285,7 +330,6 @@ watch(() => route.params.id, async (newId) => {
                     <fwb-list-group-item><b>State</b>: {{ userData.state }}</fwb-list-group-item>
                     <fwb-list-group-item><b>Zip Code</b>: {{ userData.zip_code }}</fwb-list-group-item>
                     <fwb-list-group-item><b>Age</b>: {{ computeAge(userData.date_of_birth) }} years</fwb-list-group-item>
-                    <fwb-list-group-item><b>User Type</b>: {{ displayUserSiteStatus() }}</fwb-list-group-item>
                     <fwb-list-group-item><b>Date Joined</b>: {{ dateFormatting(userData.created_at) }}</fwb-list-group-item>
                 </fwb-list-group>
                 <fwb-button class="w-24" color="default" pill @click="editAccount">Edit</fwb-button>
@@ -298,7 +342,7 @@ watch(() => route.params.id, async (newId) => {
             <div v-else class="space-y-4">
                 <fwb-card class="!max-w-full border border-gray-200 bg-gray-100/70">
                     <div class="space-y-2 p-5">
-                        <p class="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-400">AI Summary</p>
+                        <p class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-400">AI Summary</p>
                         <p v-if="reviewSummaryLoading" class="font-normal text-gray-700 dark:text-gray-400">Generating summary...</p>
                         <p v-else-if="reviewSummary" class="font-normal text-gray-700 dark:text-gray-400">{{ reviewSummary }}</p>
                         <p v-else class="font-normal text-gray-700 dark:text-gray-400">Summary unavailable right now.</p>

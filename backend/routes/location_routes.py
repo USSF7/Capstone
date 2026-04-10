@@ -71,7 +71,14 @@ def search_equipment_nearby():
         return jsonify({'error': 'lat and lng are required'}), 400
 
     try:
-        results = EquipmentService.search_equipment_nearby(lat, lng, radius, name)
+        current_user_id = int(get_jwt_identity())
+        results = EquipmentService.search_equipment_nearby(
+            lat,
+            lng,
+            radius,
+            name,
+            exclude_owner_id=current_user_id,
+        )
         return jsonify({'results': results}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

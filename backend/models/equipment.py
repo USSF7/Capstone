@@ -1,4 +1,7 @@
 from database import db
+from sqlalchemy import func
+
+from models.review import Review
 
 class Equipment(db.Model):
     __tablename__ = 'equipment'
@@ -16,6 +19,16 @@ class Equipment(db.Model):
     rentals = db.relationship('RentalHasEquipment', backref='equipment')
 
     def to_dict(self):
+        avg_rating, rating_count = (
+            db.session.query(func.avg(Review.rating), func.count(Review.id))
+            .filter(
+                Review.model_type == 'equipment',
+                Review.model_id == self.id,
+                Review.deleted == False,
+            )
+            .first()
+        )
+
         return {
             'id': self.id,
             'owner_id': self.owner_id,
@@ -25,7 +38,9 @@ class Equipment(db.Model):
             'picture': self.picture,
             'condition': self.condition,
             'status': 'available' if not self.rentals else 'rented',
-            'transaction_id': self.rentals[0].rental_id if self.rentals else None
+            'transaction_id': self.rentals[0].rental_id if self.rentals else None,
+            'average_rating': round(float(avg_rating), 1) if avg_rating is not None else None,
+            'rating_count': int(rating_count or 0),
         }
 
     def __repr__(self):

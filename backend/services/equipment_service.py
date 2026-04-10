@@ -110,7 +110,7 @@ class EquipmentService:
         return result
 
     @staticmethod
-    def search_equipment_nearby(lat, lng, radius_miles=25, name_filter=None):
+    def search_equipment_nearby(lat, lng, radius_miles=25, name_filter=None, exclude_owner_id=None):
         """Find equipment whose owner is within radius_miles of (lat, lng).
 
         When name_filter is provided, results include both exact substring
@@ -123,6 +123,9 @@ class EquipmentService:
 
         query = db.session.query(Equipment, User).join(User, Equipment.owner_id == User.id)
         query = query.filter(User.latitude.isnot(None), User.longitude.isnot(None))
+
+        if exclude_owner_id is not None:
+            query = query.filter(Equipment.owner_id != exclude_owner_id)
 
         if name_filter:
             similarity_score = func.similarity(Equipment.name, name_filter)
