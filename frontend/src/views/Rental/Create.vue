@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { FwbButton, FwbInput, FwbSpinner } from 'flowbite-vue'
+import { FwbButton, FwbSpinner } from 'flowbite-vue'
 import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
 import EquipmentService from '../../services/equipmentService'
@@ -26,6 +26,10 @@ const meetingLat = ref(null)
 const meetingLng = ref(null)
 const startDate = ref('')
 const endDate = ref('')
+const startDatePart = ref('')
+const startTimePart = ref('')
+const endDatePart = ref('')
+const endTimePart = ref('')
 
 const loading = ref(true)
 const submitting = ref(false)
@@ -35,6 +39,11 @@ const error = ref('')
 const userId = computed(() => auth.user?.id)
 const minimumLeadTimeHours = 2
 const minimumStartDate = ref('')
+const quarterHourTimes = Array.from({ length: 96 }, (_, index) => {
+	const hours = Math.floor(index / 4)
+	const minutes = (index % 4) * 15
+	return `${pad(hours)}:${pad(minutes)}`
+})
 
 function pad(value) {
 	return String(value).padStart(2, '0')
@@ -43,6 +52,19 @@ function pad(value) {
 function addHours(date, hours) {
 	const result = new Date(date)
 	result.setHours(result.getHours() + hours)
+	return result
+}
+
+function roundUpToNextQuarterHour(date) {
+	const result = new Date(date)
+	result.setSeconds(0, 0)
+	const minutes = result.getMinutes()
+	const remainder = minutes % 15
+
+	if (remainder !== 0) {
+		result.setMinutes(minutes + (15 - remainder))
+	}
+
 	return result
 }
 
@@ -56,14 +78,80 @@ function fromDateTimeLocalValue(value) {
 	return value ? new Date(value) : null
 }
 
+function normalizeDateTimeLocalToQuarterHour(value) {
+	const date = fromDateTimeLocalValue(value)
+	if (!date) return ''
+	return toDateTimeLocalValue(roundUpToNextQuarterHour(date))
+}
+
+function isQuarterHourValue(value) {
+	const date = fromDateTimeLocalValue(value)
+	if (!date) return false
+	return date.getMinutes() % 15 === 0 && date.getSeconds() === 0
+}
+
 function toUtcIsoString(value) {
 	if (!value) return ''
 	return new Date(value).toISOString()
 }
 
+function getDatePart(value) {
+	return value?.split('T')[0] || ''
+}
+
+function getTimePart(value) {
+	return value?.split('T')[1]?.slice(0, 5) || ''
+}
+
+function combineDateTimeLocal(datePart, timePart) {
+	if (!datePart || !timePart) return ''
+	return `${datePart}T${timePart}`
+}
+
+function formatTime12Hour(time24) {
+	if (!time24) return ''
+	const [hourPart, minutePart] = time24.split(':')
+	const hour = Number(hourPart)
+	if (!Number.isFinite(hour)) return time24
+
+	const period = hour >= 12 ? 'PM' : 'AM'
+	const hour12 = hour % 12 === 0 ? 12 : hour % 12
+	return `${hour12}:${minutePart} ${period}`
+}
+
 function parsePositiveInt(value) {
 	const parsed = Number.parseInt(value, 10)
 	return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+const minimumStartDatePart = computed(() => getDatePart(minimumStartDate.value))
+const minimumStartTimePart = computed(() => getTimePart(minimumStartDate.value))
+
+const startTimeOptions = computed(() => {
+	if (!startDatePart.value || startDatePart.value !== minimumStartDatePart.value) {
+		return quarterHourTimes
+	}
+
+	return quarterHourTimes.filter((time) => time >= minimumStartTimePart.value)
+})
+
+const endTimeOptions = computed(() => {
+	if (!endDatePart.value || !startDatePart.value || !startTimePart.value) {
+		return quarterHourTimes
+	}
+
+	if (endDatePart.value !== startDatePart.value) {
+		return quarterHourTimes
+	}
+
+	return quarterHourTimes.filter((time) => time > startTimePart.value)
+})
+
+function syncDatePartsFromValues() {
+	startDatePart.value = getDatePart(startDate.value)
+	startTimePart.value = getTimePart(startDate.value)
+	endDatePart.value = getDatePart(endDate.value)
+	endTimePart.value = getTimePart(endDate.value)
 }
 
 async function loadContext() {
@@ -91,11 +179,12 @@ async function loadContext() {
 
 
 		const today = new Date()
-		const earliestStart = addHours(today, minimumLeadTimeHours + 1)
+		const earliestStart = roundUpToNextQuarterHour(addHours(today, minimumLeadTimeHours + 1))
 		const defaultEnd = addHours(earliestStart, 24)
 		minimumStartDate.value = toDateTimeLocalValue(earliestStart)
 		startDate.value = minimumStartDate.value
 		endDate.value = toDateTimeLocalValue(defaultEnd)
+		syncDatePartsFromValues()
 
 		pickupLocation.value = [auth.user?.street_address, auth.user?.city, auth.user?.state, auth.user?.zip_code]
 			.filter(Boolean)
@@ -139,6 +228,18 @@ async function loadEquipmentAvailability() {
 
 function onDateChange() {
 	error.value = ''
+
+	if (startDatePart.value && !startTimeOptions.value.includes(startTimePart.value)) {
+		startTimePart.value = startTimeOptions.value[0] || ''
+	}
+
+	if (endDatePart.value && !endTimeOptions.value.includes(endTimePart.value)) {
+		endTimePart.value = endTimeOptions.value[0] || ''
+	}
+
+	startDate.value = combineDateTimeLocal(startDatePart.value, startTimePart.value)
+	endDate.value = combineDateTimeLocal(endDatePart.value, endTimePart.value)
+
 	if (startDate.value && endDate.value) {
 		loadEquipmentAvailability()
 	}
@@ -173,6 +274,15 @@ async function submitRequest() {
 
 	if (!startDate.value || !endDate.value) {
 		error.value = 'Start and end dates are required.'
+		return
+	}
+
+	startDate.value = normalizeDateTimeLocalToQuarterHour(startDate.value)
+	endDate.value = normalizeDateTimeLocalToQuarterHour(endDate.value)
+	syncDatePartsFromValues()
+
+	if (!isQuarterHourValue(startDate.value) || !isQuarterHourValue(endDate.value)) {
+		error.value = 'Please select times in 15-minute increments.'
 		return
 	}
 
@@ -253,21 +363,48 @@ onMounted(loadContext)
 
 			<form class="space-y-4" @submit.prevent="submitRequest">
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<fwb-input
-						v-model="startDate"
-						type="datetime-local"
-						label="Start Date and Time"
-						:min="minimumStartDate"
-						required
-						@change="onDateChange"
-					/>
-					<fwb-input
-						v-model="endDate"
-						type="datetime-local"
-						label="End Date and Time"
-						required
-						@change="onDateChange"
-					/>
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">Start Date and Time</label>
+						<div class="grid grid-cols-2 gap-2">
+							<input
+								v-model="startDatePart"
+								type="date"
+								:min="minimumStartDatePart"
+								required
+								class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+								@change="onDateChange"
+							/>
+							<select
+								v-model="startTimePart"
+								required
+								class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+								@change="onDateChange"
+							>
+								<option v-for="time in startTimeOptions" :key="`start-${time}`" :value="time">{{ formatTime12Hour(time) }}</option>
+							</select>
+						</div>
+					</div>
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">End Date and Time</label>
+						<div class="grid grid-cols-2 gap-2">
+							<input
+								v-model="endDatePart"
+								type="date"
+								:min="startDatePart || minimumStartDatePart"
+								required
+								class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+								@change="onDateChange"
+							/>
+							<select
+								v-model="endTimePart"
+								required
+								class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+								@change="onDateChange"
+							>
+								<option v-for="time in endTimeOptions" :key="`end-${time}`" :value="time">{{ formatTime12Hour(time) }}</option>
+							</select>
+						</div>
+					</div>
 				</div>
 
 				<div>

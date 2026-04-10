@@ -6,8 +6,8 @@ from models import Equipment
 from models import RentalHasEquipment
 
 
-VALID_RENTAL_STATUSES = {'requesting', 'accepted', 'active', 'returned', 'disputed', 'denied', 'cancelled'}
-BLOCKING_STATUSES = {'requesting', 'accepted', 'active'}
+VALID_RENTAL_STATUSES = {'requesting', 'active', 'returned', 'disputed', 'denied', 'cancelled'}
+BLOCKING_STATUSES = {'requesting', 'active'}
 
 
 class RentalService:
@@ -328,7 +328,7 @@ class RentalService:
                     raise ValueError("actor_user_id is required when canceling a rental")
                 if actor_user_id != rental.renter_id:
                     raise ValueError("Only the renter can cancel a rental request")
-                if rental.status not in {'requesting', 'accepted'}:
+                if rental.status != 'requesting':
                     raise ValueError("Only pending rental requests can be canceled")
 
             if status == 'returned':
@@ -385,13 +385,13 @@ class RentalService:
             if actor_user_id == rental.vendor_id:
                 rental.vendor_approved = True
 
-            if rental.status in {'requesting', 'accepted', 'active'}:
+            if rental.status in {'requesting', 'active'}:
                 rental.status = 'requesting'
 
         if approve:
             if actor_user_id is None:
                 raise ValueError("actor_user_id is required when approving")
-            if actor_user_id == rental.renter_id:
+            if rental.status in {'requesting', 'active'}:
                 rental.renter_approved = True
             if actor_user_id == rental.vendor_id:
                 rental.vendor_approved = True
@@ -400,7 +400,7 @@ class RentalService:
         if rental.status == 'active' and not (rental.renter_approved and rental.vendor_approved):
             raise ValueError("Both renter and vendor must approve before rental can be active")
 
-        if rental.status in {'requesting', 'accepted', 'active'}:
+        if rental.status in {'requesting', 'active'}:
             if rental.renter_approved and rental.vendor_approved:
                 rental.status = 'active'
             else:

@@ -1,7 +1,7 @@
 <template>
 	<section class="space-y-6">
 		<div class="rounded-2xl bg-gradient-to-r from-sky-700 via-cyan-600 to-emerald-600 p-6 text-white shadow-lg">
-			<p class="text-sm font-semibold uppercase tracking-wider text-cyan-100">My Schedule</p>
+			<h1 class="text-sm font-semibold tracking-wider text-cyan-100">My Schedule</h1>
 		</div>
 
 		<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -30,8 +30,17 @@
 			</div>
 
 			<div class="mt-4 flex flex-wrap items-center gap-3 text-xs">
+				<span class="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-700">
+					<span class="h-2 w-2 rounded-full bg-amber-500"></span> Requesting
+				</span>
 				<span class="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-700">
-					<span class="h-2 w-2 rounded-full bg-emerald-600"></span> Rental
+					<span class="h-2 w-2 rounded-full bg-emerald-600"></span> Active
+				</span>
+				<span class="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 font-medium text-blue-700">
+					<span class="h-2 w-2 rounded-full bg-blue-600"></span> Returned
+				</span>
+				<span class="inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 font-medium text-red-700">
+					<span class="h-2 w-2 rounded-full bg-red-600"></span> Disputed
 				</span>
 			</div>
 		</div>
@@ -64,7 +73,7 @@
 					<div class="mb-2 flex items-center justify-between">
 						<span
 							class="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold"
-							:class="day.isToday ? 'bg-cyan-600 text-white' : day.inCurrentMonth ? 'text-slate-800' : 'text-slate-400'"
+							:class="day.isToday ? 'bg-cyan-800 text-white' : day.inCurrentMonth ? 'text-slate-800' : 'text-slate-600'"
 						>
 							{{ day.date.getDate() }}
 						</span>
@@ -74,14 +83,16 @@
 					</div>
 
 					<div class="space-y-1">
-						<div
+						<router-link
 							v-for="item in day.items.slice(0, 3)"
 							:key="`${day.isoKey}-${item.id}`"
-							class="block truncate rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800"
+							:to="{ name: 'rental_view', params: { id: item.id } }"
+							class="block truncate rounded-md px-2 py-1 text-xs font-medium transition-colors hover:brightness-95"
+							:class="getStatusClasses(item.status)"
 							:title="item.description"
 						>
 							{{ item.title }}
-						</div>
+						</router-link>
 						<div
 							v-if="day.items.length > 3"
 							class="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600"
@@ -128,6 +139,23 @@ function addDays(date, days) {
 	return d
 }
 
+function getStatusClasses(status) {
+	switch (status) {
+		case 'requesting':
+			return 'bg-amber-100 text-amber-800'
+		case 'active':
+			return 'bg-emerald-100 text-emerald-800'
+		case 'returned':
+			return 'bg-blue-100 text-blue-800'
+		case 'disputed':
+		case 'denied':
+		case 'cancelled':
+			return 'bg-red-100 text-red-800'
+		default:
+			return 'bg-slate-100 text-slate-800'
+	}
+}
+
 async function loadCalendarData() {
 	loading.value = true
 	error.value = ''
@@ -157,6 +185,10 @@ const itemsByDate = computed(() => {
 	const map = {}
 
 	for (const rental of rentals.value) {
+		if (rental.status === 'cancelled' || rental.status === 'denied') {
+			continue
+		}
+
 		const start = parseDateString(rental.start_date)
 		const end = parseDateString(rental.end_date)
 
@@ -167,6 +199,7 @@ const itemsByDate = computed(() => {
 			map[key].push({
 				id: rental.id,
 				title: `Rental #${rental.id}`,
+				status: rental.status,
 				description: `Rental #${rental.id} (${rental.status}) at ${rental.location || 'No location'}`
 			})
 		}

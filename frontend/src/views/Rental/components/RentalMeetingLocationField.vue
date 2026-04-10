@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { FwbInput, FwbSpinner } from 'flowbite-vue'
+import authService from '../../../services/authService'
 import rentalService from '../../../services/rentalService'
 import userService from '../../../services/userService'
 import locationService from '../../../services/locationService'
@@ -30,6 +31,7 @@ const error = ref(null)
 const rental = ref(null)
 const renterData = ref(null)
 const vendorData = ref(null)
+const currentUserId = ref(null)
 const suggestions = ref([])
 const midpoint = ref(null)
 const selectedSuggestionId = ref(null)
@@ -75,12 +77,61 @@ const vendorPoint = computed(() => {
 const hasMapContext = computed(() => !!(hasRentalContext.value || (renterPoint.value && vendorPoint.value)))
 
 const hasMeetingLocation = computed(() => selectedLat.value != null && selectedLng.value != null)
+const viewerRole = computed(() => {
+  if (hasRentalContext.value && rental.value && currentUserId.value != null) {
+    if (currentUserId.value === rental.value.renter_id) return 'renter'
+    if (currentUserId.value === rental.value.vendor_id) return 'vendor'
+  }
+
+  // In create-request flow, the current viewer is the renter.
+  if (!hasRentalContext.value) return 'renter'
+  return null
+})
 
 const meetingPoint = computed(() =>
   hasMeetingLocation.value
     ? { lat: selectedLat.value, lng: selectedLng.value }
     : null
 )
+
+function formatAddress(user) {
+  if (!user) return ''
+  return [user.street_address, user.city, user.state, user.zip_code].filter(Boolean).join(', ')
+}
+
+const partySuggestions = computed(() => {
+  const options = []
+
+  if (renterPoint.value) {
+    const label = viewerRole.value === 'renter' ? 'Your Location' : "Renter's Location"
+    options.push({
+      place_id: 'party-renter',
+      source: 'party',
+      role: 'Renter',
+      name: label,
+      address: hasRentalContext.value ? formatAddress(renterData.value) : '',
+      lat: renterPoint.value.lat,
+      lng: renterPoint.value.lng,
+    })
+  }
+
+  if (vendorPoint.value) {
+    const label = viewerRole.value === 'vendor' ? 'Your Location' : "Vendor's Location"
+    options.push({
+      place_id: 'party-vendor',
+      source: 'party',
+      role: 'Vendor',
+      name: label,
+      address: hasRentalContext.value ? formatAddress(vendorData.value) : '',
+      lat: vendorPoint.value.lat,
+      lng: vendorPoint.value.lng,
+    })
+  }
+
+  return options
+})
+
+const allSuggestions = computed(() => [...partySuggestions.value, ...suggestions.value])
 
 const mapCenter = computed(() => {
   if (midpoint.value) return midpoint.value
@@ -97,41 +148,20 @@ const mapCenter = computed(() => {
 const mapMarkers = computed(() => {
   const marks = []
 
-  if (renterPoint.value) {
-    marks.push({
-      id: 'renter',
-      kind: 'party',
-      lat: renterPoint.value.lat,
-      lng: renterPoint.value.lng,
-      title: 'Renter',
-      color: '#2563EB',
-      label: `<strong>Renter</strong><br>${renterPoint.value.name}`,
-    })
-  }
-
-  if (vendorPoint.value) {
-    marks.push({
-      id: 'vendor',
-      kind: 'party',
-      lat: vendorPoint.value.lat,
-      lng: vendorPoint.value.lng,
-      title: 'Vendor',
-      color: '#059669',
-      label: `<strong>Vendor</strong><br>${vendorPoint.value.name}`,
-    })
-  }
-
-  suggestions.value.forEach((place) => {
+  allSuggestions.value.forEach((place) => {
     const selected = selectedSuggestionId.value === place.place_id
+    const defaultColor = place.source === 'party' ? '#2563EB' : '#D97706'
     marks.push({
       id: place.place_id,
       kind: 'suggestion',
       lat: place.lat,
       lng: place.lng,
       title: place.name,
-      color: selected ? '#DC2626' : '#D97706',
+      color: selected ? '#DC2626' : defaultColor,
       selected,
-      label: `<strong>${place.name}</strong><br>${place.address || ''}`,
+      label: place.source === 'party'
+        ? `<strong>${place.name}</strong>${place.address ? `<br>${place.address}` : ''}`
+        : `<strong>${place.name}</strong><br>${place.address || ''}`,
       place,
     })
   })
@@ -191,6 +221,13 @@ watch(selectedLng, (value) => {
 })
 
 async function loadRentalContext() {
+  try {
+    const me = await authService.getMe()
+    currentUserId.value = me?.id ?? null
+  } catch {
+    currentUserId.value = null
+  }
+
   if (!hasRentalContext.value) return
 
   loading.value = true
@@ -323,11 +360,11 @@ watch(
           @marker-click="onMapMarkerClick"
         />
 
-        <div v-if="suggestions.length" class="mt-3">
-          <p class="text-sm font-medium text-gray-700 mb-2">Suggested Places</p>
+        <div v-if="allSuggestions.length" class="mt-3">
+          <p class="text-sm font-medium text-gray-700 mb-2">Suggested Locations</p>
           <div class="flex flex-wrap gap-2">
             <button
-              v-for="place in suggestions"
+              v-for="place in allSuggestions"
               :key="place.place_id"
               type="button"
               class="text-xs px-3 py-1.5 rounded-full border"

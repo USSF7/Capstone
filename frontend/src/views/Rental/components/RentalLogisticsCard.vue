@@ -24,13 +24,13 @@ const isPendingVendorDecision = computed(
   () => isVendorViewer.value && props.rentalData?.status === 'requesting'
 )
 const isAwaitingMyApproval = computed(() => {
-  if (!['requesting', 'accepted'].includes(props.rentalData?.status)) return false
+  if (props.rentalData?.status !== 'requesting') return false
   if (isVendorViewer.value) return !props.rentalData?.vendor_approved
   if (isRenterViewer.value) return !props.rentalData?.renter_approved
   return false
 })
 const isAwaitingCounterpartyApproval = computed(() => {
-  if (!['requesting', 'accepted'].includes(props.rentalData?.status)) return false
+  if (props.rentalData?.status !== 'requesting') return false
   if (isVendorViewer.value) return !!props.rentalData?.vendor_approved && !props.rentalData?.renter_approved
   if (isRenterViewer.value) return !!props.rentalData?.renter_approved && !props.rentalData?.vendor_approved
   return false
@@ -68,13 +68,19 @@ const rentalDurationDays = computed(() => {
 })
 const totalPrice = computed(() => Number(props.rentalData?.agreed_price) || 0)
 const perDayPrice = computed(() => totalPrice.value / rentalDurationDays.value)
+const priceStageLabel = computed(() => {
+  const status = props.rentalData?.status
+
+  if (status === 'requesting') return 'Offered'
+  if (status === 'active') return 'Agreed'
+  return 'Finalized'
+})
 
 const counterpartyLabel = computed(() => (isVendorViewer.value ? 'Renter' : 'Vendor'))
 const counterpartyData = computed(() => (isVendorViewer.value ? props.renterData : props.vendorData))
 
 const mapStatusToPercent = new Map([
   ['requesting', 10.0],
-  ['accepted', 40.0],
   ['active', 70.0],
   ['returned', 100.0],
   ['disputed', 90.0],
@@ -82,22 +88,8 @@ const mapStatusToPercent = new Map([
   ['cancelled', 100.0],
 ])
 
-const mapStatusToText = new Map([
-  ['requesting', 'Details updated; waiting for approvals'],
-  ['accepted', 'Details updated; waiting for approvals'],
-  ['active', 'Rental is active'],
-  ['returned', 'Rental has been completed'],
-  ['disputed', 'Rental is being disputed'],
-  ['denied', 'Vendor has denied the rental'],
-  ['cancelled', 'Renter has canceled the rental request'],
-])
-
 function getStatusPercent(status) {
   return mapStatusToPercent.get(status) || 0
-}
-
-function getStatusText(status) {
-  return mapStatusToText.get(status) || 'Rental status updated'
 }
 
 function formatDateTime(value) {
@@ -184,18 +176,18 @@ function confirmAndMarkReturned() {
 <template>
   <fwb-card class="!max-w-full">
     <div class="p-5 space-y-2">
-      <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Logistics</h5>
+      <span class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Logistics</span>
       <fwb-list-group class="w-auto">
         <fwb-list-group-item class="!flex !flex-col !items-start">
           <b class="mr-1">Dates:</b>
           <span>{{ formatDateTime(rentalData.start_date) }} through {{ formatDateTime(rentalData.end_date) }}</span>
         </fwb-list-group-item>
         <fwb-list-group-item>
-          <b class="mr-1">Total Price:</b>
+          <b class="mr-1">{{ priceStageLabel }} Price:</b>
           {{ formatCurrency(totalPrice) }}
         </fwb-list-group-item>
         <fwb-list-group-item>
-          <b class="mr-1">Price Per Day:</b>
+          <b class="mr-1">{{ priceStageLabel }} Price Per Day:</b>
           {{ formatCurrency(perDayPrice) }}
           <span class="ml-1 text-xs text-gray-500">({{ rentalDurationDays }} day{{ rentalDurationDays === 1 ? '' : 's' }})</span>
         </fwb-list-group-item>
@@ -221,7 +213,7 @@ function confirmAndMarkReturned() {
         :progress="getStatusPercent(rentalData.status)"
         size="md"
         color="red"
-        :label="getStatusText(rentalData.status)"
+        :label="rentalData.status_text || 'Rental status updated'"
       />
       <fwb-progress
         v-else-if="isReturned"
@@ -229,14 +221,14 @@ function confirmAndMarkReturned() {
         :progress="getStatusPercent(rentalData.status)"
         size="md"
         color="green"
-        :label="getStatusText(rentalData.status)"
+        :label="rentalData.status_text || 'Rental status updated'"
       />
       <fwb-progress
         v-else
         class="font-normal text-gray-700 dark:text-gray-400"
         :progress="getStatusPercent(rentalData.status)"
         size="md"
-        :label="getStatusText(rentalData.status)"
+        :label="rentalData.status_text || 'Rental status updated'"
       />
 
       <div v-if="isReturned" class="flex space-x-3 mt-4">

@@ -199,7 +199,7 @@ const chartOptions = {
         <div v-else>
             <div class="space-y-4">
                 <h1 class="text-3xl font-bold text-gray-800 mb-6">My Earnings</h1>
-                <Line :data="chartData" :options="chartOptions" :height="100" />
+                <Line :data="chartData" :options="chartOptions" :height="100" aria-label="Line chart showing monthly rental earnings over the last 12 months in US dollars."/>
                 <div class="grid grid-cols-2 gap-4">
                     <fwb-list-group class="w-full">
                         <fwb-list-group-item><b>Total Earnings</b>: ${{ computeTotalEarnings().toFixed(2) }}</fwb-list-group-item>

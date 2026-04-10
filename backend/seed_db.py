@@ -11,6 +11,8 @@ so spatial queries work without geocoding API calls.
 
 import sys
 from datetime import datetime, timedelta, date
+from html import escape
+from pathlib import Path
 from app import create_app, db
 from models import User, Equipment, Review, Message, Rental, RentalHasEquipment
 
@@ -375,7 +377,7 @@ REVIEWS = [
 
 # ---------------------------------------------------------------------------
 # Rentals — 50 rentals
-# returned 40%, active 20%, accepted 15%, requesting 15%, denied 5%, disputed 5%
+# returned 40%, active 35%, requesting 15%, denied 5%, disputed 5%
 # (renter_idx, vendor_idx, equip_idx, price, start_days_ago, duration, status)
 # ---------------------------------------------------------------------------
 RENTALS = [
@@ -400,7 +402,7 @@ RENTALS = [
     (5,  22, 40, 10.00,  28, 1, 'returned'),
     (6,  1,  2,   8.00,  25, 2, 'returned'),
     (15, 10, 35, 25.00,  22, 4, 'returned'),
-    # Active (10)
+    # Active (17)
     (16, 3,  13,  5.00,   3, 5, 'active'),
     (19, 5,  4,  12.00,   2, 4, 'active'),
     (2,  7,  25,  2.00,   1, 3, 'active'),
@@ -411,14 +413,6 @@ RENTALS = [
     (18, 14, 37, 25.00,   2, 6, 'active'),
     (15, 11, 39,  5.00,   1, 2, 'active'),
     (7,  1,  6,   3.00,   2, 3, 'active'),
-    # Accepted (7)
-    (16, 22, 34,  5.00,  -2, 3, 'accepted'),
-    (3,  1,  5,   5.00,  -3, 2, 'accepted'),
-    (5,  4,  10,  3.00,  -1, 1, 'accepted'),
-    (19, 21, 23,  5.00,  -4, 3, 'accepted'),
-    (9,  13, 29, 15.00,  -2, 5, 'accepted'),
-    (11, 5,  15,  8.00,  -1, 2, 'accepted'),
-    (17, 7,  19,  3.00,  -3, 4, 'accepted'),
     # Requesting (8)
     (18, 3,  11,  8.00,  -5, 2, 'requesting'),
     (16, 9,  26,  5.00,  -4, 3, 'requesting'),
@@ -525,6 +519,104 @@ MEETUP_LOCATIONS = [
 # Seeding functions
 # ===========================================================================
 
+def equipment_filename(name):
+        """Create deterministic image filename slug for an equipment name."""
+        return (name.lower()
+            .replace(' ', '_')
+            .replace('(', '')
+            .replace(')', '')
+            .replace('/', '_')
+            .replace(',', ''))
+
+
+def equipment_emoji(name):
+    """Return a best-effort emoji that matches the equipment name."""
+    label = name.lower()
+
+    if 'pickleball' in label or 'tennis' in label or 'badminton' in label:
+        return '🎾'
+    if 'golf' in label:
+        return '⛳'
+    if 'basketball' in label:
+        return '🏀'
+    if 'football' in label:
+        return '🏈'
+    if 'soccer' in label:
+        return '⚽'
+    if 'volleyball' in label:
+        return '🏐'
+    if 'frisbee' in label or 'disc' in label:
+        return '🥏'
+    if 'kayak' in label:
+        return '🛶'
+    if 'bike' in label:
+        return '🚲'
+    if 'ski' in label or 'snowboard' in label or 'skate' in label:
+        return '⛷️'
+    if 'yoga' in label:
+        return '🧘'
+    if 'climbing' in label:
+        return '🧗'
+    if 'boxing' in label or 'gloves' in label:
+        return '🥊'
+    if 'cornhole' in label:
+        return '🎯'
+    if 'spikeball' in label:
+        return '🏐'
+
+    return '🎒'
+
+
+def seed_equipment_images_if_missing():
+    """Create SVG placeholder images for catalog items if files do not exist."""
+    backend_dir = Path(__file__).resolve().parent
+    candidate_dirs = [
+        Path('/frontend/public/images/equipment'),
+        backend_dir.parent / 'frontend' / 'public' / 'images' / 'equipment',
+    ]
+
+    images_dir = None
+    for candidate in candidate_dirs:
+        if candidate.parent.exists() or str(candidate).startswith('/frontend'):
+            images_dir = candidate
+            break
+
+    if images_dir is None:
+        raise RuntimeError(
+            "Could not resolve frontend image directory. "
+            "Expected /frontend/public/images/equipment or ../frontend/public/images/equipment"
+        )
+
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    created_count = 0
+    for name, _price, _desc in EQUIPMENT_CATALOG:
+        filename = equipment_filename(name)
+        image_path = images_dir / f"{filename}.svg"
+
+        if image_path.exists():
+            continue
+
+        label = escape(name)
+        emoji = equipment_emoji(name)
+        svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450" role="img" aria-label="{label}">
+            <defs>
+                <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#dbeafe"/>
+                <stop offset="100%" stop-color="#bfdbfe"/>
+                </linearGradient>
+            </defs>
+            <rect width="800" height="450" fill="url(#bg)"/>
+                <rect x="30" y="30" width="740" height="390" rx="20" fill="#ffffff" fill-opacity="0.8"/>
+                <text x="400" y="250" text-anchor="middle" font-size="180" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif">{emoji}</text>
+            </svg> '''
+        image_path.write_text(svg, encoding='utf-8')
+        created_count += 1
+
+    print(f"✓ Ensured equipment images at {images_dir} ({created_count} created, {len(EQUIPMENT_CATALOG) - created_count} existing)")
+
+
+
 def seed_users():
     """Create all users with hardcoded lat/lng."""
     print("Creating users...")
@@ -559,12 +651,13 @@ def seed_equipment(users):
     conditions = ["Mint", "Above Average", "Average", "Below Average"]
     for i, (name, price, desc) in enumerate(EQUIPMENT_CATALOG):
         owner_idx = EQUIPMENT_OWNER_MAP[i]
+        filename = equipment_filename(name)
         eq = Equipment(
             owner_id=users[owner_idx].id,
             name=name,
             price=price,
             description=desc,
-            picture=f"/images/equipment/{name.lower().replace(' ', '_').replace('(', '').replace(')', '')}.jpg",
+            picture=f"/images/equipment/{filename}.svg",
             condition=conditions[i % len(conditions)],
         )
         db.session.add(eq)
@@ -613,6 +706,11 @@ def seed_rentals(users, equipment_list):
         end_date = start_date + timedelta(days=duration)
         location = MEETUP_LOCATIONS[i % len(MEETUP_LOCATIONS)]
 
+        # Set approvals based on status.
+        # Only active/returned/disputed rentals should have both approvals.
+        renter_approved = status in ('active', 'returned', 'disputed')
+        vendor_approved = status in ('active', 'returned', 'disputed')
+
         rental = Rental(
             renter_id=users[renter_idx].id,
             vendor_id=users[vendor_idx].id,
@@ -622,6 +720,8 @@ def seed_rentals(users, equipment_list):
             end_date=end_date,
             status=status,
             deleted=False,
+            renter_approved=renter_approved,
+            vendor_approved=vendor_approved,
         )
         db.session.add(rental)
         rentals.append(rental)
@@ -675,6 +775,7 @@ def seed_db():
             print("Starting database seeding (survey-derived data)...")
             print("=" * 50 + "\n")
 
+            seed_equipment_images_if_missing()
             users = seed_users()
             equipment_list = seed_equipment(users)
             seed_reviews(users, equipment_list)

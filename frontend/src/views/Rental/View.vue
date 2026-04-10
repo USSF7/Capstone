@@ -328,7 +328,7 @@ onUnmounted(() => {
 
                 <fwb-card class="!max-w-full">
                     <div class="p-5 space-y-2">
-                        <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Meeting Location</h5>
+                        <span class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Meeting Location</span>
                         <GoogleMap
                             v-if="mapCenter && mapMarkers.length"
                             :center="mapCenter"

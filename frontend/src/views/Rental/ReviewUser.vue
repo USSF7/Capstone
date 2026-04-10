@@ -69,7 +69,7 @@ export default {
 <template>
     <div class="overlay" @click.self="$emit('close')">
         <div class="card space-y-3">
-            <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Review on {{ userName }}</h5>
+            <span class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Review on {{ userName }}</span>
             <div class="flex justify-center">
                 <fwb-avatar
                     size="xl"

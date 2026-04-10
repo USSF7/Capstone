@@ -1,14 +1,27 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 
 const auth = useAuthStore()
+const route = useRoute()
+
+const canSwitchHomeDashboards = computed(
+  () => auth.isAuthenticated && auth.profileComplete && auth.user?.vendor && auth.user?.renter
+)
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50 flex flex-col">
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-1/2 focus:top-4 focus:z-50 focus:-translate-x-1/2 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-gray-900 focus:shadow-md"
+    >
+      Skip to main content
+    </a>
+
     <header class="h-16 bg-white border-b border-gray-200 px-6 flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-900">SERA</h1>
+      <span class="text-2xl font-bold text-gray-900">SERA</span>
       <div class="flex items-center gap-3">
         <template v-if="auth.isAuthenticated">
           <span class="text-sm text-gray-700">{{ auth.user?.name }}</span>
@@ -34,7 +47,37 @@ const auth = useAuthStore()
     <div class="flex h-[calc(100vh-7rem)] min-h-0">
       <aside class="w-56 bg-white border-r border-gray-200 p-4 overflow-auto">
         <nav class="space-y-2">
-          <router-link to="/" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">Home</router-link>
+          <div>
+            <router-link
+              to="/"
+              class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700"
+            >
+              Home
+            </router-link>
+
+            <div
+              v-if="canSwitchHomeDashboards && route.name === 'home'"
+              class="mt-1 ml-3 border-l border-gray-200 pl-3 space-y-1"
+            >
+              <span class="sr-only">Home dashboard selector</span>
+              <router-link
+                :to="{ name: 'home', query: { view: 'vendor' } }"
+                class="block px-3 py-2 rounded-md text-sm hover:bg-gray-100 text-gray-600"
+                :class="route.query.view === 'vendor' || !route.query.view ? 'bg-gray-100 text-gray-900 font-medium' : ''"
+                :aria-current="route.query.view === 'vendor' || !route.query.view ? 'page' : undefined"
+              >
+                Vendor Dashboard
+              </router-link>
+              <router-link
+                :to="{ name: 'home', query: { view: 'renter' } }"
+                class="block px-3 py-2 rounded-md text-sm hover:bg-gray-100 text-gray-600"
+                :class="route.query.view === 'renter' ? 'bg-gray-100 text-gray-900 font-medium' : ''"
+                :aria-current="route.query.view === 'renter' ? 'page' : undefined"
+              >
+                Renter Dashboard
+              </router-link>
+            </div>
+          </div>
           <template v-if="auth.isAuthenticated && auth.profileComplete">
             <router-link :to="{ name: 'view_profile', params: { id: auth.user?.id } }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Profile</router-link>
             <router-link v-if="auth.user?.vendor" :to="{ name: 'earnings_profile' }" class="block px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700">My Earnings</router-link>
@@ -46,7 +89,7 @@ const auth = useAuthStore()
         </nav>
       </aside>
 
-      <main class="flex-1 p-6 overflow-auto">
+      <main id="main-content" tabindex="-1" class="flex-1 p-6 overflow-auto focus:outline-none">
         <router-view />
       </main>
     </div>
