@@ -33,9 +33,10 @@ class ApiClient {
   async request(endpoint, options = {}, _retried = false) {
     const url = `${API_BASE_URL}${endpoint}`
     const token = localStorage.getItem('access_token')
+    const isFormData = options.body instanceof FormData
     const config = {
       headers: {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...options.headers,
       },
@@ -90,6 +91,13 @@ class ApiClient {
     })
   }
 
+  postForm(endpoint, formData) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: formData,
+    })
+  }
+
   put(endpoint, data) {
     return this.request(endpoint, {
       method: 'PUT',
@@ -97,8 +105,11 @@ class ApiClient {
     })
   }
 
-  delete(endpoint) {
-    return this.request(endpoint, { method: 'DELETE' })
+  delete(endpoint, data = {}) {
+    return this.request(endpoint, { 
+      method: 'DELETE',
+      body: JSON.stringify(data) 
+    })
   }
 }
 

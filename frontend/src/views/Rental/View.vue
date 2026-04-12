@@ -289,6 +289,7 @@ onUnmounted(() => {
                 v-if="showReviewEquipmentModal && primaryEquipment"
                 :equipmentName="primaryEquipment.name"
                 :equipmentID="primaryEquipment.id"
+                :equipmentPicture="primaryEquipment.picture"
                 :submitterID="userData.id"
                 :rentalID="rentalData.id"
                 @close="showReviewEquipmentModal = false"

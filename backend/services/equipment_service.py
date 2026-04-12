@@ -1,12 +1,19 @@
 import json
+import os
+import uuid
 from datetime import timezone
 from sqlalchemy import func
+from werkzeug.utils import secure_filename
 
 from models import Equipment, Rental, RentalHasEquipment, Review
 from models.user import User
 from database import db
 from pathlib import Path
 
+from flask import current_app, jsonify
+
+EQUIPMENT_PICTURES_FOLDER = 'images/equipment'
+os.makedirs(EQUIPMENT_PICTURES_FOLDER, exist_ok=True)
 
 def load_equipment_names_from_config():
     # .config is mounted in the app directory in Docker
@@ -182,6 +189,35 @@ class EquipmentService:
         
         db.session.commit()
         return equipment
+    
+    @staticmethod
+    def upload_equipment_picture(equipmentPicture):
+        # Getting the picture's filename
+        pictureFilename = secure_filename(equipmentPicture.filename)
+        pictureExtension = os.path.splitext(pictureFilename)[1]
+
+        # Creating a unique filename for the picture
+        uniqueFilename = f"{uuid.uuid4()}{pictureExtension}"
+
+        # Saving the picture file in the backend
+        pictureFilepath = os.path.join(EQUIPMENT_PICTURES_FOLDER, uniqueFilename)
+        equipmentPicture.save(pictureFilepath)
+
+        return pictureFilepath
+    
+    @staticmethod
+    def delete_equipment_picture(filepath):
+        # Creating a directory
+        pictureFilepath = os.path.join(current_app.root_path, filepath)
+
+        # Checking if the picture file exists
+        if os.path.exists(pictureFilepath) == False:
+            return jsonify({'error': 'Picture does not exists in the backend'}), 404
+        
+        # Removing the picture from the backend
+        os.remove(pictureFilepath)
+
+        return jsonify({'message': 'Picture has been removed from the backend'}), 200
 
     @staticmethod
     def delete_equipment(equipment_id):
@@ -190,6 +226,11 @@ class EquipmentService:
         if not equipment:
             raise ValueError("Equipment not found")
         
+        # Delete the equipment picture
+        equipmentPictureFilePath = equipment.picture
+        pictureDeleteResult = EquipmentService.delete_equipment_picture(equipmentPictureFilePath)
+        
+        # Delete the equipment data from the database
         db.session.delete(equipment)
         db.session.commit()
         return True

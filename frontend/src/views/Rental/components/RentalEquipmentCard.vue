@@ -2,6 +2,8 @@
 import { ref, computed, watch } from 'vue'
 import { FwbCard, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbBadge } from 'flowbite-vue'
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
 const props = defineProps({
   rentalData: { type: Object, required: true },
   currentUserId: { type: Number, required: true }
@@ -35,7 +37,10 @@ function goToNextPage() {
   <fwb-card class="!max-w-full">
     <div class="p-5 space-y-4">
       <div v-if="currentEquipment" class="space-y-2">
-        <fwb-img :alt="currentEquipment.name" img-class="rounded-lg" :src="currentEquipment.picture || '/image.jpg'" />
+        <fwb-img v-if="currentEquipment.picture" :alt="currentEquipment.name" img-class="rounded-lg mb-2" :src="`${BACKEND_URL}/${currentEquipment.picture}`" />
+        <div v-else class="w-full h-56 mb-2 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
+          <span class="text-sm text-gray-400">No image available</span>
+        </div>
 
         <span class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
           {{ currentEquipment.name }}

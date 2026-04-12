@@ -26,6 +26,8 @@ const months = [
     "December"
 ]
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
 const route = useRoute()
 const router = useRouter()
 const viewingUserData = ref()
@@ -241,6 +243,7 @@ onMounted(async () => {
                 v-if="showReviewEquipmentModal"
                 :equipmentName="equipmentData.name"
                 :equipmentID="equipmentData.id"
+                :equipmentPicture="equipmentData.picture"
                 :submitterID="viewingUserData.id"
                 :reviewId="popUpReviewId"
                 :reviewRating="popUpReviewRating"
@@ -248,11 +251,15 @@ onMounted(async () => {
                 @close="showReviewEquipmentModal = false"
             />
             <fwb-img
+                v-if="equipmentData.picture"
                 alt="flowbite-vue"
                 size="max-w-md"
-                img-class="rounded-lg"
-                src="../../../image.jpg" 
+                img-class="rounded-lg mb-2"
+                :src="`${BACKEND_URL}/${equipmentData.picture}`" 
             />
+            <div v-else class="h-56 w-[420px] mb-2 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
+                <span class="text-sm text-gray-400">No image available</span>
+            </div>
             <span class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ equipmentData.name }}</span>
             <fwb-rating :rating="averageRating" review-link="#ReviewsTitle" :review-text="numRatingsText">
                 <template #besideText>

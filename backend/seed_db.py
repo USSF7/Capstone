@@ -570,22 +570,7 @@ def equipment_emoji(name):
 def seed_equipment_images_if_missing():
     """Create SVG placeholder images for catalog items if files do not exist."""
     backend_dir = Path(__file__).resolve().parent
-    candidate_dirs = [
-        Path('/frontend/public/images/equipment'),
-        backend_dir.parent / 'frontend' / 'public' / 'images' / 'equipment',
-    ]
-
-    images_dir = None
-    for candidate in candidate_dirs:
-        if candidate.parent.exists() or str(candidate).startswith('/frontend'):
-            images_dir = candidate
-            break
-
-    if images_dir is None:
-        raise RuntimeError(
-            "Could not resolve frontend image directory. "
-            "Expected /frontend/public/images/equipment or ../frontend/public/images/equipment"
-        )
+    images_dir = backend_dir / 'images' / 'equipment'
 
     images_dir.mkdir(parents=True, exist_ok=True)
 
@@ -657,7 +642,7 @@ def seed_equipment(users):
             name=name,
             price=price,
             description=desc,
-            picture=f"/images/equipment/{filename}.svg",
+            picture=f"images/equipment/{filename}.svg",
             condition=conditions[i % len(conditions)],
         )
         db.session.add(eq)

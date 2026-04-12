@@ -14,6 +14,7 @@ export default {
     props: {
         equipmentName: String,
         equipmentID: Number,
+        equipmentPicture: String,
         submitterID: Number,
         rentalID: Number
     },
@@ -21,7 +22,8 @@ export default {
         return {
             rating: 0,
             hover: 0,
-            message: ''
+            message: '',
+            BACKEND_URL: import.meta.env.VITE_BACKEND_URL
         }
     },
     methods: {
@@ -62,10 +64,14 @@ export default {
         <div class="card space-y-3">
             <span class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Review on {{ equipmentName }}</span>
             <fwb-img
+                v-if="equipmentPicture"
                 alt="flowbite-vue"
                 img-class="rounded-lg w-64 mx-auto"
-                src="../../../image.jpg"
+                :src="`${BACKEND_URL}/${equipmentPicture}`"
             />
+            <div v-else class="w-[420px] h-56 mb-2 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
+                <span class="text-sm text-gray-400">No image available</span>
+            </div>
             <div class="flex justify-center space-x-1">
                 <span
                     v-for="star in 5"
