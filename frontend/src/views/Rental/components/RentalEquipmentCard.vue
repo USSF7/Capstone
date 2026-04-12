@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { FwbCard, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbBadge } from 'flowbite-vue'
+import { FwbCard, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbBadge, FwbButton } from 'flowbite-vue'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
@@ -9,11 +9,25 @@ const props = defineProps({
   currentUserId: { type: Number, required: true }
 })
 
+const emit = defineEmits(['open-review-equipment', 'send-current-equipment'])
 const currentPage = ref(0)
 
 const equipmentList = computed(() => props.rentalData?.equipment || [])
 const currentEquipment = computed(() => equipmentList.value[currentPage.value] || null)
 const hasMultipleEquipment = computed(() => equipmentList.value.length > 1)
+
+watch(currentEquipment, (newValue) => {
+  emit('send-current-equipment', newValue)
+})
+
+const isReturned = computed(() => props.rentalData.status === 'returned')
+const isVendorViewer = computed(() => props.currentUserId === props.rentalData?.vendor_id)
+const canReviewEquipment = computed(() => !isVendorViewer.value)
+
+const equipmentAlreadyReviewed = computed(() => {
+  const equipmentReviewed = currentEquipment.value.equipment_reviewed === true
+  return equipmentReviewed
+})
 
 watch(equipmentList, (newList) => {
   if (currentPage.value >= newList.length) {
@@ -69,6 +83,27 @@ function goToNextPage() {
             <span>{{ currentEquipment.description || 'No description provided.' }}</span>
           </fwb-list-group-item>
         </fwb-list-group>
+
+        <div v-if="isReturned" class="flex mt-4">
+          <fwb-button
+            v-if="(canReviewEquipment === true) && (equipmentAlreadyReviewed === false)"
+            color="default"
+            class="flex-1"
+            @click="$emit('open-review-equipment')"
+          >
+            Review Equipment
+          </fwb-button>
+          <fwb-button
+            v-else-if="canReviewEquipment"
+            color="default"
+            class="flex-1"
+            @click="$emit('open-review-equipment')"
+            disabled
+          >
+            Review Equipment
+          </fwb-button>
+        </div>
+
       </div>
 
       <div v-if="currentEquipment && hasMultipleEquipment" class="flex items-center justify-center gap-3 pt-2">

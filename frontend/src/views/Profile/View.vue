@@ -104,11 +104,16 @@ function createEquipmentRequest() {
 }
 
 async function deleteReview(reviewId) {
-    // Deleting the user's review
-    await reviewService.switchDeletedReviewStatus(reviewId, true)
+    // Double checking if the user wants to delete their review
+    const confirmed = confirm("Are you sure you want to delete your review?\n\nWarning: Deleting this review will permanently remove it. You will only be able to submit another review about this user after completing another rental with them.")
+    
+    if (confirmed === true) {
+        // Deleting the user's review
+        await reviewService.switchDeletedReviewStatus(reviewId, true)
 
-    // Reloading user data
-    window.location.reload()
+        // Reloading user data
+        window.location.reload()
+    }
 }
 
 async function editReview(reviewId) {

@@ -32,6 +32,11 @@ const POLL_INTERVAL_MS = 10000
 
 const primaryEquipment = computed(() => rentalData.value?.equipment?.[0] || null)
 
+const currentEquipment = ref()
+const handleStoringCurrentEquipment = (value) => {
+    currentEquipment.value = value
+}
+
 const isVendorViewer = computed(() =>
     !!(userData.value && rentalData.value && userData.value.id === rentalData.value.vendor_id)
 )
@@ -169,6 +174,8 @@ async function loadData() {
 
         // Getting the rental with equipment data
         rentalData.value = await RentalService.getRentalWithEquipment(rentalID.value)
+        console.log(rentalData.value)
+        currentEquipment.value = primaryEquipment.value
 
         // Ensure only renter/vendor can view this page
         const isParticipant = [rentalData.value.renter_id, rentalData.value.vendor_id].includes(userData.value.id)
@@ -286,10 +293,10 @@ onUnmounted(() => {
     <div v-else>
         <div class="space-y-4">
             <review-equipment
-                v-if="showReviewEquipmentModal && primaryEquipment"
-                :equipmentName="primaryEquipment.name"
-                :equipmentID="primaryEquipment.id"
-                :equipmentPicture="primaryEquipment.picture"
+                v-if="showReviewEquipmentModal && currentEquipment"
+                :equipmentName="currentEquipment.name"
+                :equipmentID="currentEquipment.id"
+                :equipmentPicture="currentEquipment.picture"
                 :submitterID="userData.id"
                 :rentalID="rentalData.id"
                 @close="showReviewEquipmentModal = false"
@@ -308,6 +315,8 @@ onUnmounted(() => {
                 <rental-equipment-card
                     :rental-data="rentalData"
                     :current-user-id="userData.id"
+                    @open-review-equipment="showReviewEquipmentModal = true"
+                    @send-current-equipment="handleStoringCurrentEquipment"
                 />
 
                 <rental-messaging-card
@@ -323,7 +332,6 @@ onUnmounted(() => {
                     :currentUserId="userData.id"
                     :vendorData="vendorData"
                     :renterData="renterData"
-                    @open-review-equipment="showReviewEquipmentModal = true"
                     @open-review-user="showReviewUserModal = true"
                     @rental-updated="handleRentalUpdated"
                 />

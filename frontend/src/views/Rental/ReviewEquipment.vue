@@ -36,7 +36,7 @@ export default {
                 await ReviewService.createReview(this.submitterID, "equipment", this.equipmentID, this.rating, this.message)
 
                 // Switching the equipment reviewed status
-                RentalService.switchEquipmentReviewedStatus(this.rentalID, true)
+                await RentalService.switchEquipmentReviewedStatus(this.rentalID, this.equipmentID, true)
 
                 // Closing the popup
                 this.$emit('close')

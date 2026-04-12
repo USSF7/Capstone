@@ -48,11 +48,16 @@ const popUpReviewRating = ref(0.0)
 const popUpReviewText = ref('')
 
 async function deleteReview(reviewId) {
-    // Deleting the user's review
-    await ReviewService.switchDeletedReviewStatus(reviewId, true)
+    // Double checking if the user wants to delete their review
+    const confirmed = confirm("Are you sure you want to delete your review?\n\nWarning: Deleting your review will permanently remove it. You will only be able to submit another review about this equipment if you rent it again.")
 
-    // Reloading user data
-    window.location.reload()
+    if (confirmed === true) {
+        // Deleting the user's review
+        await ReviewService.switchDeletedReviewStatus(reviewId, true)
+
+        // Reloading user data
+        window.location.reload()
+    }
 }
 
 async function editReview(reviewId) {

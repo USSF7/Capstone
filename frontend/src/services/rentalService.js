@@ -85,8 +85,9 @@ class RentalService {
     })
   }
 
-  async switchEquipmentReviewedStatus(rentalId, equipmentReviewedStatus) {
+  async switchEquipmentReviewedStatus(rentalId, equipmentId, equipmentReviewedStatus) {
     return api.put(`/rentals/switch-equipment-review-status/${rentalId}`, {
+      equipment_id: Number(equipmentId),
       equipment_review_status: Boolean(equipmentReviewedStatus)
     })
   }

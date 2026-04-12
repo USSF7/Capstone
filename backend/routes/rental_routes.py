@@ -196,7 +196,7 @@ def switch_equipment_review_status(rental_id):
     """Switch the equipment review status"""
     try:
         data = request.get_json()
-        rental = RentalService.switch_equipment_review_status(rental_id, data.get("equipment_review_status"))
+        rental = RentalService.switch_equipment_review_status(rental_id, data.get("equipment_id"), data.get("equipment_review_status"))
         return jsonify(rental.to_dict()), 200
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
