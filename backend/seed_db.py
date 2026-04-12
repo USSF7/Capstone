@@ -620,6 +620,7 @@ def seed_users():
             renter=u['renter'],
             latitude=u['lat'],
             longitude=u['lng'],
+            picture=''
         )
         user.set_password('password')
         db.session.add(user)

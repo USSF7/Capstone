@@ -92,13 +92,19 @@ async function addSubmitterName() {
         await Promise.all(submitterIds.map(async (submitterId) => {
             if (!submitterNameCache.has(submitterId)) {
                 const userInfo = await UserService.getUser(submitterId)
-                submitterNameCache.set(submitterId, userInfo?.name || 'Unknown user')
+                submitterNameCache.set(submitterId, {
+                    name: userInfo?.name || 'Unknown user',
+                    picture: userInfo?.picture || ''
+                })
             }
         }))
 
         for (let i = 0; i < equipmentReviews.value.length; i++) {
             const submitterId = equipmentReviews.value[i].submitter_id
-            equipmentReviews.value[i].submitter_name = submitterNameCache.get(submitterId) || 'Unknown user'
+            const cached = submitterNameCache.get(submitterId)
+
+            equipmentReviews.value[i].submitter_name = cached?.name || 'Unknown user'
+            equipmentReviews.value[i].picture = cached?.picture || ''
         }
     }
     catch (error) {
@@ -311,7 +317,7 @@ onMounted(async () => {
                     <div class="space-y-3 p-5">
                         <div v-if="review.submitter_id == viewingUserData.id" class="flex items-center justify-between">
                             <div class="flex items-center space-x-4">
-                                <fwb-avatar size="md" img="" rounded />
+                                <fwb-avatar size="md" :img="review.picture ? `${BACKEND_URL}/${review.picture}` : ''" rounded />
                                 <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
                             </div>
                             <div class="flex space-x-2">
@@ -324,7 +330,7 @@ onMounted(async () => {
                             </div>
                         </div>
                         <div v-else class="flex items-center space-x-4">
-                            <fwb-avatar size="md" img="" rounded />
+                            <fwb-avatar size="md" :img="review.picture ? `${BACKEND_URL}/${review.picture}` : ''" rounded />
                             <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
                         </div>
                         <fwb-rating size="sm" :rating="review.rating">

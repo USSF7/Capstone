@@ -297,6 +297,7 @@ onUnmounted(() => {
             <review-user 
                 v-if="showReviewUserModal && reviewUserTarget"
                 :userName="reviewUserTarget.name"
+                :userPicture="reviewUserTarget.picture"
                 :userID="reviewUserTarget.id"
                 :submitterID="userData.id"
                 :rentalID="rentalData.id"
