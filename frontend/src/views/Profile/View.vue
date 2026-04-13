@@ -367,7 +367,9 @@ watch(() => route.params.id, async (newId) => {
                         <div v-if="review.submitter_id == viewingUserData.id" class="flex items-center justify-between">
                             <div class="flex items-center space-x-4">
                                 <fwb-avatar size="md" :img="review.picture ? `${BACKEND_URL}/${review.picture}` : ''" rounded />
-                                <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
+                                <span class="font-normal text-gray-700 dark:text-gray-400">
+                                    {{ review.submitter_name }}
+                                </span>
                             </div>
                             <div class="flex space-x-2">
                                 <fwb-button @click="editReview(review.id)" color="blue" size="md" square>
@@ -380,7 +382,12 @@ watch(() => route.params.id, async (newId) => {
                         </div>
                         <div v-else class="flex items-center space-x-4">
                             <fwb-avatar size="md" :img="review.picture ? `${BACKEND_URL}/${review.picture}` : ''" rounded />
-                            <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
+                            <router-link
+                                :to="{ name: 'view_profile', params: { id: review.submitter_id } }"
+                                class="font-normal text-blue-700 dark:text-gray-400 hover:underline"
+                            >
+                                {{ review.submitter_name }}
+                            </router-link>
                         </div>
                         <fwb-rating size="sm" :rating="review.rating">
                             <template #besideText>

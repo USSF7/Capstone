@@ -7,6 +7,7 @@ import GoogleMap from '../../components/GoogleMap.vue'
 import EquipmentResultsGrid from '../../components/EquipmentResultsGrid.vue'
 
 const auth = useAuthStore()
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const nameFilter = ref('')
 const radius = ref(25)
@@ -20,12 +21,42 @@ const userLat = computed(() => auth.user?.latitude)
 const userLng = computed(() => auth.user?.longitude)
 const hasLocation = computed(() => userLat.value != null && userLng.value != null)
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function buildMapLabel(item) {
+  const safeName = escapeHtml(item.name)
+  const detailsUrl = `/equipment/${item.id}/view`
+  const hasPicture = !!item.picture
+  const pictureSrc = hasPicture ? `${BACKEND_URL}/${item.picture}` : ''
+
+  return `
+    <div style="display:flex;gap:10px;align-items:flex-start;max-width:250px;">
+      ${hasPicture
+        ? `<img src="${pictureSrc}" alt="${safeName}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;" />`
+        : `<div style="width:52px;height:52px;border-radius:6px;border:1px solid #e5e7eb;background:#f3f4f6;"></div>`}
+      <div>
+        <div style="font-weight:600;color:#111827;line-height:1.2;">${safeName}</div>
+        <div style="font-size:12px;color:#374151;">$${item.price}/day</div>
+        <div style="font-size:12px;color:#6b7280;">${item.distance_miles} mi away</div>
+        <a href="${detailsUrl}" style="display:inline-block;margin-top:6px;font-size:12px;color:#2563eb;text-decoration:underline;">View equipment</a>
+      </div>
+    </div>
+  `
+}
+
 const mapMarkers = computed(() =>
   results.value.map((r) => ({
     lat: r.owner_lat,
     lng: r.owner_lng,
     title: r.name,
-    label: `<strong>${r.name}</strong><br>$${r.price}/day<br>${r.distance_miles} mi away`,
+    label: buildMapLabel(r),
   }))
 )
 

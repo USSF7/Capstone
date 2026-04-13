@@ -13,6 +13,8 @@ class Equipment(db.Model):
     description = db.Column(db.String(1000), nullable=True)
     picture = db.Column(db.String(500), nullable=True)
     condition = db.Column(db.String(50), nullable=False)
+    ai_review_summary = db.Column(db.Text, nullable=True)
+    ai_review_summary_updated_at = db.Column(db.DateTime, nullable=True)
 
     # Relationships
     # Note: reviews are accessed via query filter on model_type='equipment' and model_id=equipment.id

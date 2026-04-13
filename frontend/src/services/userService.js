@@ -30,7 +30,7 @@ class UserService {
     })
   }
 
-  async updateUser(id, name, email, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter, max_travel_distance, picture) {
+  async updateUser(id, name, email, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter, picture) {
     return api.put(`/users/${id}`, { 
       name: name, 
       email: email, 
@@ -42,7 +42,6 @@ class UserService {
       zip_code: zip_code, 
       vendor: vendor, 
       renter: renter,
-      max_travel_distance: max_travel_distance,
       picture: picture
     })
   }

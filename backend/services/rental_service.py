@@ -14,6 +14,7 @@ class RentalService:
     """Service layer for Rental business logic"""
 
     MIN_REQUEST_LEAD_TIME = timedelta(hours=2)
+    MIN_RENEGOTIATION_LEAD_TIME = timedelta(days=7)
 
     @staticmethod
     def _normalize_datetime(date_value, field_name):
@@ -351,10 +352,17 @@ class RentalService:
             if status == 'cancelled':
                 if actor_user_id is None:
                     raise ValueError("actor_user_id is required when canceling a rental")
-                if actor_user_id != rental.renter_id:
-                    raise ValueError("Only the renter can cancel a rental request")
-                if rental.status != 'requesting':
-                    raise ValueError("Only pending rental requests can be canceled")
+                now = datetime.utcnow()
+                if rental.status == 'requesting':
+                    if actor_user_id != rental.renter_id:
+                        raise ValueError("Only the renter can cancel a rental request")
+                elif rental.status == 'active':
+                    if actor_user_id not in [rental.renter_id, rental.vendor_id]:
+                        raise ValueError("Only rental participants can cancel this rental")
+                    if now >= rental.start_date:
+                        raise ValueError("Active rentals can only be canceled before they start")
+                else:
+                    raise ValueError("Only pending or pre-start active rentals can be canceled")
 
             if status == 'returned':
                 if actor_user_id is None:
@@ -402,6 +410,11 @@ class RentalService:
         ])
 
         if details_changed:
+            if rental.status == 'active':
+                renegotiation_deadline = datetime.utcnow() + RentalService.MIN_RENEGOTIATION_LEAD_TIME
+                if rental.start_date <= renegotiation_deadline:
+                    raise ValueError("Active rentals can only be renegotiated if they start more than one week from now")
+
             # Any details change requires both parties to re-approve.
             rental.renter_approved = False
             rental.vendor_approved = False

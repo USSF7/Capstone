@@ -27,7 +27,6 @@ const dateOfBirth = ref('')
 const termsAndConditions = ref(false)
 const vendorStatus = ref(false)
 const renterStatus = ref(false)
-const maxTravelDistance = ref(0)
 const picture = ref('')
 
 const displayFileUploadButton = ref(true)
@@ -84,7 +83,6 @@ async function submitProfile() {
             zipCode.value,
             vendorStatus.value,
             renterStatus.value,
-            maxTravelDistance.value,
             picture.value
         )
 
@@ -295,7 +293,10 @@ async function onClickReuploadFile() {
                 required
             />
             <div class="space-y-2">
-                <label class="block text-sm font-medium">I want to use the site as a:</label>
+                <label class="block text-sm font-medium">Primary Site Usage</label>
+                <p class="text-xs text-gray-500">
+                    This setting just controls which navigation items are shown.
+                </p>
                 <div class="flex w-48">
                     <fwb-checkbox
                         v-model="vendorStatus"
@@ -308,16 +309,6 @@ async function onClickReuploadFile() {
                         label="Renter"
                     />
                 </div>
-            </div>
-            <div v-if="vendorStatus" class="space-y-2">
-                <fwb-input
-                    v-model.number="maxTravelDistance"
-                    placeholder="Enter maximum travel distance in miles"
-                    label="Max Travel Distance (miles)"
-                    type="number"
-                    min="0"
-                    hint="Leave as 0 if you only meet at your location"
-                />
             </div>
             <div class="mb-4" v-if="displayFileUploadButton == true">
                 <label class="block mb-2 text-sm font-medium text-black-700">
