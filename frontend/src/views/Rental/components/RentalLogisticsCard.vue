@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FwbCard, FwbProgress, FwbButton, FwbListGroup, FwbListGroupItem, FwbRating } from 'flowbite-vue'
 import RentalService from '../../../services/rentalService'
@@ -43,6 +43,21 @@ const canMarkReturned = computed(() => {
   return new Date() > new Date(props.rentalData.end_date)
 })
 const reviewUserLabel = computed(() => (isVendorViewer.value ? 'Review Renter' : 'Review Vendor'))
+
+const currentTime = ref(Date.now())
+let currentTimeIntervalId = null
+
+const isPreStartActiveRental = computed(() => {
+  if (props.rentalData?.status !== 'active' || !props.rentalData?.start_date) return false
+  return new Date() < new Date(props.rentalData.start_date)
+})
+
+const isRenegotiationEligible = computed(() => {
+  if (props.rentalData?.status !== 'active' || !props.rentalData?.start_date) return false
+
+  const startDate = new Date(props.rentalData.start_date)
+  return startDate.getTime() - currentTime.value > 7 * 24 * 60 * 60 * 1000
+})
 
 const userAlreadyReviewed = computed(() => {
   const renterReviewed = props.rentalData?.renter_reviewed === true
@@ -158,6 +173,14 @@ function confirmAndCancelRequest() {
   updateRequestStatus('cancelled')
 }
 
+function confirmAndCancelActiveRental() {
+  const confirmed = window.confirm(
+    'Are you sure you want to cancel this rental? This will notify the other party and mark the rental as canceled.'
+  )
+  if (!confirmed) return
+  updateRequestStatus('cancelled')
+}
+
 function confirmAndMarkReturned() {
   const confirmed = window.confirm(
     'Mark this rental as returned and complete the agreement? This action updates the rental to completed.'
@@ -165,6 +188,19 @@ function confirmAndMarkReturned() {
   if (!confirmed) return
   updateRequestStatus('returned')
 }
+
+onMounted(() => {
+  currentTimeIntervalId = setInterval(() => {
+    currentTime.value = Date.now()
+  }, 60000)
+})
+
+onUnmounted(() => {
+  if (currentTimeIntervalId) {
+    clearInterval(currentTimeIntervalId)
+    currentTimeIntervalId = null
+  }
+})
 </script>
 
 <template>
@@ -224,6 +260,19 @@ function confirmAndMarkReturned() {
         size="md"
         :label="rentalData.status_text || 'Rental status updated'"
       />
+
+      <div v-if="isPreStartActiveRental || isRenegotiationEligible" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="text-sm text-blue-800 mb-2" v-if="isRenegotiationEligible">
+          This rental starts more than a week from now, so either party can renegotiate the terms.
+        </p>
+        <p class="text-sm text-blue-800 mb-2" v-else>
+          This rental is active but has not started yet, so either party can still cancel it.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <fwb-button v-if="isPreStartActiveRental" color="red" @click="confirmAndCancelActiveRental">Cancel Rental</fwb-button>
+          <fwb-button v-if="isRenegotiationEligible" color="light" @click="goToEditDetails">Renegotiate Terms</fwb-button>
+        </div>
+      </div>
 
       <div v-if="isReturned" class="flex mt-4">
         <fwb-button

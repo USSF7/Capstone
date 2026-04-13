@@ -40,7 +40,36 @@ class Rental(db.Model):
                 return "A renter has requested your equipment"
             return "Rental request pending"
         elif self.status == 'active':
-            return "Rental is active"
+            def to_utc(value):
+                if value is None:
+                    return None
+                if value.tzinfo is None:
+                    return value.replace(tzinfo=timezone.utc)
+                return value.astimezone(timezone.utc)
+
+            now = datetime.now(timezone.utc)
+            start = to_utc(self.start_date)
+            end = to_utc(self.end_date)
+
+            if now < start:
+                if is_renter:
+                    return "Your rental is confirmed and starts soon"
+                elif is_vendor:
+                    return "A confirmed rental starts soon"
+                return "Rental is confirmed and starts soon"
+
+            if now > end:
+                if is_renter:
+                    return "Your rental period has ended"
+                elif is_vendor:
+                    return "This rental period has ended. Please mark as returned"
+                return "Rental period has ended"
+
+            if is_renter:
+                return "Your rental is currently active"
+            elif is_vendor:
+                return "Your equipment is currently rented"
+            return "Rental is currently active"
         elif self.status == 'returned':
             return "Rental has been completed"
         elif self.status == 'disputed':

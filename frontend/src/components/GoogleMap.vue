@@ -25,6 +25,7 @@ let map = null
 let markerObjects = []
 let directionsRenderer = null
 let google = null
+let activeInfoWindow = null
 
 async function initMap() {
   try {
@@ -53,6 +54,10 @@ async function initMap() {
 function clearMarkers() {
   markerObjects.forEach((m) => m.setMap(null))
   markerObjects = []
+  if (activeInfoWindow) {
+    activeInfoWindow.close()
+    activeInfoWindow = null
+  }
 }
 
 function updateMarkers() {
@@ -64,6 +69,7 @@ function updateMarkers() {
       position: { lat: m.lat, lng: m.lng },
       map,
       title: m.title || '',
+      zIndex: m.zIndex,
     }
 
     if (m.color || m.selected) {
@@ -87,7 +93,13 @@ function updateMarkers() {
 
     if (m.label) {
       const infoWindow = new google.maps.InfoWindow({ content: m.label })
-      marker.addListener('click', () => infoWindow.open(map, marker))
+      marker.addListener('click', () => {
+        if (activeInfoWindow && activeInfoWindow !== infoWindow) {
+          activeInfoWindow.close()
+        }
+        infoWindow.open(map, marker)
+        activeInfoWindow = infoWindow
+      })
     }
     markerObjects.push(marker)
     bounds.extend(marker.getPosition())
@@ -140,3 +152,9 @@ watch(center, () => {
     <div ref="mapContainer" :style="{ width: '100%', height }" v-show="!loading && !error"></div>
   </div>
 </template>
+
+<style scoped>
+:deep(.gm-ui-hover-effect) {
+  display: none !important;
+}
+</style>

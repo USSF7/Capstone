@@ -135,8 +135,6 @@ function goToNextPage() {
           &#8594;
         </button>
       </div>
-
-      <p v-else class="text-sm text-gray-500">No equipment attached to this rental.</p>
     </div>
   </fwb-card>
 </template>

@@ -66,6 +66,8 @@ def create_app(config_name='development'):
             ("zip_code", "INTEGER"),
             ("vendor", "BOOLEAN"),
             ("renter", "BOOLEAN"),
+            ("ai_review_summary", "TEXT"),
+            ("ai_review_summary_updated_at", "TIMESTAMP"),
         ]
         for col_name, col_type in columns_to_add:
             if not _SAFE_COL_NAME.match(col_name) or not _SAFE_COL_TYPE.match(col_type):
@@ -82,6 +84,8 @@ def create_app(config_name='development'):
             ("price", "NUMERIC(10,2) DEFAULT 0"),
             ("description", "VARCHAR(1000)"),
             ("picture", "VARCHAR(500)"),
+            ("ai_review_summary", "TEXT"),
+            ("ai_review_summary_updated_at", "TIMESTAMP"),
         ]
         for col_name, col_type in equipment_columns_to_add:
             if not _SAFE_COL_NAME.match(col_name) or not _SAFE_COL_TYPE.match(col_type):
@@ -111,6 +115,13 @@ def create_app(config_name='development'):
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+
+        # Remove deprecated users max_travel_distance column if it exists
+        try:
+            db.session.execute(text("ALTER TABLE users DROP COLUMN IF EXISTS max_travel_distance"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
         # Add meeting location columns to rentals
         for col_name, col_type in [("meeting_lat", "DOUBLE PRECISION"), ("meeting_lng", "DOUBLE PRECISION")]:

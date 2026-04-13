@@ -36,10 +36,6 @@ function isDuringRentalWindow(rental) {
 }
 
 const statusPercent = { requesting: 10, active: 70 }
-const statusLabel = {
-  requesting: 'Awaiting vendor response',
-  active: 'Currently renting',
-}
 const statusColor = { requesting: 'yellow', active: 'green' }
 
 const hasLocation = computed(() => auth.user?.latitude != null && auth.user?.longitude != null)
@@ -141,7 +137,7 @@ onMounted(() => {
                 :progress="statusPercent[rental.status]"
                 :color="statusColor[rental.status]"
                 size="md"
-                :label="statusLabel[rental.status]"
+                :label="rental.status_text"
               />
             </div>
           </fwb-card>

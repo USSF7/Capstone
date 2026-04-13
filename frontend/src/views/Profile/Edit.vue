@@ -25,7 +25,6 @@ const zipCode = ref('')
 const dateOfBirth = ref('')
 const vendorStatus = ref(false)
 const renterStatus = ref(false)
-const maxTravelDistance = ref(0)
 const userDataLoaded = ref(false)
 const picture = ref('')
 
@@ -71,7 +70,6 @@ async function loadUserData() {
         dateOfBirth.value = userData.date_of_birth
         vendorStatus.value = userData.vendor
         renterStatus.value = userData.renter
-        maxTravelDistance.value = userData.max_travel_distance || 0
         picture.value = userData.picture
 
         // If the equipment already has a picture, then display it.
@@ -111,7 +109,6 @@ async function updateAccount(event) {
             zipCode.value,
             vendorStatus.value,
             renterStatus.value,
-            maxTravelDistance.value,
             picture.value
         )
 
@@ -346,6 +343,9 @@ onMounted(async () => {
             />
             <div class="space-y-2">
                 <label class="block text-sm font-medium">Site Usage</label>
+                <p class="text-xs text-gray-500">
+                    This setting controls which navigation items are shown.
+                </p>
                 <div class="flex w-48">
                     <fwb-checkbox
                         v-model="vendorStatus"
@@ -358,16 +358,6 @@ onMounted(async () => {
                         label="Renter"
                     />
                 </div>
-            </div>
-            <div v-if="vendorStatus" class="space-y-2">
-                <fwb-input
-                    v-model.number="maxTravelDistance"
-                    placeholder="Enter maximum travel distance in miles"
-                    label="Max Travel Distance (miles)"
-                    type="number"
-                    min="0"
-                    hint="Leave as 0 if you only meet at your location"
-                />
             </div>
             <div class="mb-4" v-if="displayFileUploadButton == true">
                 <label class="block mb-2 text-sm font-medium text-black-700">

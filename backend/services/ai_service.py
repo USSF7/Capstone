@@ -1,8 +1,57 @@
 from flask import current_app
 from google import genai
-from models import Review
+from datetime import datetime
+from database import db
+from models import Review, Equipment, User
 
 class AIService:
+
+    @staticmethod
+    def _validate_model_ref(model_type, model_id):
+        if not model_type or model_id is None:
+            raise ValueError("model_type and model_id are required")
+
+    @staticmethod
+    def _get_target_model(model_type, model_id):
+        AIService._validate_model_ref(model_type, model_id)
+        normalized = str(model_type).strip().lower()
+
+        if normalized in ('equipment',):
+            return Equipment.query.get(model_id)
+        if normalized in ('user', 'users'):
+            return User.query.get(model_id)
+
+        raise ValueError("model_type must be 'equipment' or 'user'")
+
+    @staticmethod
+    def get_cached_summary(model_type, model_id):
+        target = AIService._get_target_model(model_type, model_id)
+        if not target:
+            return None
+        return target.ai_review_summary
+
+    @staticmethod
+    def set_cached_summary(model_type, model_id, summary):
+        if not summary:
+            return
+
+        target = AIService._get_target_model(model_type, model_id)
+        if not target:
+            return
+
+        target.ai_review_summary = summary
+        target.ai_review_summary_updated_at = datetime.utcnow()
+        db.session.commit()
+
+    @staticmethod
+    def invalidate_cached_summary(model_type, model_id):
+        target = AIService._get_target_model(model_type, model_id)
+        if not target:
+            return
+
+        target.ai_review_summary = None
+        target.ai_review_summary_updated_at = None
+        db.session.commit()
 
     @staticmethod
     def _get_gemini_client():
@@ -21,8 +70,11 @@ class AIService:
 
     @staticmethod
     def summarize_reviews(model_type, model_id):
-        if not model_type or model_id is None:
-            raise ValueError("model_type and model_id are required")
+        AIService._validate_model_ref(model_type, model_id)
+
+        cached_summary = AIService.get_cached_summary(model_type, model_id)
+        if cached_summary:
+            return cached_summary
 
         reviews = Review.query.filter_by(model_type=model_type, model_id=model_id).order_by(Review.date.desc()).all()
         if not reviews:
@@ -64,6 +116,7 @@ class AIService:
             summary = AIService._generate_text(prompt, model='gemini-2.5-flash')
             if not summary:
                 return "Unable to generate summary at this time."
+            AIService.set_cached_summary(model_type, model_id, summary)
             return summary
         except Exception as e:
             current_app.logger.error(f"Error summarizing reviews for {model_type} {model_id}: {e}")

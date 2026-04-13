@@ -147,10 +147,18 @@ const mapCenter = computed(() => {
 
 const mapMarkers = computed(() => {
   const marks = []
+  let selectedSuggestionPoint = null
 
   allSuggestions.value.forEach((place) => {
     const selected = selectedSuggestionId.value === place.place_id
-    const defaultColor = place.source === 'party' ? '#2563EB' : '#D97706'
+    const defaultColor = place.source === 'party'
+      ? (place.role === 'Renter' ? '#0EA5E9' : '#F97316')
+      : '#6B7280'
+
+    if (selected) {
+      selectedSuggestionPoint = { lat: place.lat, lng: place.lng }
+    }
+
     marks.push({
       id: place.place_id,
       kind: 'suggestion',
@@ -159,6 +167,7 @@ const mapMarkers = computed(() => {
       title: place.name,
       color: selected ? '#DC2626' : defaultColor,
       selected,
+      zIndex: selected ? 200 : 100,
       label: place.source === 'party'
         ? `<strong>${place.name}</strong>${place.address ? `<br>${place.address}` : ''}`
         : `<strong>${place.name}</strong><br>${place.address || ''}`,
@@ -167,15 +176,22 @@ const mapMarkers = computed(() => {
   })
 
   if (meetingPoint.value) {
-    marks.push({
-      id: 'meeting',
-      kind: 'meeting',
-      lat: meetingPoint.value.lat,
-      lng: meetingPoint.value.lng,
-      title: 'Selected Meeting Location',
-      color: '#7C3AED',
-      label: `<strong>Selected Meeting Location</strong><br>${locationText.value || ''}`,
-    })
+    const overlapsSelectedSuggestion = selectedSuggestionPoint
+      && selectedSuggestionPoint.lat === meetingPoint.value.lat
+      && selectedSuggestionPoint.lng === meetingPoint.value.lng
+
+    if (!overlapsSelectedSuggestion) {
+      marks.push({
+        id: 'meeting',
+        kind: 'meeting',
+        lat: meetingPoint.value.lat,
+        lng: meetingPoint.value.lng,
+        title: 'Selected Meeting Location',
+        color: '#7C3AED',
+        zIndex: 150,
+        label: `<strong>Selected Meeting Location</strong><br>${locationText.value || ''}`,
+      })
+    }
   }
 
   return marks

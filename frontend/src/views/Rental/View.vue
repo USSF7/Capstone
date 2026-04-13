@@ -27,8 +27,9 @@ const dataLoaded = ref(false)
 const showReviewEquipmentModal = ref(false)
 const showReviewUserModal = ref(false)
 let pollIntervalId = null
+let lastRentalSnapshot = ''
 
-const POLL_INTERVAL_MS = 10000
+const POLL_INTERVAL_MS = 5000
 
 const primaryEquipment = computed(() => rentalData.value?.equipment?.[0] || null)
 
@@ -101,6 +102,26 @@ const mapCenter = computed(() => {
     }
     return null
 })
+
+function getRentalSnapshot(rental) {
+    if (!rental) return ''
+
+    return JSON.stringify({
+        status: rental.status,
+        location: rental.location,
+        agreed_price: rental.agreed_price,
+        deleted: rental.deleted,
+        start_date: rental.start_date,
+        end_date: rental.end_date,
+        meeting_lat: rental.meeting_lat,
+        meeting_lng: rental.meeting_lng,
+        vendor_approved: rental.vendor_approved,
+        renter_approved: rental.renter_approved,
+        vendor_reviewed: rental.vendor_reviewed,
+        renter_reviewed: rental.renter_reviewed,
+        equipment_ids: (rental.equipment || []).map((equipment) => equipment.id),
+    })
+}
 
 async function computeEquipmentReviewData() {
     for (let i = 0; i < rentalData.value.equipment.length; i++) {
@@ -176,6 +197,7 @@ async function loadData() {
         rentalData.value = await RentalService.getRentalWithEquipment(rentalID.value)
         console.log(rentalData.value)
         currentEquipment.value = primaryEquipment.value
+        lastRentalSnapshot = getRentalSnapshot(rentalData.value)
 
         // Ensure only renter/vendor can view this page
         const isParticipant = [rentalData.value.renter_id, rentalData.value.vendor_id].includes(userData.value.id)
@@ -231,6 +253,7 @@ async function pollForUpdates() {
 
     try {
         const latestRental = await RentalService.getRentalWithEquipment(rentalID.value)
+        const latestSnapshot = getRentalSnapshot(latestRental)
 
         // If participant changed or rental is no longer accessible, route out.
         if (!userData.value || ![latestRental.renter_id, latestRental.vendor_id].includes(userData.value.id)) {
@@ -240,10 +263,13 @@ async function pollForUpdates() {
 
         const oldEquipmentId = primaryEquipment.value?.id
         const newEquipmentId = latestRental?.equipment?.[0]?.id
+        const rentalChanged = latestSnapshot !== lastRentalSnapshot
 
-        // Reset the rental data only if the primary equipment changed.
-        if (oldEquipmentId !== newEquipmentId) {
+        // Refresh the rental data whenever any live rental field changes.
+        if (rentalChanged) {
             rentalData.value = latestRental
+            currentEquipment.value = primaryEquipment.value
+            lastRentalSnapshot = latestSnapshot
         }
 
         // Re-fetch review aggregate only if the primary equipment changed.
@@ -254,8 +280,8 @@ async function pollForUpdates() {
                 } else {
                     rentalData.value.equipment[i].equipmentReviews = []
                 }
-                await computeEquipmentReviewData()
             }
+            await computeEquipmentReviewData()
         }
     }
     catch (error) {
