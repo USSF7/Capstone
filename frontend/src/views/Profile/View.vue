@@ -274,7 +274,7 @@ watch(() => route.params.id, async (newId) => {
             <review-user-edit
                 v-if="showReviewUserModal"
                 :userName="userData.name"
-                :userPicture="reviewUserTarget.picture"
+                :userPicture="userData.picture"
                 :userID="userData.id"
                 :submitterID="viewingUserData.id"
                 :reviewId="popUpReviewId"

@@ -3,7 +3,7 @@
 
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { FwbInput, FwbRadio, FwbCheckbox, FwbA, FwbButton, FwbAvatar, FwbFileInput } from 'flowbite-vue'
+import { FwbInput, FwbCheckbox, FwbA, FwbButton, FwbAvatar, FwbFileInput, FwbSpinner } from 'flowbite-vue'
 import { DocumentArrowUpIcon } from '@heroicons/vue/24/solid'
 import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
@@ -25,9 +25,8 @@ const state = ref('')
 const zipCode = ref('')
 const dateOfBirth = ref('')
 const termsAndConditions = ref(false)
-const vendor = ref('Vendor')
-const renter = ref('Renter')
-const chooseVendorOrRenter = ref('')
+const vendorStatus = ref(false)
+const renterStatus = ref(false)
 const maxTravelDistance = ref(0)
 const picture = ref('')
 
@@ -39,7 +38,7 @@ const canUploadPhoto = ref(false)
 const userPhoto = ref(null)
 
 const isUserTypeValid = computed(() => {
-    return (vendor.value === chooseVendorOrRenter.value) || (renter.value === chooseVendorOrRenter.value)
+    return vendorStatus.value || renterStatus.value
 })
 
 const isTermsConditionsValid = computed(() => {
@@ -83,8 +82,8 @@ async function submitProfile() {
             city.value,
             state.value,
             zipCode.value,
-            vendor.value === chooseVendorOrRenter.value,
-            renter.value === chooseVendorOrRenter.value,
+            vendorStatus.value,
+            renterStatus.value,
             maxTravelDistance.value,
             picture.value
         )
@@ -298,21 +297,19 @@ async function onClickReuploadFile() {
             <div class="space-y-2">
                 <label class="block text-sm font-medium">I want to use the site as a:</label>
                 <div class="flex w-48">
-                    <fwb-radio
-                        v-model="chooseVendorOrRenter"
-                        name="VendorOrRenterStatus"
+                    <fwb-checkbox
+                        v-model="vendorStatus"
+                        name="vendor"
                         label="Vendor"
-                        value="Vendor"
                     />
-                    <fwb-radio
-                        v-model="chooseVendorOrRenter"
-                        name="VendorOrRenterStatus"
+                    <fwb-checkbox
+                        v-model="renterStatus"
+                        name="renter"
                         label="Renter"
-                        value="Renter"
                     />
                 </div>
             </div>
-            <div v-if="vendor === chooseVendorOrRenter" class="space-y-2">
+            <div v-if="vendorStatus" class="space-y-2">
                 <fwb-input
                     v-model.number="maxTravelDistance"
                     placeholder="Enter maximum travel distance in miles"

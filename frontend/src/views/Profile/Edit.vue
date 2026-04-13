@@ -2,9 +2,8 @@
 <script lang="js" setup>
 
 import { ref, onMounted, computed } from 'vue'
-import { FwbInput, FwbButton, FwbRadio, FwbSpinner, FwbAvatar, FwbFileInput } from 'flowbite-vue'
+import { FwbInput, FwbButton, FwbCheckbox, FwbSpinner, FwbAvatar, FwbFileInput } from 'flowbite-vue'
 import { DocumentArrowUpIcon } from '@heroicons/vue/24/solid'
-import { AsYouType } from 'libphonenumber-js'
 import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
 import AuthService from '../../services/authService'
@@ -24,9 +23,8 @@ const city = ref('')
 const state = ref('')
 const zipCode = ref('')
 const dateOfBirth = ref('')
-const vendor = ref('Vendor')
-const renter = ref('Renter')
-const chooseVendorOrRenter = ref('')
+const vendorStatus = ref(false)
+const renterStatus = ref(false)
 const maxTravelDistance = ref(0)
 const userDataLoaded = ref(false)
 const picture = ref('')
@@ -41,7 +39,7 @@ const userPhoto = ref(null)
 const userId = computed(() => auth.user?.id)
 
 const isUserTypeValid = computed(() => {
-    return (vendor.value === chooseVendorOrRenter.value) || (renter.value === chooseVendorOrRenter.value)
+    return vendorStatus.value || renterStatus.value
 })
 
 function formatPhoneNumber(event) {
@@ -71,7 +69,8 @@ async function loadUserData() {
         state.value = userData.state
         zipCode.value = String(userData.zip_code)
         dateOfBirth.value = userData.date_of_birth
-        chooseVendorOrRenter.value = userData.vendor ? 'Vendor' : 'Renter'
+        vendorStatus.value = userData.vendor
+        renterStatus.value = userData.renter
         maxTravelDistance.value = userData.max_travel_distance || 0
         picture.value = userData.picture
 
@@ -110,8 +109,8 @@ async function updateAccount(event) {
             city.value,
             state.value,
             zipCode.value,
-            vendor.value === chooseVendorOrRenter.value,
-            renter.value === chooseVendorOrRenter.value,
+            vendorStatus.value,
+            renterStatus.value,
             maxTravelDistance.value,
             picture.value
         )
@@ -348,21 +347,19 @@ onMounted(async () => {
             <div class="space-y-2">
                 <label class="block text-sm font-medium">Site Usage</label>
                 <div class="flex w-48">
-                    <fwb-radio
-                        v-model="chooseVendorOrRenter"
-                        name="VendorOrRenterStatus"
+                    <fwb-checkbox
+                        v-model="vendorStatus"
+                        name="vendor"
                         label="Vendor"
-                        value="Vendor"
                     />
-                    <fwb-radio
-                        v-model="chooseVendorOrRenter"
-                        name="VendorOrRenterStatus"
+                    <fwb-checkbox
+                        v-model="renterStatus"
+                        name="renter"
                         label="Renter"
-                        value="Renter"
                     />
                 </div>
             </div>
-            <div v-if="vendor === chooseVendorOrRenter" class="space-y-2">
+            <div v-if="vendorStatus" class="space-y-2">
                 <fwb-input
                     v-model.number="maxTravelDistance"
                     placeholder="Enter maximum travel distance in miles"
