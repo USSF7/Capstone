@@ -2,6 +2,8 @@
 import { FwbCard, FwbBadge } from 'flowbite-vue'
 import { useRouter } from 'vue-router'
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
 const router = useRouter()
 
 defineProps({
@@ -32,7 +34,7 @@ function goToVendorProfile(ownerId) {
       <fwb-card class="cursor-pointer hover:shadow-lg transition-shadow">
         <div class="p-4">
           <div v-if="item.picture" class="mb-3">
-            <img :src="item.picture" :alt="item.name" class="w-full h-48 object-cover rounded-lg" />
+            <img :src="`${BACKEND_URL}/${item.picture}`" :alt="item.name" class="w-full h-48 object-cover rounded-lg" />
           </div>
           <div v-else class="mb-3 w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
             <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

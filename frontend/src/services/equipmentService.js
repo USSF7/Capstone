@@ -39,6 +39,19 @@ class EquipmentService {
     })
   }
 
+  async uploadEquipmentPicture(equipmentPicture) {
+    const formData = new FormData()
+    formData.append('picture_file', equipmentPicture)
+
+    return api.postForm('/equipment/picture', formData)
+  }
+
+  async deleteUploadedEquipmentPicture(pictureFilePath) {
+    return api.delete('/equipment/picture/delete', {
+      filepath: pictureFilePath
+    })
+  }
+
   async deleteEquipment(equipmentId) {
     return api.delete(`/equipment/${equipmentId}`)
   }

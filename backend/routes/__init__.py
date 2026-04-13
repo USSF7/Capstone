@@ -7,6 +7,7 @@ from .rental_routes import rental_bp
 from .auth_routes import auth_bp
 from .ai_routes import ai_bp
 from .location_routes import location_bp
+from .images_routes import images_bp
 
 def register_blueprints(app):
     """Register all route blueprints"""
@@ -18,5 +19,6 @@ def register_blueprints(app):
     app.register_blueprint(auth_bp)
     app.register_blueprint(ai_bp)
     app.register_blueprint(location_bp)
+    app.register_blueprint(images_bp)
 
 __all__ = ['register_blueprints']

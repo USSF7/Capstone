@@ -19,7 +19,6 @@ class Rental(db.Model):
     vendor_approved = db.Column(db.Boolean, nullable=False, default=False)
     renter_reviewed = db.Column(db.Boolean, nullable=False, default=False)
     vendor_reviewed = db.Column(db.Boolean, nullable=False, default=False)
-    equipment_reviewed = db.Column(db.Boolean, nullable=False, default=False)
     deleted = db.Column(db.Boolean, nullable=False, default=False)
 
     # Relationships
@@ -88,7 +87,6 @@ class Rental(db.Model):
             'mutual_approved': self.renter_approved and self.vendor_approved,
             'renter_reviewed': self.renter_reviewed,
             'vendor_reviewed': self.vendor_reviewed,
-            'equipment_reviewed': self.equipment_reviewed,
             'deleted': self.deleted
         }
 

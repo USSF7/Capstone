@@ -13,7 +13,7 @@ class UserService {
     return api.get(`/users/${id}/messages`)
   }
 
-  async createUser(name, email, password, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter) {
+  async createUser(name, email, password, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter, picture) {
     return api.post('/users', { 
       name: name,
       email: email,
@@ -25,11 +25,12 @@ class UserService {
       state: state, 
       zip_code: zip_code, 
       vendor: vendor, 
-      renter: renter
+      renter: renter,
+      picture: picture
     })
   }
 
-  async updateUser(id, name, email, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter, max_travel_distance) {
+  async updateUser(id, name, email, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter, max_travel_distance, picture) {
     return api.put(`/users/${id}`, { 
       name: name, 
       email: email, 
@@ -41,12 +42,26 @@ class UserService {
       zip_code: zip_code, 
       vendor: vendor, 
       renter: renter,
-      max_travel_distance: max_travel_distance
+      max_travel_distance: max_travel_distance,
+      picture: picture
     })
   }
 
   async deleteUser(id) {
     return api.delete(`/users/${id}`)
+  }
+
+  async uploadUserPicture(userPicture) {
+    const formData = new FormData()
+    formData.append('picture_file', userPicture)
+
+    return api.postForm('/users/picture', formData)
+  }
+
+  async deleteUploadedUserPicture(pictureFilePath) {
+    return api.delete('/users/picture/delete', {
+      filepath: pictureFilePath
+    })
   }
 }
 

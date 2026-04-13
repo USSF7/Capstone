@@ -12,6 +12,7 @@ export default {
     },
     props: {
         userName: String,
+        userPicture: String,
         userID: Number,
         submitterID: Number,
         reviewId: Number,
@@ -22,7 +23,8 @@ export default {
         return {
             rating: 0,
             hover: 0,
-            message: ''
+            message: '',
+            BACKEND_URL: import.meta.env.VITE_BACKEND_URL
         }
     },
     mounted() {
@@ -66,7 +68,7 @@ export default {
             <div class="flex justify-center">
                 <fwb-avatar
                     size="xl"
-                    img=""
+                    :img="userPicture ? `${BACKEND_URL}/${userPicture}` : ''"
                 />
             </div>
             <div class="flex justify-center space-x-1">

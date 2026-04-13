@@ -2,12 +2,17 @@
 <script lang="js" setup>
 
 import { ref, onMounted, computed } from 'vue'
-import { FwbInput, FwbButton, FwbCheckbox, FwbSpinner } from 'flowbite-vue'
+import { FwbInput, FwbButton, FwbRadio, FwbSpinner, FwbAvatar, FwbFileInput } from 'flowbite-vue'
+import { DocumentArrowUpIcon } from '@heroicons/vue/24/solid'
 import { AsYouType } from 'libphonenumber-js'
 import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
 import AuthService from '../../services/authService'
 import router from '../../router'
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024
 
 const auth = useAuthStore()
 const firstName = ref('')
@@ -19,15 +24,24 @@ const city = ref('')
 const state = ref('')
 const zipCode = ref('')
 const dateOfBirth = ref('')
-const vendorStatus = ref(false)
-const renterStatus = ref(false)
+const vendor = ref('Vendor')
+const renter = ref('Renter')
+const chooseVendorOrRenter = ref('')
 const maxTravelDistance = ref(0)
 const userDataLoaded = ref(false)
+const picture = ref('')
+
+const displayFileUploadButton = ref(true)
+const displayFileUploadBox = ref(false)
+const displayFileUploadSpinner = ref(false)
+const displayFileUploadPhoto = ref(false)
+const canUploadPhoto = ref(false)
+const userPhoto = ref(null)
 
 const userId = computed(() => auth.user?.id)
 
 const isUserTypeValid = computed(() => {
-    return vendorStatus.value || renterStatus.value
+    return (vendor.value === chooseVendorOrRenter.value) || (renter.value === chooseVendorOrRenter.value)
 })
 
 function formatPhoneNumber(event) {
@@ -57,9 +71,18 @@ async function loadUserData() {
         state.value = userData.state
         zipCode.value = String(userData.zip_code)
         dateOfBirth.value = userData.date_of_birth
-        vendorStatus.value = userData.vendor
-        renterStatus.value = userData.renter
+        chooseVendorOrRenter.value = userData.vendor ? 'Vendor' : 'Renter'
         maxTravelDistance.value = userData.max_travel_distance || 0
+        picture.value = userData.picture
+
+        // If the equipment already has a picture, then display it.
+        if (picture.value !== '') {
+            displayFileUploadButton.value = false
+            displayFileUploadBox.value = false
+            displayFileUploadPhoto.value = true
+            displayFileUploadSpinner.value = false
+            canUploadPhoto.value = false
+        }
 
         // Displaying the page to the user
         userDataLoaded.value = true
@@ -87,9 +110,10 @@ async function updateAccount(event) {
             city.value,
             state.value,
             zipCode.value,
-            vendorStatus.value,
-            renterStatus.value,
-            maxTravelDistance.value
+            vendor.value === chooseVendorOrRenter.value,
+            renter.value === chooseVendorOrRenter.value,
+            maxTravelDistance.value,
+            picture.value
         )
 
         // Refresh user data in the auth store
@@ -116,6 +140,131 @@ async function updateAccount(event) {
 
 function cancelUpdate() {
     router.push({ name: 'view_profile', params: { id: userId.value } })
+}
+
+function onClickDisplayFileUploadBox() {
+  displayFileUploadButton.value = false
+  displayFileUploadBox.value = true
+  displayFileUploadSpinner.value = false
+  displayFileUploadPhoto.value = false
+  canUploadPhoto.value = false
+}
+
+function onClickDisplayFileUploadButton() {
+  displayFileUploadButton.value = true
+  displayFileUploadBox.value = false
+  displayFileUploadSpinner.value = false
+  displayFileUploadPhoto.value = false
+  canUploadPhoto.value = false
+
+  // Setting the equipment picture reference back to null
+  userPhoto.value = null
+
+  // Setting the equipment picture dirctory back to an empty string
+  picture.value = ''
+}
+
+function handleFileChange(event) {
+  // Getting the file
+  const file = event.target.files[0]
+
+  if (!file) {
+    return
+  }
+
+  // Validating that the file is the correct file type
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ]
+
+  if (allowedTypes.includes(file.type) == false) {
+    canUploadPhoto.value = false
+    userPhoto.value = null
+    alert('Invalid file type. Please upload JPG, PNG, or WebP.')
+    return
+  }
+
+  // Validating that the file is not too large
+  if (file.size > MAX_FILE_SIZE) {
+    canUploadPhoto.value = false
+    userPhoto.value = null
+    alert("The inputted picture file is too large. The maximum file size is 2 MB.")
+    return
+  }
+
+  // Allowing the user to upload the file
+  canUploadPhoto.value = true
+}
+
+async function onClickUploadFile() {
+  displayFileUploadButton.value = false
+  displayFileUploadBox.value = false
+  displayFileUploadPhoto.value = false
+  displayFileUploadSpinner.value = true
+  canUploadPhoto.value = false
+
+  // Sending the picture to be saved in the backend
+  const file = userPhoto.value
+  let result = await UserService.uploadUserPicture(file)
+
+  // Checking if the picture was successfully stored in the backend
+  if (result.success == false) {
+    alert("Picture file did not upload properly. Please try again.")
+
+    // Resetting to the file upload box
+    onClickDisplayFileUploadBox()
+
+    // Setting the equipment picture reference back to null
+    userPhoto.value = null
+
+    // Setting the equipment picture dirctory back to an empty string
+    picture.value = ''
+
+    return
+  }
+
+  // Storing the picture filepath in the form object for the equipment
+  picture.value = result.filename
+
+  // Displaying the picture to the user
+  displayFileUploadSpinner.value = false
+  displayFileUploadPhoto.value = true
+}
+
+async function onClickCancelUploadedFile() {
+  displayFileUploadButton.value = true
+  displayFileUploadBox.value = false
+  displayFileUploadPhoto.value = false
+  displayFileUploadSpinner.value = false
+  canUploadPhoto.value = false
+
+  // Setting the equipment picture reference back to null
+  userPhoto.value = null
+
+  // Delete the photo from the backend
+  let result = await UserService.deleteUploadedUserPicture(picture.value)
+  
+  // Setting the equipment picture dirctory back to an empty string
+  picture.value = ''
+}
+
+async function onClickReuploadFile() {
+  displayFileUploadButton.value = false
+  displayFileUploadBox.value = true
+  displayFileUploadPhoto.value = false
+  displayFileUploadSpinner.value = false
+  canUploadPhoto.value = false
+
+  // Setting the equipment picture reference back to null
+  userPhoto.value = null
+
+  // Delete the photo from the backend
+  let result = await UserService.deleteUploadedUserPicture(picture.value)
+
+  // Setting the equipment picture dirctory back to an empty string
+  picture.value = ''
 }
 
 onMounted(async () => {
@@ -199,19 +348,21 @@ onMounted(async () => {
             <div class="space-y-2">
                 <label class="block text-sm font-medium">Site Usage</label>
                 <div class="flex w-48">
-                    <fwb-checkbox
-                        v-model="vendorStatus"
-                        name="vendor"
+                    <fwb-radio
+                        v-model="chooseVendorOrRenter"
+                        name="VendorOrRenterStatus"
                         label="Vendor"
+                        value="Vendor"
                     />
-                    <fwb-checkbox
-                        v-model="renterStatus"
-                        name="renter"
+                    <fwb-radio
+                        v-model="chooseVendorOrRenter"
+                        name="VendorOrRenterStatus"
                         label="Renter"
+                        value="Renter"
                     />
                 </div>
             </div>
-            <div v-if="vendorStatus" class="space-y-2">
+            <div v-if="vendor === chooseVendorOrRenter" class="space-y-2">
                 <fwb-input
                     v-model.number="maxTravelDistance"
                     placeholder="Enter maximum travel distance in miles"
@@ -220,6 +371,74 @@ onMounted(async () => {
                     min="0"
                     hint="Leave as 0 if you only meet at your location"
                 />
+            </div>
+            <div class="mb-4" v-if="displayFileUploadButton == true">
+                <label class="block mb-2 text-sm font-medium text-black-700">
+                    Upload Profile Picture (.jpeg / .jpg / .png / .webp)
+                </label>
+                <fwb-button
+                    @click="onClickDisplayFileUploadBox"
+                    color="blue"
+                    size="md"
+                    square
+                >
+                    <DocumentArrowUpIcon class="w-5 h-5" />
+                </fwb-button>
+            </div>
+            <div class="mb-4" v-if="displayFileUploadBox == true">
+                <fwb-file-input
+                    v-model="userPhoto"
+                    accept="image/jpeg,image/png,image/webp"
+                    label="Upload Profile Picture (.jpeg / .jpg / .png / .webp)"
+                    @change="handleFileChange"
+                    dropzone
+                />
+            </div>
+            <div class="mb-4 flex gap-2" v-if="displayFileUploadBox == true">
+                <fwb-button
+                    :disabled="canUploadPhoto == false"
+                    @click="onClickUploadFile"
+                    size="md"
+                >
+                    Upload
+                </fwb-button>
+                <fwb-button
+                    @click="onClickDisplayFileUploadButton"
+                    color="red"
+                    size="md"
+                >
+                    Cancel
+                </fwb-button>
+            </div>
+            <div class="mb-4" v-if="displayFileUploadSpinner == true">
+                <label class="block mb-2 text-sm font-medium text-black-700">
+                    Upload Profile Picture (.jpeg / .jpg / .png / .webp)
+                </label>
+                <fwb-spinner size="10" />
+            </div>
+            <div class="mb-4" v-if="displayFileUploadPhoto == true">
+                <label class="block mb-2 text-sm font-medium text-black-700">
+                    Upload Profile Picture (.jpeg / .jpg / .png / .webp)
+                </label>
+                <fwb-avatar
+                    size="xl"
+                    :img="`${BACKEND_URL}/${picture}`"
+                />
+            </div>
+            <div class="mb-4 flex gap-2" v-if="displayFileUploadPhoto == true">
+                <fwb-button
+                    @click="onClickReuploadFile"
+                    size="md"
+                >
+                    Re-upload
+                </fwb-button>
+                <fwb-button
+                    @click="onClickCancelUploadedFile"
+                    color="red"
+                    size="md"
+                >
+                    Cancel
+                </fwb-button>
             </div>
             <div class="flex gap-3">
                 <fwb-button class="w-24" color="default" pill @click="cancelUpdate">Cancel</fwb-button>

@@ -1,11 +1,19 @@
+import json
+import os
+import uuid
 from models import User
 from database import db
+from werkzeug.utils import secure_filename
+from flask import current_app, jsonify
+
+USERS_PICTURES_FOLDER = 'images/users'
+os.makedirs(USERS_PICTURES_FOLDER, exist_ok=True)
 
 class UserService:
     """Service layer for User business logic"""
 
     @staticmethod
-    def create_user(name, email, password, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter):
+    def create_user(name, email, password, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter, picture):
         """Create a new user"""
         if not name or not email:
             raise ValueError("Name and email are required")
@@ -16,7 +24,7 @@ class UserService:
         if User.query.filter_by(phone=phone).first():
             raise ValueError("Phone number already exists")
         
-        user = User(name=name, email=email, phone=phone, date_of_birth=date_of_birth, street_address=street_address, city=city, state=state, zip_code=zip_code, vendor=vendor, renter=renter)
+        user = User(name=name, email=email, phone=phone, date_of_birth=date_of_birth, street_address=street_address, city=city, state=state, zip_code=zip_code, vendor=vendor, renter=renter, picture=picture)
         if password:
             user.set_password(password)
 
@@ -45,7 +53,7 @@ class UserService:
         return User.query.all()
 
     @staticmethod
-    def update_user(user_id, name=None, email=None, phone=None, date_of_birth=None, street_address=None, city=None, state=None, zip_code=None, vendor=None, renter=None, max_travel_distance=None):
+    def update_user(user_id, name=None, email=None, phone=None, date_of_birth=None, street_address=None, city=None, state=None, zip_code=None, vendor=None, renter=None, max_travel_distance=None, picture=''):
         """Update a user"""
         user = User.query.get(user_id)
         if not user:
@@ -78,6 +86,7 @@ class UserService:
         
         user.vendor = vendor
         user.renter = renter
+        user.picture = picture
         
         if max_travel_distance is not None:
             user.max_travel_distance = max_travel_distance
@@ -109,3 +118,32 @@ class UserService:
         db.session.delete(user)
         db.session.commit()
         return True
+    
+    @staticmethod
+    def upload_user_picture(userPicture):
+        # Getting the picture's filename
+        pictureFilename = secure_filename(userPicture.filename)
+        pictureExtension = os.path.splitext(pictureFilename)[1]
+
+        # Creating a unique filename for the picture
+        uniqueFilename = f"{uuid.uuid4()}{pictureExtension}"
+
+        # Saving the picture file in the backend
+        pictureFilepath = os.path.join(USERS_PICTURES_FOLDER, uniqueFilename)
+        userPicture.save(pictureFilepath)
+
+        return pictureFilepath
+    
+    @staticmethod
+    def delete_user_picture(filepath):
+        # Creating a directory
+        pictureFilepath = os.path.join(current_app.root_path, filepath)
+
+        # Checking if the picture file exists
+        if os.path.exists(pictureFilepath) == False:
+            return jsonify({'error': 'Picture does not exists in the backend'}), 404
+        
+        # Removing the picture from the backend
+        os.remove(pictureFilepath)
+
+        return jsonify({'message': 'Picture has been removed from the backend'}), 200

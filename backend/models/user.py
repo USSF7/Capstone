@@ -23,6 +23,7 @@ class User(db.Model):
     vendor = db.Column(db.Boolean, nullable=True)
     renter = db.Column(db.Boolean, nullable=True)
     max_travel_distance = db.Column(db.Integer, default=0, nullable=True)
+    picture = db.Column(db.String(500), default="", nullable=False)
 
     # Relationships
     equipment = db.relationship('Equipment', foreign_keys='Equipment.owner_id', backref='owner')
@@ -50,7 +51,7 @@ class User(db.Model):
             self.city,
             self.state,
             self.zip_code is not None,
-            self.vendor is not None or self.renter is not None,
+            self.vendor is not None or self.renter is not None
         ])
 
     def to_dict(self):
@@ -72,6 +73,7 @@ class User(db.Model):
             'renter': self.renter,
             'max_travel_distance': self.max_travel_distance,
             'profile_complete': self.profile_complete,
+            'picture': self.picture
         }
 
     def __repr__(self):

@@ -15,6 +15,7 @@ from html import escape
 from pathlib import Path
 from app import create_app, db
 from models import User, Equipment, Review, Message, Rental, RentalHasEquipment
+import shutil
 
 
 # ---------------------------------------------------------------------------
@@ -36,119 +37,165 @@ from models import User, Equipment, Review, Message, Rental, RentalHasEquipment
 EQUIPMENT_CATALOG = [
     # Pickleball — 7 listings (most popular)
     ("Pickleball Paddle Set (2 paddles + balls)", 10.00,
-     "Two composite paddles with 4 outdoor pickleballs, great for casual play"),
+     "Two composite paddles with 4 outdoor pickleballs, great for casual play",
+     "Pickleball-Paddle-Set-2-Paddles-Balls.jpg"),
     ("Pickleball Paddle Set (4 paddles + balls)", 18.00,
-     "Four-player set with polymer paddles and 6 balls, perfect for doubles"),
+     "Four-player set with polymer paddles and 6 balls, perfect for doubles",
+     "Pickleball-Paddle-Set-4-Paddles-Balls.jpg"),
     ("Pickleball Paddles (2-pack)", 8.00,
-     "Lightweight graphite paddles, intermediate level"),
+     "Lightweight graphite paddles, intermediate level",
+     "Pickleball-Paddles-2-Pack.jpg"),
     ("Pickleball Net and Paddle Bundle", 25.00,
-     "Portable regulation net with 2 paddles and balls included"),
+     "Portable regulation net with 2 paddles and balls included",
+     "Pickleball-Net-and-Paddle-Buddle.jpg"),
     ("Pickleball Paddle (Single)", 5.00,
-     "Single composite paddle, good for beginners"),
+     "Single composite paddle, good for beginners",
+     "Pickleball-Paddle-Single.jpg"),
     ("Pickleball Paddle (Pro)", 12.00,
-     "Carbon fiber face paddle, tournament-grade"),
+     "Carbon fiber face paddle, tournament-grade",
+     "Pickleball-Paddle-Pro.jpg"),
     ("Pickleball Ball Pack (12)", 3.00,
-     "Dozen outdoor pickleballs, USAPA approved"),
+     "Dozen outdoor pickleballs, USAPA approved",
+     "Pickleball-Ball-Pack-12.jpg"),
 
     # Spikeball — 5 listings
     ("Spikeball Standard Set", 10.00,
-     "3-ball kit with adjustable net, fits in a backpack"),
+     "3-ball kit with adjustable net, fits in a backpack",
+     "Spikeball-Standard-Set.jpg"),
     ("Spikeball Pro Set", 15.00,
-     "Pro-level net with tighter weave and premium balls"),
+     "Pro-level net with tighter weave and premium balls",
+     "Spikeball-Pro-Set.jpg"),
     ("Spikeball Set (with carrying bag)", 10.00,
-     "Standard set including drawstring bag for transport"),
+     "Standard set including drawstring bag for transport",
+     "Spikeball-Set-With-Carrying-Bag.jpg"),
     ("Spikeball Replacement Balls (4-pack)", 3.00,
-     "Extra balls compatible with standard and pro nets"),
+     "Extra balls compatible with standard and pro nets",
+     "Spikeball-Replacement-Balls.jpg"),
     ("Spikeball Rookie Set", 8.00,
-     "Larger net for beginners and kids"),
+     "Larger net for beginners and kids",
+     "Spikeball-Rookie-Set.jpg"),
 
     # Tennis — 4 listings
     ("Tennis Racket (Adult)", 10.00,
-     "27-inch graphite racket, pre-strung, all-court use"),
+     "27-inch graphite racket, pre-strung, all-court use",
+     "Tennis-Racket-Adult.jpg"),
     ("Tennis Racket Pair", 15.00,
-     "Two rackets with a can of 3 balls, ready to play"),
+     "Two rackets with a can of 3 balls, ready to play",
+     "Tennis-Racket-Pair.jpg"),
     ("Tennis Racket (Junior)", 5.00,
-     "25-inch racket sized for teens and smaller players"),
+     "25-inch racket sized for teens and smaller players",
+     "Tennis-Racket-Junior.jpg"),
     ("Tennis Ball Hopper + Balls (50)", 8.00,
-     "Ball hopper with 50 practice balls for drills"),
+     "Ball hopper with 50 practice balls for drills",
+     "Tennis-Ball-Hopper-Balls.jpg"),
 
     # Volleyball — 4 listings
     ("Volleyball Net and Ball", 20.00,
-     "Portable outdoor net system with regulation ball"),
+     "Portable outdoor net system with regulation ball",
+     "Volleyball-Net-And-Ball.jpg"),
     ("Volleyball (Indoor)", 5.00,
-     "Molten-style indoor volleyball, game quality"),
+     "Molten-style indoor volleyball, game quality",
+     "Volleyball-Indoor.jpg"),
     ("Beach Volleyball Set", 25.00,
-     "Net, ball, boundary lines, and carrying case for sand play"),
+     "Net, ball, boundary lines, and carrying case for sand play",
+     "Beach-Volleyball-Set.jpg"),
     ("Volleyball (Outdoor)", 3.00,
-     "Stitched outdoor volleyball, durable for park use"),
+     "Stitched outdoor volleyball, durable for park use",
+     "Volleyball-Outdoor.jpg"),
 
     # Golf — 4 listings
     ("Golf Club Set (Full Bag)", 30.00,
-     "14-club set with bag, irons, woods, and putter"),
+     "14-club set with bag, irons, woods, and putter",
+     "Golf-Club-Set-Full-Bag.jpg"),
     ("Golf Clubs (Half Set)", 20.00,
-     "7 essential clubs with stand bag, good for casual rounds"),
+     "7 essential clubs with stand bag, good for casual rounds",
+     "Golf-Clubs-Half-Set.jpg"),
     ("Golf Putter", 8.00,
-     "Blade-style putter, right-handed"),
+     "Blade-style putter, right-handed",
+     "Golf-Putter.jpg"),
     ("Disc Golf Disc Set (3)", 5.00,
-     "Driver, midrange, and putter discs for disc golf"),
+     "Driver, midrange, and putter discs for disc golf",
+     "Disc-Golf-Set-3.jpg"),
 
     # Basketball — 3 listings
     ("Basketball (Indoor/Outdoor)", 5.00,
-     "Size 7 composite leather basketball"),
+     "Size 7 composite leather basketball",
+     "Basketball-Indoor-Outdoor.jpg"),
     ("Basketball (Official)", 2.00,
-     "Rubber outdoor basketball, size 7"),
+     "Rubber outdoor basketball, size 7",
+     "Basketball-Official.jpg"),
     ("Portable Basketball Hoop", 25.00,
-     "Adjustable 7.5-10 ft hoop with base, wheels for transport"),
+     "Adjustable 7.5-10 ft hoop with base, wheels for transport",
+     "Portable-Basketball-Hoop.jpg"),
 
     # Football — 2 listings
     ("Football (Leather)", 8.00,
-     "Official size composite leather football"),
+     "Official size composite leather football",
+     "Football-Leather.jpg"),
     ("Football (Recreational)", 5.00,
-     "Rubber grip football for casual toss and backyard games"),
+     "Rubber grip football for casual toss and backyard games",
+     "Football-Recreational.jpg"),
 
     # Kayak — 2 listings
     ("Kayak (Single, Sit-on-Top)", 30.00,
-     "10 ft recreational kayak with paddle and life vest"),
+     "10 ft recreational kayak with paddle and life vest",
+     "Kayak-Single.jpg"),
     ("Kayak (Tandem)", 20.00,
-     "12 ft tandem kayak, includes 2 paddles"),
+     "12 ft tandem kayak, includes 2 paddles",
+     "Kayak-Tandem.jpg"),
 
     # Frisbee — 2 listings
     ("Frisbee (Ultimate)", 3.00,
-     "175g regulation ultimate disc, tournament approved"),
+     "175g regulation ultimate disc, tournament approved",
+     "Frisbee-Ultimate.jpg"),
     ("Frisbee Golf Starter Set", 15.00,
-     "Set of 5 discs covering driver to putter"),
+     "Set of 5 discs covering driver to putter",
+     "Frisbee-Golf-Starter-Set.jpg"),
 
     # Mountain Bike — 2 listings
     ("Mountain Bike (Hardtail)", 20.00,
-     "26-inch aluminum frame, front suspension, 21-speed"),
+     "26-inch aluminum frame, front suspension, 21-speed",
+     "Mountain-Bike-Hardtail.jpg"),
     ("Mountain Bike (Full Suspension)", 30.00,
-     "29-inch full-suspension trail bike, hydraulic disc brakes"),
+     "29-inch full-suspension trail bike, hydraulic disc brakes",
+     "Mountain-Bike-Full-Suspension.jpg"),
 
     # Ski / Snowboard — 2 listings
     ("Ski Set (Skis + Boots + Poles)", 25.00,
-     "All-mountain skis with boots (state your size) and poles"),
+     "All-mountain skis with boots (state your size) and poles",
+     "Ski-Set.jpg"),
     ("Snowboard + Boots", 20.00,
-     "Freestyle board with bindings and boots (state your size)"),
+     "Freestyle board with bindings and boots (state your size)",
+     "Snowboard-Boots.jpg"),
 
     # Long tail — 1 each
     ("Soccer Ball", 5.00,
-     "Size 5 match ball, FIFA-quality replica"),
+     "Size 5 match ball, FIFA-quality replica",
+     "Soccerball.jpg"),
     ("Yoga Mat (Premium)", 5.00,
-     "6mm thick non-slip mat with carrying strap"),
+     "6mm thick non-slip mat with carrying strap",
+     "Yoga-Mat-Premium.jpg"),
     ("Ice Skates (Pair)", 20.00,
-     "Recreational figure skates, multiple sizes available"),
+     "Recreational figure skates, multiple sizes available",
+     "Ice-Skates-Pair.jpg"),
     ("Rock Climbing Shoes", 10.00,
-     "Moderate downturn, synthetic upper, great for gym bouldering"),
+     "Moderate downturn, synthetic upper, great for gym bouldering",
+     "Rock-Climbing-Shoes.jpg"),
     ("Skateboard (Complete)", 5.00,
-     "7.75-inch deck, 52mm wheels, ABEC-7 bearings"),
+     "7.75-inch deck, 52mm wheels, ABEC-7 bearings",
+     "Skateboard-Complete.jpg"),
     ("Roller Skates (Quad)", 15.00,
-     "Classic quad skates with adjustable toe stop"),
+     "Classic quad skates with adjustable toe stop",
+     "Roller-Skates-Quad.jpg"),
     ("Cornhole Board Set", 10.00,
-     "Regulation 2x4 ft boards with 8 all-weather bags"),
+     "Regulation 2x4 ft boards with 8 all-weather bags",
+     "Cornhole-Board-Set.jpg"),
     ("Badminton Racket Set (4) + Net", 15.00,
-     "4 rackets, shuttlecocks, and portable net for backyard play"),
+     "4 rackets, shuttlecocks, and portable net for backyard play",
+     "Badminton-Racket-Set-Net.jpg"),
     ("Boxing Gloves (Pair)", 12.00,
-     "14 oz training gloves with wrist support"),
+     "14 oz training gloves with wrist support",
+     "Boxing-Gloves.jpg"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -160,101 +207,101 @@ USERS = [
     dict(name='Sarah Mitchell', email='renter@test.com', phone='(555) 234-5678',
          dob='1994-06-15', street='742 Evergreen Terrace', city='Austin', state='Texas',
          zip_code=78704, vendor=False, renter=True,
-         lat=30.2500, lng=-97.7530),
+         lat=30.2500, lng=-97.7530, picture="Sarah-Mitchell.jpg"),
     dict(name='Marcus Chen', email='vendor@test.com', phone='(555) 876-5432',
          dob='1988-11-23', street='1200 Lakeshore Drive', city='Austin', state='Texas',
          zip_code=78703, vendor=True, renter=False,
-         lat=30.2870, lng=-97.7730),
+         lat=30.2870, lng=-97.7730, picture="Marcus-Chen.jpg"),
 
     # Both vendor + renter (13 users — indices 2–14)
     dict(name='Jake Hernandez', email='jake.hernandez@utexas.edu', phone='(512) 555-0101',
          dob='2001-03-12', street='2501 Nueces St', city='Austin', state='Texas',
          zip_code=78705, vendor=True, renter=True,
-         lat=30.2880, lng=-97.7440),
+         lat=30.2880, lng=-97.7440, picture="Jake-Hernandez.jpg"),
     dict(name='Emily Tran', email='emily.tran@utexas.edu', phone='(512) 555-0102',
          dob='2002-07-22', street='910 W 25th St', city='Austin', state='Texas',
          zip_code=78705, vendor=True, renter=True,
-         lat=30.2910, lng=-97.7460),
+         lat=30.2910, lng=-97.7460, picture="Emily-Tran.jpg"),
     dict(name='Chris Walker', email='chris.w@gmail.com', phone='(512) 555-0103',
          dob='1996-01-09', street='1600 Barton Springs Rd', city='Austin', state='Texas',
          zip_code=78704, vendor=True, renter=True,
-         lat=30.2610, lng=-97.7560),
+         lat=30.2610, lng=-97.7560, picture="Chris-Walker.jpg"),
     dict(name='Priya Patel', email='priya.p@outlook.com', phone='(512) 555-0104',
          dob='2000-11-30', street='4400 N Lamar Blvd', city='Austin', state='Texas',
          zip_code=78756, vendor=True, renter=True,
-         lat=30.3120, lng=-97.7410),
+         lat=30.3120, lng=-97.7410, picture="Priya-Patel.jpg"),
     dict(name='Dylan Brooks', email='dylan.brooks@utexas.edu', phone='(512) 555-0105',
          dob='2003-05-18', street='2020 S Congress Ave', city='Austin', state='Texas',
          zip_code=78704, vendor=True, renter=True,
-         lat=30.2460, lng=-97.7490),
+         lat=30.2460, lng=-97.7490, picture="Dylan-Brooks.jpg"),
     dict(name='Sofia Ramirez', email='sofia.r@yahoo.com', phone='(512) 555-0106',
          dob='1998-09-04', street='1100 S Lamar Blvd', city='Austin', state='Texas',
          zip_code=78704, vendor=True, renter=True,
-         lat=30.2560, lng=-97.7620),
+         lat=30.2560, lng=-97.7620, picture="Sofia-Ramirez.jpg"),
     dict(name='Jordan Lee', email='jordan.lee@utexas.edu', phone='(512) 555-0107',
          dob='2001-12-27', street='3000 Guadalupe St', city='Austin', state='Texas',
          zip_code=78705, vendor=True, renter=True,
-         lat=30.2950, lng=-97.7410),
+         lat=30.2950, lng=-97.7410, picture="Jordan-Lee.jpg"),
     dict(name='Megan O\'Connor', email='megan.oc@gmail.com', phone='(512) 555-0108',
          dob='1999-04-15', street='5500 N MoPac Expy', city='Austin', state='Texas',
          zip_code=78731, vendor=True, renter=True,
-         lat=30.3530, lng=-97.7630),
+         lat=30.3530, lng=-97.7630, picture="Megan-Connor.jpg"),
     dict(name='Tyler Nguyen', email='tyler.ng@utexas.edu', phone='(512) 555-0109',
          dob='2002-08-01', street='2400 San Jacinto Blvd', city='Austin', state='Texas',
          zip_code=78712, vendor=True, renter=True,
-         lat=30.2860, lng=-97.7330),
+         lat=30.2860, lng=-97.7330, picture="Tyler-Nguyen.jpg"),
     dict(name='Rachel Kim', email='rachel.kim@outlook.com', phone='(512) 555-0110',
          dob='1997-02-20', street='800 W 5th St', city='Austin', state='Texas',
          zip_code=78703, vendor=True, renter=True,
-         lat=30.2700, lng=-97.7530),
+         lat=30.2700, lng=-97.7530, picture="Rachel-Kim.jpg"),
     dict(name='Ben Alvarez', email='ben.alvarez@utexas.edu', phone='(512) 555-0111',
          dob='2000-06-08', street='6700 Burnet Rd', city='Austin', state='Texas',
          zip_code=78757, vendor=True, renter=True,
-         lat=30.3400, lng=-97.7380),
+         lat=30.3400, lng=-97.7380, picture="Ben-Alvarez.jpg"),
     dict(name='Aisha Mohammed', email='aisha.m@gmail.com', phone='(512) 555-0112',
          dob='2001-10-19', street='1200 E Riverside Dr', city='Austin', state='Texas',
          zip_code=78741, vendor=True, renter=True,
-         lat=30.2410, lng=-97.7260),
+         lat=30.2410, lng=-97.7260, picture="Aisha-Mohammed.jpg"),
     dict(name='Liam Foster', email='liam.foster@utexas.edu', phone='(512) 555-0113',
          dob='1999-07-03', street='3500 Red River St', city='Austin', state='Texas',
          zip_code=78705, vendor=True, renter=True,
-         lat=30.2970, lng=-97.7280),
+         lat=30.2970, lng=-97.7280, picture="Liam-Foster.jpg"),
 
     # Renter-only (5 users — indices 15–19)
     dict(name='Hannah Sullivan', email='hannah.s@gmail.com', phone='(512) 555-0114',
          dob='2003-01-25', street='11600 Domain Dr', city='Austin', state='Texas',
          zip_code=78758, vendor=False, renter=True,
-         lat=30.4020, lng=-97.7250),
+         lat=30.4020, lng=-97.7250, picture="Hannah-Sullivan.jpg"),
     dict(name='Noah Castillo', email='noah.c@utexas.edu', phone='(512) 555-0115',
          dob='2004-03-30', street='2600 Whitis Ave', city='Austin', state='Texas',
          zip_code=78705, vendor=False, renter=True,
-         lat=30.2900, lng=-97.7400),
+         lat=30.2900, lng=-97.7400, picture="Noah-Castillo.jpg"),
     dict(name='Chloe Davis', email='chloe.d@yahoo.com', phone='(512) 555-0116',
          dob='2002-09-11', street='4800 S Congress Ave', city='Austin', state='Texas',
          zip_code=78745, vendor=False, renter=True,
-         lat=30.2170, lng=-97.7830),
+         lat=30.2170, lng=-97.7830, picture="Chloe-Davis.jpg"),
     dict(name='Ethan Wright', email='ethan.w@outlook.com', phone='(512) 555-0117',
          dob='2001-04-07', street='3300 Bee Cave Rd', city='Austin', state='Texas',
          zip_code=78746, vendor=False, renter=True,
-         lat=30.2720, lng=-97.8050),
+         lat=30.2720, lng=-97.8050, picture="Ethan-Wright.jpg"),
     dict(name='Lily Thompson', email='lily.t@utexas.edu', phone='(512) 555-0118',
          dob='2003-08-14', street='2200 Leon St', city='Austin', state='Texas',
          zip_code=78705, vendor=False, renter=True,
-         lat=30.2890, lng=-97.7500),
+         lat=30.2890, lng=-97.7500, picture="Lily-Thompson.jpg"),
 
     # Vendor-only (3 users — indices 20–22)
     dict(name='Daniel Park', email='daniel.park@gmail.com', phone='(512) 555-0119',
          dob='1993-05-22', street='9500 S IH 35', city='Austin', state='Texas',
          zip_code=78748, vendor=True, renter=False,
-         lat=30.1830, lng=-97.7800),
+         lat=30.1830, lng=-97.7800, picture="Daniel-Park.jpg"),
     dict(name='Olivia Barnes', email='olivia.b@outlook.com', phone='(512) 555-0120',
          dob='1995-12-01', street='1500 E 6th St', city='Austin', state='Texas',
          zip_code=78702, vendor=True, renter=False,
-         lat=30.2650, lng=-97.7260),
+         lat=30.2650, lng=-97.7260, picture="Olivia-Barnes.jpg"),
     dict(name='Samuel Greene', email='sam.greene@utexas.edu', phone='(512) 555-0121',
          dob='1991-08-17', street='12400 N Lamar Blvd', city='Austin', state='Texas',
          zip_code=78753, vendor=True, renter=False,
-         lat=30.3920, lng=-97.6930),
+         lat=30.3920, lng=-97.6930, picture="Samuel-Greene.jpg"),
 ]
 
 # Map equipment index -> owner user index (only vendor-capable users)
@@ -570,32 +617,28 @@ def equipment_emoji(name):
 def seed_equipment_images_if_missing():
     """Create SVG placeholder images for catalog items if files do not exist."""
     backend_dir = Path(__file__).resolve().parent
-    candidate_dirs = [
-        Path('/frontend/public/images/equipment'),
-        backend_dir.parent / 'frontend' / 'public' / 'images' / 'equipment',
-    ]
+    images_equipment_dir = backend_dir / 'images' / 'equipment'
+    images_users_dir = backend_dir / 'images' / 'users'
+    seed_images_equipment_dir = backend_dir / 'seed_photos' / 'equipment'
+    seed_images_users_dir = backend_dir / 'seed_photos' / 'users'
 
-    images_dir = None
-    for candidate in candidate_dirs:
-        if candidate.parent.exists() or str(candidate).startswith('/frontend'):
-            images_dir = candidate
-            break
-
-    if images_dir is None:
-        raise RuntimeError(
-            "Could not resolve frontend image directory. "
-            "Expected /frontend/public/images/equipment or ../frontend/public/images/equipment"
-        )
-
-    images_dir.mkdir(parents=True, exist_ok=True)
+    images_equipment_dir.mkdir(parents=True, exist_ok=True)
 
     created_count = 0
-    for name, _price, _desc in EQUIPMENT_CATALOG:
-        filename = equipment_filename(name)
-        image_path = images_dir / f"{filename}.svg"
+    for name, _price, _desc, _picture in EQUIPMENT_CATALOG:
+        image_path = seed_images_equipment_dir / _picture
 
         if image_path.exists():
+            image_dst_path = images_equipment_dir / _picture
+
+            if image_dst_path.exists():
+                continue
+
+            shutil.copy(image_path, image_dst_path)
             continue
+        
+        filename = equipment_filename(name)
+        image_path = images_equipment_dir / f"{filename}.svg"
 
         label = escape(name)
         emoji = equipment_emoji(name)
@@ -613,7 +656,19 @@ def seed_equipment_images_if_missing():
         image_path.write_text(svg, encoding='utf-8')
         created_count += 1
 
-    print(f"✓ Ensured equipment images at {images_dir} ({created_count} created, {len(EQUIPMENT_CATALOG) - created_count} existing)")
+    for user in USERS:
+        image_path = seed_images_users_dir / user["picture"]
+
+        if image_path.exists():
+            image_dst_path = images_users_dir / user["picture"]
+
+            if image_dst_path.exists():
+                continue
+
+            shutil.copy(image_path, image_dst_path)
+            continue
+
+    print(f"✓ Ensured equipment images at {images_equipment_dir} ({created_count} created, {len(EQUIPMENT_CATALOG) - created_count} existing)")
 
 
 
@@ -635,6 +690,7 @@ def seed_users():
             renter=u['renter'],
             latitude=u['lat'],
             longitude=u['lng'],
+            picture=f"images/users/{u['picture']}"
         )
         user.set_password('password')
         db.session.add(user)
@@ -649,7 +705,7 @@ def seed_equipment(users):
     print("Creating equipment...")
     equipment_list = []
     conditions = ["Mint", "Above Average", "Average", "Below Average"]
-    for i, (name, price, desc) in enumerate(EQUIPMENT_CATALOG):
+    for i, (name, price, desc, picture) in enumerate(EQUIPMENT_CATALOG):
         owner_idx = EQUIPMENT_OWNER_MAP[i]
         filename = equipment_filename(name)
         eq = Equipment(
@@ -657,7 +713,7 @@ def seed_equipment(users):
             name=name,
             price=price,
             description=desc,
-            picture=f"/images/equipment/{filename}.svg",
+            picture=f"images/equipment/{picture}",
             condition=conditions[i % len(conditions)],
         )
         db.session.add(eq)

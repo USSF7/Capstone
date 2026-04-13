@@ -1,5 +1,7 @@
-from models import Review
+from flask import jsonify
+from models import Review, User
 from database import db
+from sqlalchemy.orm import joinedload
 
 class ReviewService:
     """Service layer for Review business logic"""

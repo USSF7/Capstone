@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from services import EquipmentService
+from PIL import Image
 
 equipment_bp = Blueprint('equipment', __name__, url_prefix='/api/equipment')
 
@@ -95,6 +96,85 @@ def update_equipment(equipment_id):
         return jsonify(equipment.to_dict()), 200
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@equipment_bp.route('/picture', methods=['POST'])
+def upload_equipment_picture():
+    try:
+        # Checking if the file exists in the request
+        if 'picture_file' not in request.files:
+            return jsonify({
+                'error': 'No picture file in the request',
+                'success': False
+            }), 400
+        
+        # Getting the equipment picture file
+        equipmentPicture = request.files['picture_file']
+
+        # Checking if the filename is empty
+        if equipmentPicture.filename == '':
+            return jsonify({
+                'error': 'No selected file',
+                'success': False
+            }), 400
+        
+        # Checking if the equipment picture is a valid image type
+        ALLOWED_FILE_TYPES = {'jpeg', "png", 'webp'}
+
+        image = Image.open(equipmentPicture)
+        image.verify()
+
+        fileFormat = image.format.lower()
+        equipmentPicture.seek(0)
+
+        if fileFormat not in ALLOWED_FILE_TYPES:
+            return jsonify({
+                'error': 'Invalid image',
+                'success': False
+            }), 400
+        
+        # Storing the picture in the backend
+        pictureFilepath = EquipmentService.upload_equipment_picture(equipmentPicture=equipmentPicture)
+
+        return jsonify({
+            'message': 'Equipment picture uploaded successfully',
+            'success': True,
+            'filename': pictureFilepath
+        }), 200
+    
+    except ValueError as e:
+        return jsonify({
+            'error': str(e),
+            'success': False
+        }), 404
+    
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'success': False
+        }), 500
+
+@equipment_bp.route('/picture/delete', methods=['DELETE'])
+def delete_equipment_picture():
+    try:
+        # Get the filepath to the picture
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'error': 'No JSON received'}), 400
+
+        filepath = data.get('filepath')
+
+        if not filepath:
+            return jsonify({'error': 'Missing filepath'}), 400
+
+        # Deleting the picture
+        return EquipmentService.delete_equipment_picture(filepath)
+    
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

@@ -28,6 +28,8 @@ const months = [
     "December"
 ]
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
 const route = useRoute()
 const userID = ref()
 const userData = ref()
@@ -102,11 +104,16 @@ function createEquipmentRequest() {
 }
 
 async function deleteReview(reviewId) {
-    // Deleting the user's review
-    await reviewService.switchDeletedReviewStatus(reviewId, true)
+    // Double checking if the user wants to delete their review
+    const confirmed = confirm("Are you sure you want to delete your review?\n\nWarning: Deleting this review will permanently remove it. You will only be able to submit another review about this user after completing another rental with them.")
+    
+    if (confirmed === true) {
+        // Deleting the user's review
+        await reviewService.switchDeletedReviewStatus(reviewId, true)
 
-    // Reloading user data
-    window.location.reload()
+        // Reloading user data
+        window.location.reload()
+    }
 }
 
 async function editReview(reviewId) {
@@ -137,13 +144,19 @@ async function addSubmitterName() {
         await Promise.all(submitterIds.map(async (submitterId) => {
             if (!submitterNameCache.has(submitterId)) {
                 const userInfo = await UserService.getUser(submitterId)
-                submitterNameCache.set(submitterId, userInfo?.name || 'Unknown user')
+                submitterNameCache.set(submitterId, {
+                    name: userInfo?.name || 'Unknown user',
+                    picture: userInfo?.picture || ''
+                })
             }
         }))
 
         for (let i = 0; i < userReviews.value.length; i++) {
             const submitterId = userReviews.value[i].submitter_id
-            userReviews.value[i].submitter_name = submitterNameCache.get(submitterId) || 'Unknown user'
+            const cached = submitterNameCache.get(submitterId)
+
+            userReviews.value[i].submitter_name = cached?.name || 'Unknown user'
+            userReviews.value[i].picture = cached?.picture || ''
         }
     }
     catch (error) {
@@ -261,6 +274,7 @@ watch(() => route.params.id, async (newId) => {
             <review-user-edit
                 v-if="showReviewUserModal"
                 :userName="userData.name"
+                :userPicture="reviewUserTarget.picture"
                 :userID="userData.id"
                 :submitterID="viewingUserData.id"
                 :reviewId="popUpReviewId"
@@ -269,7 +283,7 @@ watch(() => route.params.id, async (newId) => {
                 @close="showReviewUserModal = false"
             />
             
-            <fwb-avatar bordered size="xl" img="" />
+            <fwb-avatar bordered size="xl" :img="userData.picture ? `${BACKEND_URL}/${userData.picture}` : ''" />
 
             <h1 class="text-3xl font-bold text-gray-800">{{ userData.name }}</h1>
             <p class="text-sm text-gray-600">{{ userData.email }}</p>
@@ -352,7 +366,7 @@ watch(() => route.params.id, async (newId) => {
                     <div class="space-y-3 p-5">
                         <div v-if="review.submitter_id == viewingUserData.id" class="flex items-center justify-between">
                             <div class="flex items-center space-x-4">
-                                <fwb-avatar size="md" img="" rounded />
+                                <fwb-avatar size="md" :img="review.picture ? `${BACKEND_URL}/${review.picture}` : ''" rounded />
                                 <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
                             </div>
                             <div class="flex space-x-2">
@@ -365,7 +379,7 @@ watch(() => route.params.id, async (newId) => {
                             </div>
                         </div>
                         <div v-else class="flex items-center space-x-4">
-                            <fwb-avatar size="md" img="" rounded />
+                            <fwb-avatar size="md" :img="review.picture ? `${BACKEND_URL}/${review.picture}` : ''" rounded />
                             <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
                         </div>
                         <fwb-rating size="sm" :rating="review.rating">

@@ -41,6 +41,8 @@ const props = defineProps({
 
 const emit = defineEmits(['select'])
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
 function dateFormatting(isoDate) {
   const date = new Date(isoDate)
   const day = date.getDate()
@@ -78,7 +80,7 @@ function getRentalTitle(rental) {
       <div class="flex gap-4">
         <img
           v-if="getRentalPreviewImage(props.rental)"
-          :src="getRentalPreviewImage(props.rental)"
+          :src="`${BACKEND_URL}/${getRentalPreviewImage(props.rental)}`"
           :alt="getRentalPreviewAlt(props.rental)"
           class="w-48 h-32 object-cover rounded-lg border-2 border-gray-800"
         />

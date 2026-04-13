@@ -3,10 +3,12 @@
 <script lang="js" setup>
 
     import { onMounted, ref, computed } from 'vue'
-  import { FwbCard, FwbButton, FwbBadge, FwbRating } from 'flowbite-vue'
+    import { FwbCard, FwbButton, FwbBadge, FwbRating } from 'flowbite-vue'
     import { useAuthStore } from '../../stores/auth'
     import EquipmentService from '../../services/equipmentService'
     import UserService from '../../services/userService'
+
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
     const auth = useAuthStore()
     const userData = ref()
@@ -75,7 +77,7 @@
         <div class="p-4 space-y-4">
           <div class="rounded-xl border border-2 border-gray-800">
             <div v-if="equipment.picture">
-              <img :src="equipment.picture" :alt="equipment.name" class="w-full h-48 object-cover rounded-lg" />
+              <img :src="`${BACKEND_URL}/${equipment.picture}`" :alt="equipment.name" class="w-full h-48 object-cover rounded-lg" />
             </div>
             <div v-else class="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
               <span class="text-sm text-gray-400">No image available</span>

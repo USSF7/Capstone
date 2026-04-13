@@ -11,7 +11,7 @@ const props = defineProps({
   currentUserId: { type: Number, required: true },
 })
 
-const emit = defineEmits(['open-review-equipment', 'open-review-user', 'rental-updated'])
+const emit = defineEmits(['open-review-user', 'rental-updated'])
 const router = useRouter()
 
 const isDisputedOrDenied = computed(() =>
@@ -43,18 +43,12 @@ const canMarkReturned = computed(() => {
   return new Date() > new Date(props.rentalData.end_date)
 })
 const reviewUserLabel = computed(() => (isVendorViewer.value ? 'Review Renter' : 'Review Vendor'))
-const canReviewEquipment = computed(() => !isVendorViewer.value)
 
 const userAlreadyReviewed = computed(() => {
   const renterReviewed = props.rentalData?.renter_reviewed === true
   const vendorReviewed = props.rentalData?.vendor_reviewed === true
 
   return ((isRenterViewer.value && renterReviewed) || (isVendorViewer.value && vendorReviewed))
-})
-
-const equipmentAlreadyReviewed = computed(() => {
-  const equipmentReviewed = props.rentalData?.equipment_reviewed === true
-  return equipmentReviewed
 })
 
 const rentalDurationDays = computed(() => {
@@ -231,24 +225,7 @@ function confirmAndMarkReturned() {
         :label="rentalData.status_text || 'Rental status updated'"
       />
 
-      <div v-if="isReturned" class="flex space-x-3 mt-4">
-        <fwb-button
-          v-if="(canReviewEquipment === true) && (equipmentAlreadyReviewed === false)"
-          color="default"
-          class="flex-1"
-          @click="$emit('open-review-equipment')"
-        >
-          Review Equipment
-        </fwb-button>
-        <fwb-button
-          v-else-if="canReviewEquipment"
-          color="default"
-          class="flex-1"
-          @click="$emit('open-review-equipment')"
-          disabled
-        >
-          Review Equipment
-        </fwb-button>
+      <div v-if="isReturned" class="flex mt-4">
         <fwb-button
           v-if="userAlreadyReviewed === false"
           color="default"

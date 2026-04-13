@@ -155,14 +155,13 @@ class RentalService:
             vendor_approved=False,
             deleted=deleted,
             renter_reviewed=False,
-            vendor_reviewed=False,
-            equipment_reviewed=False
+            vendor_reviewed=False
         )
         db.session.add(rental)
         db.session.flush()
 
         for equipment in selected_equipment:
-            db.session.add(RentalHasEquipment(equipment_id=equipment.id, rental_id=rental.id))
+            db.session.add(RentalHasEquipment(equipment_id=equipment.id, rental_id=rental.id, equipment_reviewed=False))
 
         db.session.commit()
         return rental
@@ -178,11 +177,24 @@ class RentalService:
         rental = Rental.query.get(rental_id).to_dict()
 
         """Query the rental_has_equipment table and the equipment table to get the rental's equipment"""
+        RHE_rows = RentalHasEquipment.query.filter_by(rental_id=rental["id"]).all()
+
         equipment_ids = [
-            row.equipment_id for row in RentalHasEquipment.query.filter_by(rental_id=rental["id"]).all()
+            row.equipment_id for row in RHE_rows
         ]
+
+        equipment_reviewed_status = {
+            row.equipment_id: row.equipment_reviewed for row in RHE_rows
+        }
+
         equipment_info = Equipment.query.filter(Equipment.id.in_(equipment_ids)).all() if equipment_ids else []
-        rental["equipment"] = [row.to_dict() for row in equipment_info]
+
+        rental["equipment"] = []
+
+        for row in equipment_info:
+            equipment_dict = row.to_dict()
+            equipment_dict["equipment_reviewed"] = equipment_reviewed_status.get(row.id, False)
+            rental["equipment"].append(equipment_dict)
 
         return rental
 
@@ -204,11 +216,24 @@ class RentalService:
 
         """Query the rental_has_equipment table and the equipment table to get each rental's equipment"""
         for i in range(0, len(rentals)):
+            RHE_rows = RentalHasEquipment.query.filter_by(rental_id=rentals[i]["id"]).all()
+
             equipment_ids = [
-                row.equipment_id for row in RentalHasEquipment.query.filter_by(rental_id=rentals[i]["id"]).all()
+                row.equipment_id for row in RHE_rows
             ]
+
+            equipment_reviewed_status = {
+                row.equipment_id: row.equipment_reviewed for row in RHE_rows
+            }
+
             equipment_info = Equipment.query.filter(Equipment.id.in_(equipment_ids)).all() if equipment_ids else []
-            rentals[i]["equipment"] = [row.to_dict() for row in equipment_info]
+
+            rentals[i]["equipment"] = []
+
+            for row in equipment_info:
+                equipment_dict = row.to_dict()
+                equipment_dict["equipment_reviewed"] = equipment_reviewed_status.get(row.id, False)
+                rentals[i]["equipment"].append(equipment_dict)
 
         return rentals
 
@@ -276,17 +301,17 @@ class RentalService:
         return rental
     
     @staticmethod
-    def switch_equipment_review_status(rental_id, status):
+    def switch_equipment_review_status(rental_id, equipment_id, status):
         """Switch the equipment review status"""
-        rental = Rental.query.get(rental_id)
-        if not rental:
+        rentalHasEquipment = RentalHasEquipment.query.filter_by(equipment_id=equipment_id, rental_id=rental_id).first()
+        if not rentalHasEquipment:
             raise ValueError("Rental not found")
         
         statusUpdate = True if status in [True, "true", "True", 1] else False
-        rental.equipment_reviewed = statusUpdate
+        rentalHasEquipment.equipment_reviewed = statusUpdate
 
         db.session.commit()
-        return rental
+        return rentalHasEquipment
 
     @staticmethod
     def update_rental(

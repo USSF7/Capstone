@@ -26,6 +26,8 @@ const months = [
     "December"
 ]
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
 const route = useRoute()
 const router = useRouter()
 const viewingUserData = ref()
@@ -46,11 +48,16 @@ const popUpReviewRating = ref(0.0)
 const popUpReviewText = ref('')
 
 async function deleteReview(reviewId) {
-    // Deleting the user's review
-    await ReviewService.switchDeletedReviewStatus(reviewId, true)
+    // Double checking if the user wants to delete their review
+    const confirmed = confirm("Are you sure you want to delete your review?\n\nWarning: Deleting your review will permanently remove it. You will only be able to submit another review about this equipment if you rent it again.")
 
-    // Reloading user data
-    window.location.reload()
+    if (confirmed === true) {
+        // Deleting the user's review
+        await ReviewService.switchDeletedReviewStatus(reviewId, true)
+
+        // Reloading user data
+        window.location.reload()
+    }
 }
 
 async function editReview(reviewId) {
@@ -90,13 +97,19 @@ async function addSubmitterName() {
         await Promise.all(submitterIds.map(async (submitterId) => {
             if (!submitterNameCache.has(submitterId)) {
                 const userInfo = await UserService.getUser(submitterId)
-                submitterNameCache.set(submitterId, userInfo?.name || 'Unknown user')
+                submitterNameCache.set(submitterId, {
+                    name: userInfo?.name || 'Unknown user',
+                    picture: userInfo?.picture || ''
+                })
             }
         }))
 
         for (let i = 0; i < equipmentReviews.value.length; i++) {
             const submitterId = equipmentReviews.value[i].submitter_id
-            equipmentReviews.value[i].submitter_name = submitterNameCache.get(submitterId) || 'Unknown user'
+            const cached = submitterNameCache.get(submitterId)
+
+            equipmentReviews.value[i].submitter_name = cached?.name || 'Unknown user'
+            equipmentReviews.value[i].picture = cached?.picture || ''
         }
     }
     catch (error) {
@@ -241,6 +254,7 @@ onMounted(async () => {
                 v-if="showReviewEquipmentModal"
                 :equipmentName="equipmentData.name"
                 :equipmentID="equipmentData.id"
+                :equipmentPicture="equipmentData.picture"
                 :submitterID="viewingUserData.id"
                 :reviewId="popUpReviewId"
                 :reviewRating="popUpReviewRating"
@@ -248,11 +262,15 @@ onMounted(async () => {
                 @close="showReviewEquipmentModal = false"
             />
             <fwb-img
+                v-if="equipmentData.picture"
                 alt="flowbite-vue"
                 size="max-w-md"
-                img-class="rounded-lg"
-                src="../../../image.jpg" 
+                img-class="rounded-lg mb-2"
+                :src="`${BACKEND_URL}/${equipmentData.picture}`" 
             />
+            <div v-else class="h-56 w-[420px] mb-2 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
+                <span class="text-sm text-gray-400">No image available</span>
+            </div>
             <span class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{{ equipmentData.name }}</span>
             <fwb-rating :rating="averageRating" review-link="#ReviewsTitle" :review-text="numRatingsText">
                 <template #besideText>
@@ -304,7 +322,7 @@ onMounted(async () => {
                     <div class="space-y-3 p-5">
                         <div v-if="review.submitter_id == viewingUserData.id" class="flex items-center justify-between">
                             <div class="flex items-center space-x-4">
-                                <fwb-avatar size="md" img="" rounded />
+                                <fwb-avatar size="md" :img="review.picture ? `${BACKEND_URL}/${review.picture}` : ''" rounded />
                                 <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
                             </div>
                             <div class="flex space-x-2">
@@ -317,7 +335,7 @@ onMounted(async () => {
                             </div>
                         </div>
                         <div v-else class="flex items-center space-x-4">
-                            <fwb-avatar size="md" img="" rounded />
+                            <fwb-avatar size="md" :img="review.picture ? `${BACKEND_URL}/${review.picture}` : ''" rounded />
                             <p class="font-normal text-gray-700 dark:text-gray-400">{{ review.submitter_name }}</p>
                         </div>
                         <fwb-rating size="sm" :rating="review.rating">
