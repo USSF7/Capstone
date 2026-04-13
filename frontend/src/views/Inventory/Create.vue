@@ -153,6 +153,8 @@ const conditions = [
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+const MAX_FILE_SIZE = 2 * 1024 * 1024
+
 const auth = useAuthStore()
 const OWNER_ID = computed(() => auth.user?.id)
 
@@ -238,6 +240,14 @@ function handleFileChange(event) {
     canUploadPhoto.value = false
     equipmentPhoto.value = null
     alert('Invalid file type. Please upload JPG, PNG, or WebP.')
+    return
+  }
+
+  // Validating that the file is not too large
+  if (file.size > MAX_FILE_SIZE) {
+    canUploadPhoto.value = false
+    equipmentPhoto.value = null
+    alert("The inputted picture file is too large. The maximum file size is 2 MB.")
     return
   }
 
