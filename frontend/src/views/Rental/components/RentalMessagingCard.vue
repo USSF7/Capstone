@@ -2,6 +2,12 @@
 import { FwbCard } from 'flowbite-vue'
 import MessageBox from '../../../components/Messaging/MessageBox.vue'
 
+/**
+ * Component props
+ * @property {number} currentUserId - ID of logged-in user
+ * @property {number} otherUserId - ID of conversation partner
+ * @property {number} rentalId - Rental context ID for scoped messaging
+ */
 defineProps({
   currentUserId: { type: Number, required: true },
   otherUserId: { type: Number, required: true },

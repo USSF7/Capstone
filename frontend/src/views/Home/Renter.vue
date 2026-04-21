@@ -7,27 +7,74 @@ import RentalService from '../../services/rentalService'
 import LocationService from '../../services/locationService'
 import EquipmentResultsGrid from '../../components/EquipmentResultsGrid.vue'
 
+/**
+ * Auth store containing current user and location data.
+ */
 const auth = useAuthStore()
+
+/**
+ * Router instance for navigation actions.
+ */
 const router = useRouter()
 
+/**
+ * List of all rentals for the current user.
+ * @type {import('vue').Ref<Array<any>>}
+ */
 const rentals = ref([])
+
+/**
+ * Nearby equipment search results.
+ * @type {import('vue').Ref<Array<any>>}
+ */
 const nearbyEquipment = ref([])
+
+/**
+ * Rental loading state for async data sources.
+ */
 const rentalsLoading = ref(true)
+
+/**
+ * Equipment loading state for async data sources.
+ */
 const equipmentLoading = ref(true)
+
+/**
+ * Rentals error state for async data sources.
+ */
 const rentalsError = ref(null)
+
+/**
+ * Equipment error state for async data sources.
+ */
 const equipmentError = ref(null)
 
+/**
+ * Getting all of the active rentals derived from all the rentals.
+ */
 const activeRentals = computed(() =>
   rentals.value
     .filter(r => !r.deleted && ['requesting', 'active'].includes(r.status))
     .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
 )
 
+/**
+ * Checks if rental has not started yet.
+ *
+ * @param {any} rental - The rental data object.
+ * @returns {boolean} Returns true if rental has not started yet. Otherwise, returns false.
+ */
 function isBeforeRentalStart(rental) {
   const now = Date.now()
   return now < new Date(rental.start_date).getTime()
 }
 
+/**
+ * Checks if current time is within rental period.
+ *
+ * @param {any} rental - The rental data object.
+ * @returns {boolean} Returns true if current time is within rental period. Otherwise, returns false.
+ */
 function isDuringRentalWindow(rental) {
   const now = Date.now()
   const start = new Date(rental.start_date).getTime()
@@ -35,11 +82,27 @@ function isDuringRentalWindow(rental) {
   return now >= start && now <= end
 }
 
+/**
+ * Maps rental status to progress bar percentage.
+ */
 const statusPercent = { requesting: 10, active: 70 }
+
+/**
+ * Maps rental status to progress bar color.
+ */
 const statusColor = { requesting: 'yellow', active: 'green' }
 
+/**
+ * Whether the user has a valid saved location.
+ */
 const hasLocation = computed(() => auth.user?.latitude != null && auth.user?.longitude != null)
 
+/**
+ * Formats ISO date into human-readable string.
+ *
+ * @param {string} iso - The date formatted in ISO format.
+ * @returns {string} Human-readable formatted date string.
+ */
 function formatDate(iso) {
   return new Date(iso).toLocaleString('en-US', {
     month: 'short',
@@ -50,6 +113,9 @@ function formatDate(iso) {
   })
 }
 
+/**
+ * Loads rentals for the authenticated user. Populates active and historical rental data.
+ */
 async function loadRentals() {
   rentalsLoading.value = true
   rentalsError.value = null
@@ -62,6 +128,9 @@ async function loadRentals() {
   }
 }
 
+/**
+ * Loads nearby equipment based on user location.
+ */
 async function loadNearbyEquipment() {
   if (!hasLocation.value) {
     equipmentLoading.value = false
@@ -79,6 +148,9 @@ async function loadNearbyEquipment() {
   }
 }
 
+/**
+ * Initial data fetch on component mount.
+ */
 onMounted(() => {
   loadRentals()
   loadNearbyEquipment()

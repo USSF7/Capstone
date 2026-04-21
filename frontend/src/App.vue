@@ -3,9 +3,19 @@ import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 
+/**
+ * Auth store containing user session and profile state.
+ */
 const auth = useAuthStore()
+
+/**
+ * Current route instance. Used for conditional navigation.
+ */
 const route = useRoute()
 
+/**
+ * Determines whether the user can switch between vendor and renter dashboards on the home view.
+ */
 const canSwitchHomeDashboards = computed(
   () => auth.isAuthenticated && auth.profileComplete && auth.user?.vendor && auth.user?.renter
 )

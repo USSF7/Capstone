@@ -10,31 +10,109 @@ export default {
         FwbTextarea,
         ReviewService
     },
+
+    /**
+     * Props passed from parent component
+     */
     props: {
+        /**
+         * Name of the equipment being reviewed
+         * @type {string}
+         */
         equipmentName: String,
+
+        /**
+         * Unique ID of the equipment
+         * @type {number}
+         */
         equipmentID: Number,
+
+        /**
+         * Image path/filename for the equipment
+         * @type {string}
+         */
         equipmentPicture: String,
+
+        /**
+         * ID of the user editing the review
+         * @type {number}
+         */
         submitterID: Number,
+
+        /**
+         * ID of the existing review to update
+         * @type {number}
+         */
         reviewId: Number,
+
+        /**
+         * Existing rating value (1–5)
+         * Used to prepopulate the UI
+         * @type {number}
+         */
         reviewRating: Number,
+
+        /**
+         * Existing review text
+         * Used to prepopulate the textarea
+         * @type {string}
+         */
         reviewText: String
     },
+
+    /**
+     * Initializes component state from existing review data
+     *
+     * @returns {void}
+     */
     mounted() {
         this.rating = this.reviewRating || 0
         this.message = this.reviewText || ''
     },
+
+    /**
+     * Reactive component state
+     */
     data() {
         return {
+            /**
+             * Current selected rating (1–5)
+             * @type {number}
+             */
             rating: 0,
+
+            /**
+             * Hovered rating (for UI preview effect)
+             * @type {number}
+             */
             hover: 0,
+
+            /**
+             * Editable review message
+             * @type {string}
+             */
             message: '',
+
+            /**
+             * Backend base URL for loading equipment images
+             * @type {string}
+             */
             BACKEND_URL: import.meta.env.VITE_BACKEND_URL
         }
     },
     methods: {
+        /**
+         * Updates the selected rating when a star is clicked
+         *
+         * @param {number} value - Selected star value (1–5)
+         */
         setRating(value) {
             this.rating = value
         },
+
+         /**
+          * Submits updated review data to backend
+          */
         async submitReview() {
             try {
                 // Creating the review

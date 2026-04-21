@@ -9,52 +9,166 @@ import RentalService from '../../services/rentalService'
 import locationService from '../../services/locationService'
 import RentalMeetingLocationField from './components/RentalMeetingLocationField.vue'
 
+/**
+ * Vue Route instance
+ */
 const route = useRoute()
+
+/**
+ * Vue Router instance
+ */
 const router = useRouter()
+
+/**
+ * Auth store providing current logged-in user.
+ */
 const auth = useAuthStore()
 
+/**
+ * Vendor ID to identify vendor.
+ */
 const vendorId = ref(null)
+
+/**
+ * Equipment ID to identify equipment.
+ */
 const equipmentId = ref(null)
 
+/**
+ * Vendor information
+ */
 const vendor = ref(null)
+
+/**
+ * All of vendor's equipment
+ */
 const vendorEquipment = ref([])
+
+/**
+ * Selected equipment IDs
+ */
 const selectedEquipmentIds = ref([])
 
+/**
+ * Form input agreed price
+ */
 const agreedPrice = ref('')
+
+/**
+ * Form input pickup location
+ */
 const pickupLocation = ref('')
+
+/**
+ * Latitude Coordinate for pickup location
+ */
 const meetingLat = ref(null)
+
+/**
+ * Longitude Coordinate for pickup location
+ */
 const meetingLng = ref(null)
+
+/**
+ * Start date
+ */
 const startDate = ref('')
+
+/**
+ * End date
+ */
 const endDate = ref('')
+
+/**
+ * Form input start date
+ */
 const startDatePart = ref('')
+
+/**
+ * Form input start time
+ */
 const startTimePart = ref('')
+
+/**
+ * Form input end date
+ */
 const endDatePart = ref('')
+
+/**
+ * Form input end time
+ */
 const endTimePart = ref('')
 
+/**
+ * Loading state
+ */
 const loading = ref(true)
+
+/**
+ * Submitting state
+ */
 const submitting = ref(false)
+
+/**
+ * Loading equipment state
+ */
 const loadingEquipment = ref(false)
+
+/**
+ * Error message in the user interface
+ */
 const error = ref('')
 
+/**
+ * Current authenticated user ID
+ */
 const userId = computed(() => auth.user?.id)
+
+/**
+ * Minimum lead time before rental start (hours)
+ */
 const minimumLeadTimeHours = 2
+
+/**
+ * Earliest valid start datetime
+ */
 const minimumStartDate = ref('')
+
+/**
+ * All valid 15-minute time slots in a day
+ */
 const quarterHourTimes = Array.from({ length: 96 }, (_, index) => {
 	const hours = Math.floor(index / 4)
 	const minutes = (index % 4) * 15
 	return `${pad(hours)}:${pad(minutes)}`
 })
 
+/**
+ * Pads a numeric value to two digits
+ * @param {number} value The current value
+ * @returns {string} The padded value with two digits
+ */
 function pad(value) {
 	return String(value).padStart(2, '0')
 }
 
+/**
+ * Adds hours to a Date object
+ * @param {Date} date The inputted date
+ * @param {number} hours The inputted hours
+ * @returns {Date} The new date object with the added hours
+ */
 function addHours(date, hours) {
 	const result = new Date(date)
 	result.setHours(result.getHours() + hours)
 	return result
 }
 
+/**
+ * Rounds a date up to the next 15-minute interval
+ * @param {Date} date The inputted date
+ * @returns {Date} The date rounded up to the next quarter hour
+ */
 function roundUpToNextQuarterHour(date) {
 	const result = new Date(date)
 	result.setSeconds(0, 0)
@@ -68,46 +182,99 @@ function roundUpToNextQuarterHour(date) {
 	return result
 }
 
+/**
+ * Converts datetime-local string to input format
+ * @param {Date|string} value The inputted date
+ * @returns {string} The date in input format
+ */
 function toDateTimeLocalValue(value) {
 	if (!value) return ''
 	const date = new Date(value)
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+/**
+ * Parses datetime-local string into Date
+ * @param {string} value The inputted date
+ * @returns {Date|null} Date parsed into a Date object
+ */
 function fromDateTimeLocalValue(value) {
 	return value ? new Date(value) : null
 }
 
+/**
+ * Converts a datetime-local string into the nearest valid 15-minute increment.
+ *
+ * @param {string} value - A datetime-local string
+ * @returns {string} A normalized datetime-local string rounded up to the next 15-minute interval
+ */
 function normalizeDateTimeLocalToQuarterHour(value) {
 	const date = fromDateTimeLocalValue(value)
 	if (!date) return ''
 	return toDateTimeLocalValue(roundUpToNextQuarterHour(date))
 }
 
+/**
+ * Checks whether a datetime-local string is already aligned to a 15-minute increment.
+ *
+ * @param {string} value - A datetime-local string
+ * @returns {boolean} True if the time is exactly on a quarter-hour boundary, otherwise false.
+ */
 function isQuarterHourValue(value) {
 	const date = fromDateTimeLocalValue(value)
 	if (!date) return false
 	return date.getMinutes() % 15 === 0 && date.getSeconds() === 0
 }
 
+/**
+ * Converts a datetime-local value into an ISO 8601 UTC string.
+ *
+ * @param {string} value - A datetime-local string.
+ * @returns {string} ISO string in UTC format, or empty string if input is false.
+ */
 function toUtcIsoString(value) {
 	if (!value) return ''
 	return new Date(value).toISOString()
 }
 
+/**
+ * Extracts the date portion (YYYY-MM-DD) from a datetime-local string.
+ *
+ * @param {string} value - A datetime-local string.
+ * @returns {string} The date portion of the string, or empty string if invalid.
+ */
 function getDatePart(value) {
 	return value?.split('T')[0] || ''
 }
 
+/**
+ * Extracts the time portion (HH:mm) from a datetime-local string.
+ *
+ * @param {string} value - A datetime-local string.
+ * @returns {string} The time portion (24-hour format), or empty string if invalid.
+ */
 function getTimePart(value) {
 	return value?.split('T')[1]?.slice(0, 5) || ''
 }
 
+/**
+ * Combines separate date and time strings into a single datetime-local string.
+ *
+ * @param {string} datePart - Date string in YYYY-MM-DD format.
+ * @param {string} timePart - Time string in HH:mm format.
+ * @returns {string} Combined datetime-local string or empty string if inputs are incomplete.
+ */
 function combineDateTimeLocal(datePart, timePart) {
 	if (!datePart || !timePart) return ''
 	return `${datePart}T${timePart}`
 }
 
+/**
+ * Formats a 24-hour time string into a human-readable 12-hour format.
+ *
+ * @param {string} time24 - Time in 24-hour format (HH:mm)
+ * @returns {string} Formatted 12-hour time string, or original value if parsing fails.
+ */
 function formatTime12Hour(time24) {
 	if (!time24) return ''
 	const [hourPart, minutePart] = time24.split(':')
@@ -119,14 +286,32 @@ function formatTime12Hour(time24) {
 	return `${hour12}:${minutePart} ${period}`
 }
 
+/**
+ * Safely parses a value into a strictly positive integer.
+ *
+ * @param {string|number} value - Input value to parse.
+ * @returns {number|null} A positive integer if valid, otherwise null.
+ */
 function parsePositiveInt(value) {
 	const parsed = Number.parseInt(value, 10)
 	return Number.isInteger(parsed) && parsed > 0 ? parsed : null
 }
 
+/**
+ * Extracts the date portion (YYYY-MM-DD) from the minimum allowed start datetime.
+ */
 const minimumStartDatePart = computed(() => getDatePart(minimumStartDate.value))
+
+/**
+ * Extracts the time portion (HH:mm) from the minimum allowed start datetime.
+ */
 const minimumStartTimePart = computed(() => getTimePart(minimumStartDate.value))
 
+/**
+ * Generates valid selectable start-time options based on the selected start date.
+ *
+ * @returns {ComputedRef<string[]>} Array of valid HH:mm time strings for start time selection.
+ */
 const startTimeOptions = computed(() => {
 	if (!startDatePart.value || startDatePart.value !== minimumStartDatePart.value) {
 		return quarterHourTimes
@@ -135,6 +320,11 @@ const startTimeOptions = computed(() => {
 	return quarterHourTimes.filter((time) => time >= minimumStartTimePart.value)
 })
 
+/**
+ * Generates valid selectable end-time options based on the selected start/end dates.
+ *
+ * @returns {ComputedRef<string[]>} Array of valid HH:mm time strings for end time selection.
+ */
 const endTimeOptions = computed(() => {
 	if (!endDatePart.value || !startDatePart.value || !startTimePart.value) {
 		return quarterHourTimes
@@ -147,6 +337,9 @@ const endTimeOptions = computed(() => {
 	return quarterHourTimes.filter((time) => time > startTimePart.value)
 })
 
+/**
+ * Syncs split date/time UI fields with their combined datetime-local representations.
+ */
 function syncDatePartsFromValues() {
 	startDatePart.value = getDatePart(startDate.value)
 	startTimePart.value = getTimePart(startDate.value)
@@ -154,6 +347,10 @@ function syncDatePartsFromValues() {
 	endTimePart.value = getTimePart(endDate.value)
 }
 
+/**
+ * Loads initial rental creation context including vendor data, default times,
+ * and initial pickup location.
+ */
 async function loadContext() {
 	try {
 		error.value = ''
@@ -198,6 +395,9 @@ async function loadContext() {
 	}
 }
 
+/**
+ * Fetches vendor equipment availability for the selected time range.
+ */
 async function loadEquipmentAvailability() {
 	if (!vendorId.value || !startDate.value || !endDate.value) return
 
@@ -226,6 +426,9 @@ async function loadEquipmentAvailability() {
 	}
 }
 
+/**
+ * Handles user changes to date or time inputs.
+ */
 function onDateChange() {
 	error.value = ''
 
@@ -245,6 +448,13 @@ function onDateChange() {
 	}
 }
 
+/**
+ * Toggles selection state of a vendor equipment item.
+ *
+ * @param {Object} equipment - Equipment object from vendor list.
+ * @param {number} equipment.id - Unique equipment identifier.
+ * @param {boolean} equipment.available - Whether item can be selected.
+ */
 function toggleEquipmentSelection(equipment) {
 	if (!equipment.available) return
 
@@ -256,6 +466,9 @@ function toggleEquipmentSelection(equipment) {
 	}
 }
 
+/**
+ * Submits a rental request to the backend.
+ */
 async function submitRequest() {
 	if (!userId.value) {
 		error.value = 'You must be logged in.'

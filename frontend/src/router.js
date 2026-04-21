@@ -11,6 +11,10 @@ import CallbackView from './views/Auth/callback.vue'
 import RentalIndex from './views/Rental/Index.vue'
 import RentalView from './views/Rental/View.vue'
 
+/**
+ * Application route definitions.
+ * Each route maps a URL path to a Vue component view.
+ */
 const routes = [
   {
     path: '/',
@@ -111,12 +115,17 @@ const routes = [
   }
 ]
 
+/**
+ * Vue Router instance
+ */
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
 
-// Pages accessible without login
+/**
+ * Routes that do NOT require authentication
+ */
 const publicPages = ['login', 'logout', 'auth-callback', 'home', 'about']
 
 router.beforeEach((to) => {

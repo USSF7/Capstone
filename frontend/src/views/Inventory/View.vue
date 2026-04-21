@@ -11,6 +11,9 @@ import ReviewService from '../../services/reviewService'
 import aiService from '../../services/aiService'
 import ReviewEquipmentEdit from '../Rental/ReviewEquipmentEdit.vue'
 
+/**
+ * Month lookup table used for formatting review dates.
+ */
 const months = [
     "January", 
     "February", 
@@ -26,27 +29,107 @@ const months = [
     "December"
 ]
 
+/**
+ * Backend base URL used for serving uploaded images.
+ */
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+/**
+ * Route instance for navigation.
+ */
 const route = useRoute()
+
+/**
+ * Router instance for navigation.
+ */
 const router = useRouter()
+
+/**
+ * Reactive state: currently logged-in user viewing the page.
+ */
 const viewingUserData = ref()
+
+/**
+ * Reactive state: owner of the equipment listing.
+ */
 const ownerData = ref()
+
+/**
+ * Reactive state: equipment details.
+ */
 const equipmentData = ref()
+
+/**
+ * Reactive state: list of reviews for this equipment.
+ */
 const equipmentReviews = ref()
+
+/**
+ * Equipment ID from route parameters.
+ */
 const equipmentID = ref()
+
+/**
+ * Indicates whether initial page data has finished loading.
+ */
 const dataLoaded = ref(false)
+
+/**
+ * The number of ratings in string data type.
+ */
 const numRatingsText = ref('')
+
+/**
+ * The number of ratings in number data type.
+ */
 const numRatings = ref(0)
+
+/**
+ * The average rating of the equipment.
+ */
 const averageRating = ref(0.0)
+
+/**
+ * Artificial intelligence computed review summary text.
+ */
 const reviewSummary = ref('')
+
+/**
+ * Loading state for artificial intelligence summary generation.
+ */
 const reviewSummaryLoading = ref(false)
+
+/**
+ * Cache for submitter user data to reduce API calls.
+ */
 const submitterNameCache = new Map()
+
+/**
+ * Controls visibility of the review edit modal.
+ */
 const showReviewEquipmentModal = ref(false)
+
+/**
+ * Popup review ID number.
+ */
 const popUpReviewId = ref(0)
+
+/**
+ * Popup review rating number.
+ */
 const popUpReviewRating = ref(0.0)
+
+/**
+ * Popup review text.
+ */
 const popUpReviewText = ref('')
 
+/**
+ * Deletes a review after user confirmation.
+ * Marks review as deleted via API and reloads page.
+ *
+ * @param {number} reviewId - ID of the review to delete.
+ */
 async function deleteReview(reviewId) {
     // Double checking if the user wants to delete their review
     const confirmed = confirm("Are you sure you want to delete your review?\n\nWarning: Deleting your review will permanently remove it. You will only be able to submit another review about this equipment if you rent it again.")
@@ -60,6 +143,11 @@ async function deleteReview(reviewId) {
     }
 }
 
+/**
+ * Opens the review edit modal and loads selected review data.
+ *
+ * @param {number} reviewId - ID of the review to edit.
+ */
 async function editReview(reviewId) {
     // Get the review data
     let review = await ReviewService.getReview(reviewId)
@@ -73,6 +161,12 @@ async function editReview(reviewId) {
     showReviewEquipmentModal.value = true
 }
 
+/**
+ * Formats ISO date string into human-readable format.
+ *
+ * @param {string} isoDate - ISO date string.
+ * @returns {string} Human-readable formatted date.
+ */
 function reviewDateFormatting(isoDate) {
     const date = new Date(isoDate)
     let day = date.getDate()
@@ -82,10 +176,16 @@ function reviewDateFormatting(isoDate) {
     return months[month] + " " + day.toString() + ", " + year.toString()
 }
 
+/**
+ * Sorts equipment reviews by date in descending order.
+ */
 async function sortEquipmentReviewsDescending() {
     equipmentReviews.value.sort((a, b) => new Date(b.date) - new Date(a.date))
 }
 
+/**
+ * Enriches reviews with submitter name and profile picture.
+ */
 async function addSubmitterName() {
     if (!equipmentReviews.value?.length) {
         return
@@ -117,6 +217,9 @@ async function addSubmitterName() {
     }
 }
 
+/**
+ * Computes review statistics for equipment.
+ */
 async function computeReviewData() {
     // Computing the total number of ratings
     numRatings.value = equipmentReviews.value.length
@@ -142,6 +245,11 @@ async function computeReviewData() {
     }
 }
 
+/**
+ * Computes review statistics for the owner's profile.
+ *
+ * @param {Object} userData - Reactive user data object.
+ */
 async function computeUserReviewData(userData) {
     if (!userData.value.userReviews) {
         userData.value.userReviews = []
@@ -172,6 +280,9 @@ async function computeUserReviewData(userData) {
     }
 }
 
+/**
+ * Loads AI-generated summary of equipment reviews.
+ */
 async function loadReviewSummary() {
     reviewSummary.value = ''
 
@@ -194,6 +305,9 @@ async function loadReviewSummary() {
     }
 }
 
+/**
+ * Main page data loader.
+ */
 async function loadData() {
     try {
         dataLoaded.value = false
@@ -238,6 +352,9 @@ async function loadData() {
     }
 }
 
+/**
+ * Load all page data when component mounts.
+ */
 onMounted(async () => {
     await loadData()
 })

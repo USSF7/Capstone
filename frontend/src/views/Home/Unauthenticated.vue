@@ -3,7 +3,14 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { FwbButton } from 'flowbite-vue'
 
+/**
+ * Auth store containing user session information.
+ */
 const auth = useAuthStore()
+
+/**
+ * Router instance for navigation actions.
+ */
 const router = useRouter()
 </script>
 

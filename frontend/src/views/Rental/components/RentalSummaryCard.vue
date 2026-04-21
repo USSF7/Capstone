@@ -1,6 +1,10 @@
 <script setup>
 import { FwbCard, FwbProgress } from 'flowbite-vue'
 
+/**
+ * Month names used for human-readable date formatting.
+ * @type {string[]}
+ */
 const months = [
   'January',
   'February',
@@ -16,6 +20,14 @@ const months = [
   'December'
 ]
 
+/**
+ * Component props
+ * @property {Object} rental - Rental object containing equipment, pricing, and dates
+ * @property {string} priceLabel - Label used for pricing display
+ * @property {number} progress - Progress percentage (0–100) for rental status
+ * @property {string} progressLabel - Label describing current rental status
+ * @property {string} [progressColor] - Optional color override for progress bar
+ */
 const props = defineProps({
   rental: {
     type: Object,
@@ -39,10 +51,23 @@ const props = defineProps({
   },
 })
 
+/**
+ * Emits:
+ * - select: triggered when the rental card is clicked
+ */
 const emit = defineEmits(['select'])
 
+/**
+ * Backend base URL for serving uploaded equipment images.
+ */
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+/**
+ * Formats an ISO date string into a human-readable format.
+ *
+ * @param {string} isoDate The date in ISO format
+ * @returns {string} Human-readable formatted date
+ */
 function dateFormatting(isoDate) {
   const date = new Date(isoDate)
   const day = date.getDate()
@@ -54,21 +79,45 @@ function dateFormatting(isoDate) {
   return months[month] + ' ' + day.toString() + ', ' + year.toString() + ' ' + hour + ':' + minute
 }
 
+/**
+ * Returns the first equipment item in a rental.
+ *
+ * @param {Object} rental The rental object, whichs stores the rental's information.
+ * @returns {Object|null} The first rental object.
+ */
 function getFirstEquipment(rental) {
   if (!Array.isArray(rental?.equipment) || rental.equipment.length === 0) return null
   return rental.equipment[0]
 }
 
+/**
+ * Returns the preview image path for a rental.
+ *
+ * @param {Object} rental The rental object, whichs stores the rental's information.
+ * @returns {string|null} The image URL
+ */
 function getRentalPreviewImage(rental) {
   return getFirstEquipment(rental)?.picture || null
 }
 
+/**
+ * Returns alt text for the rental preview image.
+ *
+ * @param {Object} rental The rental object, whichs stores the rental's information.
+ * @returns {string} The alt text for the rental preview image.
+ */
 function getRentalPreviewAlt(rental) {
   const firstEquipment = getFirstEquipment(rental)
   if (firstEquipment?.name) return `${firstEquipment.name} image`
   return 'Equipment image'
 }
 
+/**
+ * Builds a display title for the rental based on equipment names.
+ *
+ * @param {Object} rental The rental object, whichs stores the rental's information.
+ * @returns {string} The display title for the rental
+ */
 function getRentalTitle(rental) {
   return rental.equipment?.length ? rental.equipment.map((e) => e.name).join(', ') : 'Equipment request'
 }

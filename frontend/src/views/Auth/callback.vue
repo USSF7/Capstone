@@ -4,10 +4,26 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import authService from '../../services/authService'
 
+/**
+ * Vue Router instance for navigation.
+ */
 const router = useRouter()
+
+/**
+ * Current route containing query parameters.
+ */
 const route = useRoute()
+
+/**
+ * Auth store for persisting tokens and user state.
+ */
 const auth = useAuthStore()
 
+/**
+ * The component extracts access and refresh tokens from URL,
+ * stores tokens in auth store, fetches current user profile, and
+ * redirects based on profile completion.
+ */
 onMounted(async () => {
   const accessToken = route.query.access_token
   const refreshToken = route.query.refresh_token

@@ -8,6 +8,9 @@ import RentalService from '../../services/rentalService'
 import AuthService from '../../services/authService'
 import RentalSummaryCard from './components/RentalSummaryCard.vue'
 
+/**
+ * Maps backend rental statuses to progress bar percentages.
+ */
 const mapStatusToPercent = new Map([
     ["requesting", 10.0],
     ["active", 70.0],
@@ -17,20 +20,48 @@ const mapStatusToPercent = new Map([
     ["cancelled", 100.0]
 ])
 
+/**
+ * Vue Router instance
+ */
 const router = useRouter()
+
+/**
+ * Logged-in user data
+ */
 const userData = ref()
+
+/**
+ * All rentals where the user is either renter or vendor
+ */
 const userRentalsData = ref([])
+
+/**
+ * Currently selected tab in the user interface
+ */
 const activeTab = ref('requested rentals')
+
+/**
+ * Controls whether the page content is shown
+ */
 const userDataLoaded = ref(false)
 
+/**
+ * Removes rentals that are marked as deleted.
+ */
 async function filterOutDeletedRentals() {
     userRentalsData.value = userRentalsData.value.filter(rental => rental.deleted == false)
 }
 
+/**
+ * Sorts rentals in-place by start date (descending).
+ */
 async function sortRentalsByStartDateDescending() {
     userRentalsData.value.sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
 }
 
+/**
+ * Loads all rental data relevant to the current user.
+ */
 async function loadUserRentalsData() {
     try {
         // Loading in the user's data
@@ -66,10 +97,16 @@ async function loadUserRentalsData() {
     }
 }
 
+/**
+ * Rentals that are still in the request/negotiation phase.
+ */
 const requestedRentals = computed(() => {
     return userRentalsData.value.filter((rental) => rental.status === 'requesting')
 })
 
+/**
+ * Rentals that are active but have not started yet.
+ */
 const upcomingRentals = computed(() => {
     const now = new Date()
     return userRentalsData.value.filter((rental) => {
@@ -78,6 +115,9 @@ const upcomingRentals = computed(() => {
     })
 })
 
+/**
+ * Rentals that are active but have NOT started yet.
+ */
 const onLoanRentals = computed(() => {
     const now = new Date()
     return userRentalsData.value.filter((rental) => {
@@ -86,16 +126,25 @@ const onLoanRentals = computed(() => {
     })
 })
 
+/**
+ * Rentals that have been successfully completed.
+ */
 const completedRentals = computed(() => {
     return userRentalsData.value.filter((rental) => rental.status === 'returned')
 })
 
+/**
+ * Rentals that ended negatively or were cancelled.
+ */
 const disputedRentals = computed(() => {
     return userRentalsData.value.filter(
         (rental) => rental.status === 'disputed' || rental.status === 'denied' || rental.status === 'cancelled'
     )
 })
 
+/**
+ * Load all rental data when component mounts.
+ */
 onMounted(async () => {
     await loadUserRentalsData()
 })

@@ -4,16 +4,60 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import authService from '../../services/authService'
 
+/**
+ * Vue Router instance for navigation after authentication.
+ */
 const router = useRouter()
+
+/**
+ * Auth store for persisting tokens and user state.
+ */
 const auth = useAuthStore()
 
+/**
+ * Toggles between login and registration modes.
+ * @type {import('vue').Ref<boolean>}
+ */
 const isRegister = ref(false)
+
+/**
+ * Name input field.
+ */
 const name = ref('')
+
+/**
+ * Email input field.
+ */
 const email = ref('')
+
+/**
+ * Password input field.
+ */
 const password = ref('')
+
+/**
+ * Error message displayed to the user.
+ * @type {import('vue').Ref<string>}
+ */
 const error = ref('')
+
+/**
+ * Indicates whether a request is in progress. Disables form submission while loading.
+ * @type {import('vue').Ref<boolean>}
+ */
 const loading = ref(false)
 
+/**
+ * Authentication response from API.
+ * @typedef {Object} AuthTokens
+ * @property {string} access_token - The access token.
+ * @property {string} refresh_token - The refresh token.
+ * @property {{ profile_complete?: boolean }} [user] - Determines if the user has completed their profile.
+ */
+
+/**
+ * Handles form submission for login or registration.
+ */
 async function handleSubmit() {
   error.value = ''
   loading.value = true
@@ -37,6 +81,9 @@ async function handleSubmit() {
   }
 }
 
+/**
+ * Redirects the user to the Google OAuth login flow.
+ */
 function googleLogin() {
   window.location.href = authService.getGoogleLoginUrl()
 }

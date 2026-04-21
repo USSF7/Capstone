@@ -111,21 +111,58 @@ import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import rentalService from '../../services/rentalService'
 
+/**
+ * Auth store providing current logged-in user.
+ */
 const auth = useAuthStore()
+
+/**
+ * Current authenticated user ID (reactive).
+ */
 const USER_ID = computed(() => auth.user?.id)
 
+/**
+ * Loading state for calendar data fetch.
+ */
 const loading = ref(true)
+
+/**
+ * Error message for failed data loading.
+ */
 const error = ref('')
+
+/**
+ * List of rentals.
+ */
 const rentals = ref([])
+
+/**
+ * Currently displayed month (always set to first day of month).
+ */
 const currentMonth = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
 
+/**
+ * Weekday labels used in calendar header row.
+ */
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+/**
+ * Parses backend ISO date string into local Date object.
+ *
+ * @param {string} dateString - ISO date string
+ * @returns {Date} The date in a Date object
+ */
 function parseDateString(dateString) {
 	const [year, month, day] = dateString.split('T')[0].split('-').map(Number)
 	return new Date(year, month - 1, day)
 }
 
+/**
+ * Converts Date object into ISO date key (YYYY-MM-DD).
+ *
+ * @param {Date} date The date in a Date object.
+ * @returns {string} Formatted date in the format of YYYY-MM-DD.
+ */
 function getIsoDate(date) {
 	const year = date.getFullYear()
 	const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -133,12 +170,26 @@ function getIsoDate(date) {
 	return `${year}-${month}-${day}`
 }
 
+/**
+ * Returns a new Date offset by a number of days.
+ *
+ * @param {Date} date The date in a Date object.
+ * @param {number} days The number of days.
+ * @returns {Date} The offset date in a Date object
+ */
 function addDays(date, days) {
 	const d = new Date(date)
 	d.setDate(d.getDate() + days)
 	return d
 }
 
+/**
+ * Maps rental status to Tailwind CSS styling classes.
+ * Used to visually distinguish calendar items.
+ *
+ * @param {string} status The current status of a rental.
+ * @returns {string} The CSS styling class.
+ */
 function getStatusClasses(status) {
 	switch (status) {
 		case 'requesting':
@@ -156,6 +207,9 @@ function getStatusClasses(status) {
 	}
 }
 
+/**
+ * Loads calendar-related rental data for the current user.
+ */
 async function loadCalendarData() {
 	loading.value = true
 	error.value = ''
@@ -181,6 +235,9 @@ async function loadCalendarData() {
 	}
 }
 
+/**
+ * Computed map of rentals grouped by date.
+ */
 const itemsByDate = computed(() => {
 	const map = {}
 
@@ -208,6 +265,9 @@ const itemsByDate = computed(() => {
 	return map
 })
 
+/**
+ * Human-readable label for current calendar month.
+ */
 const monthLabel = computed(() => {
 	return currentMonth.value.toLocaleDateString('en-US', {
 		month: 'long',
@@ -215,6 +275,9 @@ const monthLabel = computed(() => {
 	})
 })
 
+/**
+ * Generates full calendar grid including leading and trailing days.
+ */
 const calendarDays = computed(() => {
 	const year = currentMonth.value.getFullYear()
 	const month = currentMonth.value.getMonth()
@@ -269,18 +332,30 @@ const calendarDays = computed(() => {
 	return days
 })
 
+/**
+ * Navigate calendar to previous month.
+ */
 function goToPreviousMonth() {
 	currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() - 1, 1)
 }
 
+/**
+ * Navigate calendar to next month.
+ */
 function goToNextMonth() {
 	currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() + 1, 1)
 }
 
+/**
+ * Reset calendar view to current month.
+ */
 function goToToday() {
 	const now = new Date()
 	currentMonth.value = new Date(now.getFullYear(), now.getMonth(), 1)
 }
 
+/**
+ * Loads calendar data on component mount.
+ */
 onMounted(loadCalendarData)
 </script>

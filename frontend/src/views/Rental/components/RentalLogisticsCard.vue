@@ -4,6 +4,13 @@ import { useRouter } from 'vue-router'
 import { FwbCard, FwbProgress, FwbButton, FwbListGroup, FwbListGroupItem, FwbRating } from 'flowbite-vue'
 import RentalService from '../../../services/rentalService'
 
+/**
+ * Component props
+ * @property {Object} rentalData - Rental record being displayed
+ * @property {Object} vendorData - Vendor user info
+ * @property {Object} renterData - Renter user info
+ * @property {number} currentUserId - Logged-in user ID
+ */
 const props = defineProps({
   rentalData: { type: Object, required: true },
   vendorData: { type: Object, required: true },
@@ -11,30 +18,70 @@ const props = defineProps({
   currentUserId: { type: Number, required: true },
 })
 
+/**
+ * Component events
+ * - open-review-user: opens review modal for counterparty
+ * - rental-updated: emits updated rental object after API changes
+ */
 const emit = defineEmits(['open-review-user', 'rental-updated'])
+
+/**
+ * Router instance for navigation.
+ */
 const router = useRouter()
 
+/**
+ * True if rental is in a problematic state
+ */
 const isDisputedOrDenied = computed(() =>
   props.rentalData.status === 'denied' || props.rentalData.status === 'disputed' || props.rentalData.status === 'cancelled'
 )
+
+/**
+ * True if rental has been completed
+ */
 const isReturned = computed(() => props.rentalData.status === 'returned')
+
+/**
+ * True if viewer is the vendor
+ */
 const isVendorViewer = computed(() => props.currentUserId === props.rentalData?.vendor_id)
+
+/**
+ * True if viewer is the renter
+ */
 const isRenterViewer = computed(() => props.currentUserId === props.rentalData?.renter_id)
+
+/**
+ * True if vendor is currently deciding on a request
+ */
 const isPendingVendorDecision = computed(
   () => isVendorViewer.value && props.rentalData?.status === 'requesting'
 )
+
+/**
+ * True if current user still needs to approve a request
+ */
 const isAwaitingMyApproval = computed(() => {
   if (props.rentalData?.status !== 'requesting') return false
   if (isVendorViewer.value) return !props.rentalData?.vendor_approved
   if (isRenterViewer.value) return !props.rentalData?.renter_approved
   return false
 })
+
+/**
+ * True if user approved but other party has not yet approved
+ */
 const isAwaitingCounterpartyApproval = computed(() => {
   if (props.rentalData?.status !== 'requesting') return false
   if (isVendorViewer.value) return !!props.rentalData?.vendor_approved && !props.rentalData?.renter_approved
   if (isRenterViewer.value) return !!props.rentalData?.renter_approved && !props.rentalData?.vendor_approved
   return false
 })
+
+/**
+ * Determines if vendor can mark rental as returned
+ */
 const canMarkReturned = computed(() => {
   if (!isVendorViewer.value) return false
   if (props.rentalData?.status !== 'active') return false
@@ -42,16 +89,33 @@ const canMarkReturned = computed(() => {
 
   return new Date() > new Date(props.rentalData.end_date)
 })
+
+/**
+ * Label for review button depending on user role
+ */
 const reviewUserLabel = computed(() => (isVendorViewer.value ? 'Review Renter' : 'Review Vendor'))
 
+/**
+ * Current timestamp, which is used for time-based eligibility checks
+ */
 const currentTime = ref(Date.now())
+
+/**
+ * Interval ID for periodic time updates
+ */
 let currentTimeIntervalId = null
 
+/**
+ * True if rental is active but has not started yet
+ */
 const isPreStartActiveRental = computed(() => {
   if (props.rentalData?.status !== 'active' || !props.rentalData?.start_date) return false
   return new Date() < new Date(props.rentalData.start_date)
 })
 
+/**
+ * True if rental is eligible for renegotiation
+ */
 const isRenegotiationEligible = computed(() => {
   if (props.rentalData?.status !== 'active' || !props.rentalData?.start_date) return false
 
@@ -59,6 +123,9 @@ const isRenegotiationEligible = computed(() => {
   return startDate.getTime() - currentTime.value > 7 * 24 * 60 * 60 * 1000
 })
 
+/**
+ * True if current user has already submitted a review
+ */
 const userAlreadyReviewed = computed(() => {
   const renterReviewed = props.rentalData?.renter_reviewed === true
   const vendorReviewed = props.rentalData?.vendor_reviewed === true
@@ -66,6 +133,9 @@ const userAlreadyReviewed = computed(() => {
   return ((isRenterViewer.value && renterReviewed) || (isVendorViewer.value && vendorReviewed))
 })
 
+/**
+ * Total duration of the rental in days
+ */
 const rentalDurationDays = computed(() => {
   if (!props.rentalData?.start_date || !props.rentalData?.end_date) return 1
 
@@ -75,8 +145,20 @@ const rentalDurationDays = computed(() => {
   const dayDiff = Math.ceil((end - start) / msPerDay)
   return Number.isFinite(dayDiff) && dayDiff > 0 ? dayDiff : 1
 })
+
+/** 
+ * Total rental price
+ */
 const totalPrice = computed(() => Number(props.rentalData?.agreed_price) || 0)
+
+/**
+ * Price per day based on total and duration
+ */
 const perDayPrice = computed(() => totalPrice.value / rentalDurationDays.value)
+
+/**
+ * Label indicating pricing stage based on rental status
+ */
 const priceStageLabel = computed(() => {
   const status = props.rentalData?.status
 
@@ -85,9 +167,19 @@ const priceStageLabel = computed(() => {
   return 'Finalized'
 })
 
+/**
+ * Label for counterparty (vendor or renter)
+ */
 const counterpartyLabel = computed(() => (isVendorViewer.value ? 'Renter' : 'Vendor'))
+
+/**
+ * Counterparty user object
+ */
 const counterpartyData = computed(() => (isVendorViewer.value ? props.renterData : props.vendorData))
 
+/**
+ * Maps rental status to progress percentage
+ */
 const mapStatusToPercent = new Map([
   ['requesting', 10.0],
   ['active', 70.0],
@@ -97,10 +189,20 @@ const mapStatusToPercent = new Map([
   ['cancelled', 100.0],
 ])
 
+/**
+ * Returns progress percentage for a given rental status
+ * @param {string} status - The status text
+ * @returns {number} The status text mapped numerical value
+ */
 function getStatusPercent(status) {
   return mapStatusToPercent.get(status) || 0
 }
 
+/**
+ * Formats date into readable US locale string
+ * @param {string|Date} value The date in a string or Date object
+ * @returns {string} A formatted date string
+ */
 function formatDateTime(value) {
   return new Date(value).toLocaleString('en-US', {
     month: 'short',
@@ -111,6 +213,11 @@ function formatDateTime(value) {
   })
 }
 
+/**
+ * Formats number as USD currency string
+ * @param {number} value The numerical value of the currency
+ * @returns {string} The formatted currency in USD
+ */
 function formatCurrency(value) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -120,6 +227,10 @@ function formatCurrency(value) {
   }).format(value)
 }
 
+/**
+ * Updates rental status via API
+ * @param {string} nextStatus The next status in the rental cycle
+ */
 async function updateRequestStatus(nextStatus) {
   try {
     const updated = await RentalService.updateRental(
@@ -136,6 +247,9 @@ async function updateRequestStatus(nextStatus) {
   }
 }
 
+/**
+ * Approves pending rental changes
+ */
 async function approveChanges() {
   try {
     const updated = await RentalService.updateRental(
@@ -153,10 +267,16 @@ async function approveChanges() {
   }
 }
 
+/**
+ * Navigates to rental edit page
+ */
 function goToEditDetails() {
   router.push({ name: 'rental-edit', params: { id: props.rentalData.id } })
 }
 
+/**
+ * Confirms and denies rental request
+ */
 function confirmAndDenyRequest() {
   const confirmed = window.confirm(
     'Are you sure you want to deny this rental request? This will notify the renter and mark the request as denied.'
@@ -165,6 +285,9 @@ function confirmAndDenyRequest() {
   updateRequestStatus('denied')
 }
 
+/**
+ * Confirms and cancels pending request
+ */
 function confirmAndCancelRequest() {
   const confirmed = window.confirm(
     'Are you sure you want to cancel this rental request? This will notify the vendor and mark the request as canceled.'
@@ -173,6 +296,9 @@ function confirmAndCancelRequest() {
   updateRequestStatus('cancelled')
 }
 
+/**
+ * Confirms and cancels active rental
+ */
 function confirmAndCancelActiveRental() {
   const confirmed = window.confirm(
     'Are you sure you want to cancel this rental? This will notify the other party and mark the rental as canceled.'
@@ -181,6 +307,9 @@ function confirmAndCancelActiveRental() {
   updateRequestStatus('cancelled')
 }
 
+/**
+ * Marks rental as returned after confirmation
+ */
 function confirmAndMarkReturned() {
   const confirmed = window.confirm(
     'Mark this rental as returned and complete the agreement? This action updates the rental to completed.'
@@ -189,12 +318,18 @@ function confirmAndMarkReturned() {
   updateRequestStatus('returned')
 }
 
+/**
+ * Starts timer for live time updates
+ */
 onMounted(() => {
   currentTimeIntervalId = setInterval(() => {
     currentTime.value = Date.now()
   }, 60000)
 })
 
+/**
+ * Cleans up interval on component unmount
+ */
 onUnmounted(() => {
   if (currentTimeIntervalId) {
     clearInterval(currentTimeIntervalId)

@@ -7,6 +7,20 @@ import userService from '../../../services/userService'
 import locationService from '../../../services/locationService'
 import GoogleMap from '../../../components/GoogleMap.vue'
 
+/**
+ * Component props
+ * @property {string} modelValue - Bound location text (v-model)
+ * @property {number|null} meetingLat - Selected meeting latitude
+ * @property {number|null} meetingLng - Selected meeting longitude
+ * @property {number|string|null} rentalId - Rental context ID (optional)
+ * @property {number|null} renterLat - Renter latitude (non-rental mode)
+ * @property {number|null} renterLng - Renter longitude
+ * @property {number|null} vendorLat - Vendor latitude
+ * @property {number|null} vendorLng - Vendor longitude
+ * @property {string} renterName - Renter display name
+ * @property {string} vendorName - Vendor display name
+ * @property {string} label - Input label
+ */
 const props = defineProps({
   modelValue: { type: String, default: '' },
   meetingLat: { type: Number, default: null },
@@ -21,23 +35,82 @@ const props = defineProps({
   label: { type: String, default: 'Meeting Location' },
 })
 
+/**
+ * Component events
+ * - update:modelValue: updates location text
+ * - update:meetingLat: updates selected latitude
+ * - update:meetingLng: updates selected longitude
+ */
 const emit = defineEmits(['update:modelValue', 'update:meetingLat', 'update:meetingLng'])
 
+/** 
+ * User-entered location text
+ */
 const locationText = ref(props.modelValue || '')
+
+/**
+ * Selected meeting latitude
+ */
 const selectedLat = ref(props.meetingLat)
+
+/** 
+ * Selected meeting longitude
+ */
 const selectedLng = ref(props.meetingLng)
+
+/** 
+ * Loading state for API calls 
+ */
 const loading = ref(false)
+
+/**
+ * Error message from API calls
+ */
 const error = ref(null)
+
+/** 
+ * Rental object
+ */
 const rental = ref(null)
+
+/**
+ * Renter user data
+ */
 const renterData = ref(null)
+
+/** 
+ * Vendor user data 
+ */
 const vendorData = ref(null)
+
+/** 
+ * Logged-in user ID 
+ */
 const currentUserId = ref(null)
+
+/** 
+ * Suggested meeting locations 
+ */
 const suggestions = ref([])
+
+/**
+ * Midpoint between renter and vendor
+ */
 const midpoint = ref(null)
+
+/**
+ * Currently selected suggestion ID
+ */
 const selectedSuggestionId = ref(null)
 
+/**
+ * True if component is operating in rental context
+ */
 const hasRentalContext = computed(() => !!props.rentalId)
 
+/**
+ * Derived renter location
+ */
 const renterPoint = computed(() => {
   if (renterData.value?.latitude != null && renterData.value?.longitude != null) {
     return {
@@ -56,6 +129,9 @@ const renterPoint = computed(() => {
   return null
 })
 
+/**
+ * Derived vendor location
+ */
 const vendorPoint = computed(() => {
   if (vendorData.value?.latitude != null && vendorData.value?.longitude != null) {
     return {
@@ -74,9 +150,19 @@ const vendorPoint = computed(() => {
   return null
 })
 
+/**
+ * True if map should be shown
+ */
 const hasMapContext = computed(() => !!(hasRentalContext.value || (renterPoint.value && vendorPoint.value)))
 
+/**
+ * True if a meeting location is selected
+ */
 const hasMeetingLocation = computed(() => selectedLat.value != null && selectedLng.value != null)
+
+/**
+ * Determines viewer role (renter/vendor) in rental context
+ */
 const viewerRole = computed(() => {
   if (hasRentalContext.value && rental.value && currentUserId.value != null) {
     if (currentUserId.value === rental.value.renter_id) return 'renter'
@@ -88,17 +174,28 @@ const viewerRole = computed(() => {
   return null
 })
 
+/**
+ * Current selected meeting point
+ */
 const meetingPoint = computed(() =>
   hasMeetingLocation.value
     ? { lat: selectedLat.value, lng: selectedLng.value }
     : null
 )
 
+/**
+ * Formats user address from structured fields
+ * @param {Object} user - The user's information in an object
+ * @returns {string} The user's address
+ */
 function formatAddress(user) {
   if (!user) return ''
   return [user.street_address, user.city, user.state, user.zip_code].filter(Boolean).join(', ')
 }
 
+/**
+ * Combined suggestions from renter/vendor and backend sources
+ */
 const partySuggestions = computed(() => {
   const options = []
 
@@ -131,8 +228,14 @@ const partySuggestions = computed(() => {
   return options
 })
 
+/**
+ * All selectable location suggestions
+ */
 const allSuggestions = computed(() => [...partySuggestions.value, ...suggestions.value])
 
+/**
+ * Determines map center priority
+ */
 const mapCenter = computed(() => {
   if (midpoint.value) return midpoint.value
   if (meetingPoint.value) return meetingPoint.value
@@ -145,6 +248,9 @@ const mapCenter = computed(() => {
   return { lat: 30.6295, lng: -96.3365 }
 })
 
+/**
+ * Map markers derived from suggestions and selected meeting point
+ */
 const mapMarkers = computed(() => {
   const marks = []
   let selectedSuggestionPoint = null
@@ -236,6 +342,9 @@ watch(selectedLng, (value) => {
   emit('update:meetingLng', value)
 })
 
+/**
+ * Loads rental context
+ */
 async function loadRentalContext() {
   try {
     const me = await authService.getMe()
@@ -276,6 +385,9 @@ async function loadRentalContext() {
   }
 }
 
+/**
+ * Loads meeting suggestions when NOT in rental context.
+ */
 async function loadPointContextSuggestions() {
   if (hasRentalContext.value) return
   if (!renterPoint.value || !vendorPoint.value) return
@@ -300,6 +412,13 @@ async function loadPointContextSuggestions() {
   }
 }
 
+/**
+ * Handles external rental update event.
+ * Used when child components modify rental data
+ * and need to sync updated state back into this component.
+ *
+ * @param {Object} updatedRental - Updated rental object
+ */
 function onLocationSelected({ rental: updatedRental }) {
   rental.value = updatedRental
   if (updatedRental?.location) {
@@ -307,6 +426,11 @@ function onLocationSelected({ rental: updatedRental }) {
   }
 }
 
+/**
+ * Selects a suggested meeting location.
+ *
+ * @param {Object} place - Suggested location object
+ */
 function chooseSuggestion(place) {
   selectedSuggestionId.value = place.place_id
   const address = place.address ? `, ${place.address}` : ''
@@ -315,12 +439,20 @@ function chooseSuggestion(place) {
   selectedLng.value = place.lng
 }
 
+/**
+ * Handles map marker clicks.
+ *
+ * @param {Object} marker - Map marker object
+ */
 function onMapMarkerClick(marker) {
   if (marker?.kind === 'suggestion' && marker.place) {
     chooseSuggestion(marker.place)
   }
 }
 
+/**
+ * Initializes location context on mount
+ */
 onMounted(async () => {
   await loadRentalContext()
   if (!hasRentalContext.value) {

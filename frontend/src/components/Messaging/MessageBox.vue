@@ -64,8 +64,23 @@
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import messageService from '../../services/messageService'
 
+/**
+ * Interval for polling in milliseconds.
+ * @type {number}
+ * @constant
+ */
 const POLL_INTERVAL_MS = 3000
 
+/**
+ * Props for the component
+ * @typedef {Object} Props
+ * @property {string} [title="Messages"] - Title displayed in the UI
+ * @property {number} currentUserId - ID of the current user (required)
+ * @property {number|null} [otherUserId=null] - ID of the other user in the conversation
+ * @property {number|null} [rentalId=null] - Associated rental ID
+ */
+
+/** @type {Props} */
 const props = defineProps({
 	title: {
 		type: String,
@@ -85,23 +100,84 @@ const props = defineProps({
 	},
 })
 
+/**
+ * Emits the send event from this component.
+ * @type {(event: 'sent') => void}
+ */
 const emit = defineEmits(['sent'])
 
+/**
+ * DOM reference to the message list container.
+ * Used for scroll management.
+ * @type {import('vue').Ref<HTMLElement|null>}
+ */
 const listEl = ref(null)
+
+/**
+ * Array of messages in the current conversation.
+ * @type {import('vue').Ref<Array<any>>}
+ */
 const messages = ref([])
+
+/**
+ * Current message draft input by the user.
+ * @type {import('vue').Ref<string>}
+ */
 const draft = ref('')
+
+/**
+ * Loading state when fetching messages.
+ * @type {import('vue').Ref<boolean>}
+ */
 const loading = ref(false)
+
+/**
+ * Message send operation in progress.
+ * @type {import('vue').Ref<boolean>}
+ */
 const sending = ref(false)
+
+/**
+ * Holds error message for user interface display.
+ * @type {import('vue').Ref<string>}
+ */
 const error = ref('')
+
+/**
+ * Prevents overlapping fetch requests during polling.
+ * @type {import('vue').Ref<boolean>}
+ */
 const isRefreshing = ref(false)
+
+/**
+ * Stores the polling interval ID.
+ * @type {import('vue').Ref<number|null>}
+ */
 const pollTimer = ref(null)
 
+/**
+ * Gets the recipient user ID.
+ */
 const activeRecipientId = computed(() => toInt(props.otherUserId))
+
+/**
+ * Determines whether the conversation is tied to a rental.
+ */
 const isRentalThread = computed(() => Number.isInteger(props.rentalId))
+
+/**
+ * Determines if the app has the proper user and rental data to load and send messages.
+ */
 const readyToChat = computed(() => {
 	return Number.isInteger(props.currentUserId) && Number.isInteger(activeRecipientId.value) && isRentalThread.value
 })
 
+/**
+ * Safely converts a value to an integer. Returns null if invalid.
+ *
+ * @param {any} value - The integer value in a different format.
+ * @returns {number|null} The integer value as a Number type.
+ */
 function toInt(value) {
 	const intValue = Number(value)
 	if (!Number.isFinite(intValue)) return null
@@ -109,17 +185,31 @@ function toInt(value) {
 	return Math.trunc(intValue)
 }
 
+/**
+ * Builds optional parameters for conversation API calls. Includes rentalId only when relevant.
+ *
+ * @returns {{ rentalId: number|null }} The rental ID as a Number type.
+ */
 function getConversationOptions() {
 	return {
 		rentalId: isRentalThread.value ? props.rentalId : null,
 	}
 }
 
+/**
+ * Formats an ISO date string into a localized string.
+ *
+ * @param {string} isoDate - The iso formatted date.
+ * @returns {string} Presentable formatted date.
+ */
 function formatDateTime(isoDate) {
 	if (!isoDate) return ''
 	return new Date(isoDate).toLocaleString()
 }
 
+/**
+ * Scrolls the message list to the bottom after the application updates.
+ */
 async function scrollToBottom() {
 	await nextTick()
 	if (listEl.value) {
@@ -127,6 +217,11 @@ async function scrollToBottom() {
 	}
 }
 
+/**
+ * Determines whether the user is near the bottom of the message list.
+ *
+ * @returns {boolean} True if the user is near the bottom of the message list. False otherwise.
+ */
 function isNearBottom() {
 	if (!listEl.value) return true
 	const threshold = 48
@@ -134,6 +229,11 @@ function isNearBottom() {
 	return distanceFromBottom <= threshold
 }
 
+/**
+ * Loads messages for the current conversation.
+ *
+ * @param {{ silent?: boolean }} [options] - silent: Skips loading and error user interface updates when set to true.
+ */
 async function loadMessages({ silent = false } = {}) {
 	if (!readyToChat.value) {
 		messages.value = []
@@ -167,6 +267,9 @@ async function loadMessages({ silent = false } = {}) {
 	}
 }
 
+/**
+ * Stops polling for new messages.
+ */
 function stopPolling() {
 	if (pollTimer.value) {
 		clearInterval(pollTimer.value)
@@ -174,6 +277,9 @@ function stopPolling() {
 	}
 }
 
+/**
+ * Starts polling for new messages at a fixed interval.
+ */
 function startPolling() {
 	stopPolling()
 	pollTimer.value = setInterval(() => {
@@ -181,6 +287,9 @@ function startPolling() {
 	}, POLL_INTERVAL_MS)
 }
 
+/**
+ * Sends a new message to the conversation. Clears the draft and refreshes messages on success.
+ */
 async function sendMessage() {
 	if (!readyToChat.value || !draft.value.trim()) return
 
@@ -198,6 +307,9 @@ async function sendMessage() {
 	}
 }
 
+/**
+ * Reloads messages when relevant props change.
+ */
 watch(
 	() => [props.currentUserId, props.otherUserId, props.rentalId],
 	() => {
@@ -206,6 +318,9 @@ watch(
 	{ immediate: true }
 )
 
+/**
+ * Starts or stops polling depending on readiness state.
+ */
 watch(
 	() => readyToChat.value,
 	(isReady) => {
@@ -221,6 +336,9 @@ watch(
 	{ immediate: true }
 )
 
+/**
+ * Cleanup polling when component is destroyed.
+ */
 onUnmounted(() => {
 	stopPolling()
 })
