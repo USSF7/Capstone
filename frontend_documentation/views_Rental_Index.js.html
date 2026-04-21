@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Rental/Index.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Rental/Index.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The rental index page, which displays a user's current and previous rentals.
+ * @module RentalIndex
+ */
+
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { FwbTab, FwbTabs, FwbSpinner } from 'flowbite-vue'
+import RentalService from '../../services/rentalService'
+import AuthService from '../../services/authService'
+import RentalSummaryCard from './components/RentalSummaryCard.vue'
+
+/**
+ * Maps backend rental statuses to progress bar percentages.
+ */
+const mapStatusToPercent = new Map([
+    ["requesting", 10.0],
+    ["active", 70.0],
+    ["returned", 100.0],
+    ["disputed", 90.0],
+    ["denied", 100.0],
+    ["cancelled", 100.0]
+])
+
+/**
+ * Vue Router instance
+ */
+const router = useRouter()
+
+/**
+ * Logged-in user data
+ */
+const userData = ref()
+
+/**
+ * All rentals where the user is either renter or vendor
+ */
+const userRentalsData = ref([])
+
+/**
+ * Currently selected tab in the user interface
+ */
+const activeTab = ref('requested rentals')
+
+/**
+ * Controls whether the page content is shown
+ */
+const userDataLoaded = ref(false)
+
+/**
+ * Removes rentals that are marked as deleted.
+ */
+async function filterOutDeletedRentals() {
+    userRentalsData.value = userRentalsData.value.filter(rental => rental.deleted == false)
+}
+
+/**
+ * Sorts rentals in-place by start date (descending).
+ */
+async function sortRentalsByStartDateDescending() {
+    userRentalsData.value.sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
+}
+
+/**
+ * Loads all rental data relevant to the current user.
+ */
+async function loadUserRentalsData() {
+    try {
+        // Loading in the user's data
+        userData.value = await AuthService.getMe()
+
+        // Load all rentals where this user is involved (renter or vendor).
+        const renterRentals = await RentalService.getRentalsWithEquipmentByRenter(userData.value.id)
+        let vendorRentals = []
+        if (userData.value.vendor) {
+            const vendorRentalsBasic = await RentalService.getRentalsByVendor(userData.value.id)
+            vendorRentals = await Promise.all(
+                vendorRentalsBasic.map((rental) => RentalService.getRentalWithEquipment(rental.id))
+            )
+        }
+
+        const rentalsById = new Map()
+        for (const rental of [...renterRentals, ...vendorRentals]) {
+            rentalsById.set(rental.id, rental)
+        }
+
+        userRentalsData.value = Array.from(rentalsById.values())
+        await filterOutDeletedRentals()
+        await sortRentalsByStartDateDescending()
+
+        // Displaying the page to the user
+        userDataLoaded.value = true
+    }
+    catch (error) {
+        console.error("Error getting user rentals data:", error)
+
+        // Alerting the user that the user's rentals data could not be loaded
+        alert("Error: Account rentals data could not be loaded.")
+    }
+}
+
+/**
+ * Rentals that are still in the request/negotiation phase.
+ */
+const requestedRentals = computed(() => {
+    return userRentalsData.value.filter((rental) => rental.status === 'requesting')
+})
+
+/**
+ * Rentals that are active but have not started yet.
+ */
+const upcomingRentals = computed(() => {
+    const now = new Date()
+    return userRentalsData.value.filter((rental) => {
+        if (rental.status !== 'active') return false
+        return new Date(rental.start_date) > now
+    })
+})
+
+/**
+ * Rentals that are active but have NOT started yet.
+ */
+const onLoanRentals = computed(() => {
+    const now = new Date()
+    return userRentalsData.value.filter((rental) => {
+        if (rental.status !== 'active') return false
+        return new Date(rental.start_date) &lt;= now
+    })
+})
+
+/**
+ * Rentals that have been successfully completed.
+ */
+const completedRentals = computed(() => {
+    return userRentalsData.value.filter((rental) => rental.status === 'returned')
+})
+
+/**
+ * Rentals that ended negatively or were cancelled.
+ */
+const disputedRentals = computed(() => {
+    return userRentalsData.value.filter(
+        (rental) => rental.status === 'disputed' || rental.status === 'denied' || rental.status === 'cancelled'
+    )
+})
+
+/**
+ * Load all rental data when component mounts.
+ */
+onMounted(async () => {
+    await loadUserRentalsData()
+})
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

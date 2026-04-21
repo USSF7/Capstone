@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Home page for the vendor view
+ * @module HomeVendor 
+ */
+
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FwbCard, FwbSpinner, FwbButton } from 'flowbite-vue'
@@ -6,24 +11,58 @@ import { useAuthStore } from '../../stores/auth'
 import RentalService from '../../services/rentalService'
 import UserService from '../../services/userService'
 
+/**
+ * Auth store containing vendor identity and session data.
+ */
 const auth = useAuthStore()
+
+/**
+ * Router instance for navigation.
+ */
 const router = useRouter()
 
+/**
+ * Raw vendor rental records that is changed locally after fetch.
+ * @type {import('vue').Ref<Array<any>>}
+ */
 const rentals = ref([])
+
+/**
+ * Loading state for rental data.
+ */
 const rentalsLoading = ref(true)
+
+/**
+ * Error state for rental loading.
+ */
 const rentalsError = ref(null)
 
+/**
+ * Rentals where users have expressed interest but not finalized booking.
+ */
 const interestedRenters = computed(() =>
   rentals.value
     .filter(r => !r.deleted && r.status === 'requesting')
     .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
 )
 
+/**
+ * Returns true if current time is before rental start date.
+ *
+ * @param {any} rental - The rental object that contains rental information.
+ * @returns {boolean} Returns true if current time is before rental start date. Otherwise, it returns false.
+ */
 function isBeforeRentalStart(rental) {
   const now = Date.now()
   return now < new Date(rental.start_date).getTime()
 }
 
+/**
+ * Returns true if current time is within rental window.
+ *
+ * @param {any} rental - The rental object that contains rental information.
+ * @returns {boolean} Returns true if current time is within rental window. Otherwise, it returns false.
+ */
 function isDuringRentalWindow(rental) {
   const now = Date.now()
   const start = new Date(rental.start_date).getTime()
@@ -31,6 +70,9 @@ function isDuringRentalWindow(rental) {
   return now >= start && now <= end
 }
 
+/**
+ * Rentals where equipment needs to be dropped off soon.
+ */
 const upcomingEquipmentDropOffs = computed(() =>
   rentals.value
     .filter(
@@ -39,12 +81,21 @@ const upcomingEquipmentDropOffs = computed(() =>
     .sort((a, b) => new Date(a.end_date) - new Date(b.end_date))
 )
 
+/**
+ * Rentals where equipment is currently active and will be picked up soon.
+ */
 const upcomingEquipmentPickUps = computed(() =>
   rentals.value
     .filter(r => !r.deleted && r.status === 'active' && isDuringRentalWindow(r))
     .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
 )
 
+/**
+ * Formats ISO date into a readable string.
+ *
+ * @param {string} iso - The date formatted in ISO format.
+ * @returns {string} Human readable date string.
+ */
 function formatDate(iso) {
   return new Date(iso).toLocaleString('en-US', {
     month: 'short',
@@ -55,6 +106,9 @@ function formatDate(iso) {
   })
 }
 
+/**
+ * Loads all rentals belonging to the current vendor.
+ */
 async function loadVendorRentals() {
   rentalsLoading.value = true
   rentalsError.value = null
@@ -89,6 +143,9 @@ async function loadVendorRentals() {
   }
 }
 
+/**
+ * Initial data fetch on component mount.
+ */
 onMounted(() => {
   loadVendorRentals()
 })

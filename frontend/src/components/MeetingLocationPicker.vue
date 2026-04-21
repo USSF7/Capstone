@@ -1,22 +1,104 @@
 <script setup>
+/**
+ * Functions for managing the meeting location picker on the Google Maps
+ * @module MeetingLocationPicker
+ */
+
 import { ref, onMounted } from 'vue'
 import { FwbButton, FwbCard, FwbSpinner } from 'flowbite-vue'
 import locationService from '../services/locationService'
 
+/**
+ * Suggested meeting place.
+ * @typedef {Object} MeetingPlace
+ * @property {string} name - Name of the place.
+ * @property {string} address - Address of the place.
+ * @property {number} lat - Latitude coordinate value of the place.
+ * @property {number} lng - Longitude coordinate value of the place.
+ * @property {string} place_id - The place ID.
+ * @property {string} place_type - The place type.
+ */
+
+/**
+ * Basic user and location information returned by the API.
+ * @typedef {Object} ParticipantInfo
+ * @property {number} id - Participant ID number.
+ * @property {string} [name] - Name of the participant.
+ * @property {{ lat: number, lng: number }} [location] - Latitude and Longitude coordinate values.
+ */
+
+/**
+ * API response for meeting suggestions.
+ * @typedef {Object} MeetingSuggestionsResponse
+ * @property {{ lat: number, lng: number }} midpoint - Latitude and Longitude coordinate values of the suggested meeting point.
+ * @property {MeetingPlace[]} suggestions - Suggested meeting places.
+ * @property {ParticipantInfo} renter - The renter information.
+ * @property {ParticipantInfo} vendor - The vendor information.
+ */
+
+/**
+ * Component props.
+ * @typedef {Object} Props
+ * @property {number|string} rentalId - Rental ID used to fetch suggestions.
+ */
+
+/** @type {Props} */
 const props = defineProps({
   rentalId: { type: [Number, String], required: true },
 })
 
+/**
+ * Emits events from the location-selected component.
+ *
+ * @type {(event: 'location-selected', payload: { place: MeetingPlace, rental: any }) => void}
+ */
 const emit = defineEmits(['location-selected'])
 
+/**
+ * Loading state while fetching suggestions.
+ * @type {import('vue').Ref<boolean>}
+ */
 const loading = ref(true)
+
+/**
+ * Error message if API call fails.
+ * @type {import('vue').Ref<string|null>}
+ */
 const error = ref(null)
+
+/**
+ * Midpoint location between renter and vendor.
+ * @type {import('vue').Ref<{ lat: number, lng: number } | null>}
+ */
 const midpoint = ref(null)
+
+/**
+ * List of suggested meeting locations.
+ * @type {import('vue').Ref<MeetingPlace[]>}
+ */
 const suggestions = ref([])
+
+/**
+ * Renter information.
+ * @type {import('vue').Ref<ParticipantInfo|null>}
+ */
 const renterInfo = ref(null)
+
+/**
+ * Vendor information.
+ * @type {import('vue').Ref<ParticipantInfo|null>}
+ */
 const vendorInfo = ref(null)
+
+/**
+ * Indicates location selection is in progress. Disables user interface interactions while submitting.
+ * @type {import('vue').Ref<boolean>}
+ */
 const selecting = ref(false)
 
+/**
+ * Maps place types to human-readable labels. Used for display in the user interface.
+ */
 const placeTypeLabels = {
   library: 'Library',
   park: 'Park',
@@ -25,6 +107,9 @@ const placeTypeLabels = {
   post_office: 'Post Office',
 }
 
+/**
+ * Fetches suggested meeting locations based on rental ID. Populates midpoint, suggestions, and participant information.
+ */
 async function loadSuggestions() {
   try {
     const data = await locationService.getMeetingSuggestions(props.rentalId)
@@ -39,6 +124,11 @@ async function loadSuggestions() {
   }
 }
 
+/**
+ * Selects a meeting location and persists it via API. Emits `location-selected` on success.
+ *
+ * @param {MeetingPlace} place
+ */
 async function selectLocation(place) {
   selecting.value = true
   try {
@@ -57,6 +147,9 @@ async function selectLocation(place) {
   }
 }
 
+/**
+ * Load suggestions when the component mounts.
+ */
 onMounted(loadSuggestions)
 </script>
 

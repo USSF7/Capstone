@@ -1,5 +1,10 @@
 <script>
 
+/**
+ * A component that allows a user to review a vendor's equipment.
+ * @module RentalReviewEquipment
+ */
+
 import { FwbImg, FwbButton, FwbTextarea } from 'flowbite-vue'
 import ReviewService from '../../services/reviewService'
 import RentalService from '../../services/rentalService'
@@ -11,25 +16,85 @@ export default {
         FwbTextarea,
         ReviewService
     },
+
+    /**
+     * Props passed from parent component
+     */
     props: {
+        /**
+         * Name of the equipment being reviewed
+         * @type {string}
+         */
         equipmentName: String,
+
+        /**
+         * Unique ID of the equipment being reviewed
+         * @type {number}
+         */
         equipmentID: Number,
+
+        /**
+         * Path/filename for the equipment image (served from backend)
+         * @type {string}
+         */
         equipmentPicture: String,
+
+        /**
+         * ID of the user submitting the review
+         * @type {number}
+         */
         submitterID: Number,
+
+        /**
+         * ID of the rental associated with this review
+         * @type {number}
+         */
         rentalID: Number
     },
+
+    /**
+     * Reactive component state
+     */
     data() {
         return {
+            /**
+             * Selected rating (1–5 stars)
+             * @type {number}
+             */
             rating: 0,
+
+            /**
+             * Hovered star value (used for visual preview before click)
+             * @type {number}
+             */
             hover: 0,
+
+            /**
+             * Optional text review message
+             * @type {string}
+             */
             message: '',
+
+            /**
+             * Backend base URL for loading images
+             * @type {string}
+             */
             BACKEND_URL: import.meta.env.VITE_BACKEND_URL
         }
     },
     methods: {
+        /**
+         * Sets the selected rating when a user clicks a star
+         *
+         * @param {number} value - Star value (1–5)
+         */
         setRating(value) {
             this.rating = value
         },
+
+        /**
+         * Submits the review to the backend
+         */
         async submitReview() {
             try {
                 // Creating the review

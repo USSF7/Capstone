@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Rental/components/RentalLogisticsCard.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Rental/components/RentalLogisticsCard.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * On the view rental page, this is a component that displays the logistics of the rental.
+ * @module RentalComponentsLogisticsCard
+ */
+
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { FwbCard, FwbProgress, FwbButton, FwbListGroup, FwbListGroupItem, FwbRating } from 'flowbite-vue'
+import RentalService from '../../../services/rentalService'
+
+/**
+ * Component props
+ * @property {Object} rentalData - Rental record being displayed
+ * @property {Object} vendorData - Vendor user info
+ * @property {Object} renterData - Renter user info
+ * @property {number} currentUserId - Logged-in user ID
+ */
+const props = defineProps({
+  rentalData: { type: Object, required: true },
+  vendorData: { type: Object, required: true },
+  renterData: { type: Object, required: true },
+  currentUserId: { type: Number, required: true },
+})
+
+/**
+ * Component events
+ * - open-review-user: opens review modal for counterparty
+ * - rental-updated: emits updated rental object after API changes
+ */
+const emit = defineEmits(['open-review-user', 'rental-updated'])
+
+/**
+ * Router instance for navigation.
+ */
+const router = useRouter()
+
+/**
+ * True if rental is in a problematic state
+ */
+const isDisputedOrDenied = computed(() =>
+  props.rentalData.status === 'denied' || props.rentalData.status === 'disputed' || props.rentalData.status === 'cancelled'
+)
+
+/**
+ * True if rental has been completed
+ */
+const isReturned = computed(() => props.rentalData.status === 'returned')
+
+/**
+ * True if viewer is the vendor
+ */
+const isVendorViewer = computed(() => props.currentUserId === props.rentalData?.vendor_id)
+
+/**
+ * True if viewer is the renter
+ */
+const isRenterViewer = computed(() => props.currentUserId === props.rentalData?.renter_id)
+
+/**
+ * True if vendor is currently deciding on a request
+ */
+const isPendingVendorDecision = computed(
+  () => isVendorViewer.value &amp;&amp; props.rentalData?.status === 'requesting'
+)
+
+/**
+ * True if current user still needs to approve a request
+ */
+const isAwaitingMyApproval = computed(() => {
+  if (props.rentalData?.status !== 'requesting') return false
+  if (isVendorViewer.value) return !props.rentalData?.vendor_approved
+  if (isRenterViewer.value) return !props.rentalData?.renter_approved
+  return false
+})
+
+/**
+ * True if user approved but other party has not yet approved
+ */
+const isAwaitingCounterpartyApproval = computed(() => {
+  if (props.rentalData?.status !== 'requesting') return false
+  if (isVendorViewer.value) return !!props.rentalData?.vendor_approved &amp;&amp; !props.rentalData?.renter_approved
+  if (isRenterViewer.value) return !!props.rentalData?.renter_approved &amp;&amp; !props.rentalData?.vendor_approved
+  return false
+})
+
+/**
+ * Determines if vendor can mark rental as returned
+ */
+const canMarkReturned = computed(() => {
+  if (!isVendorViewer.value) return false
+  if (props.rentalData?.status !== 'active') return false
+  if (!props.rentalData?.end_date) return false
+
+  return new Date() > new Date(props.rentalData.end_date)
+})
+
+/**
+ * Label for review button depending on user role
+ */
+const reviewUserLabel = computed(() => (isVendorViewer.value ? 'Review Renter' : 'Review Vendor'))
+
+/**
+ * Current timestamp, which is used for time-based eligibility checks
+ */
+const currentTime = ref(Date.now())
+
+/**
+ * Interval ID for periodic time updates
+ */
+let currentTimeIntervalId = null
+
+/**
+ * True if rental is active but has not started yet
+ */
+const isPreStartActiveRental = computed(() => {
+  if (props.rentalData?.status !== 'active' || !props.rentalData?.start_date) return false
+  return new Date() &lt; new Date(props.rentalData.start_date)
+})
+
+/**
+ * True if rental is eligible for renegotiation
+ */
+const isRenegotiationEligible = computed(() => {
+  if (props.rentalData?.status !== 'active' || !props.rentalData?.start_date) return false
+
+  const startDate = new Date(props.rentalData.start_date)
+  return startDate.getTime() - currentTime.value > 7 * 24 * 60 * 60 * 1000
+})
+
+/**
+ * True if current user has already submitted a review
+ */
+const userAlreadyReviewed = computed(() => {
+  const renterReviewed = props.rentalData?.renter_reviewed === true
+  const vendorReviewed = props.rentalData?.vendor_reviewed === true
+
+  return ((isRenterViewer.value &amp;&amp; renterReviewed) || (isVendorViewer.value &amp;&amp; vendorReviewed))
+})
+
+/**
+ * Total duration of the rental in days
+ */
+const rentalDurationDays = computed(() => {
+  if (!props.rentalData?.start_date || !props.rentalData?.end_date) return 1
+
+  const start = new Date(props.rentalData.start_date)
+  const end = new Date(props.rentalData.end_date)
+  const msPerDay = 1000 * 60 * 60 * 24
+  const dayDiff = Math.ceil((end - start) / msPerDay)
+  return Number.isFinite(dayDiff) &amp;&amp; dayDiff > 0 ? dayDiff : 1
+})
+
+/** 
+ * Total rental price
+ */
+const totalPrice = computed(() => Number(props.rentalData?.agreed_price) || 0)
+
+/**
+ * Price per day based on total and duration
+ */
+const perDayPrice = computed(() => totalPrice.value / rentalDurationDays.value)
+
+/**
+ * Label indicating pricing stage based on rental status
+ */
+const priceStageLabel = computed(() => {
+  const status = props.rentalData?.status
+
+  if (status === 'requesting') return 'Offered'
+  if (status === 'active') return 'Agreed'
+  return 'Finalized'
+})
+
+/**
+ * Label for counterparty (vendor or renter)
+ */
+const counterpartyLabel = computed(() => (isVendorViewer.value ? 'Renter' : 'Vendor'))
+
+/**
+ * Counterparty user object
+ */
+const counterpartyData = computed(() => (isVendorViewer.value ? props.renterData : props.vendorData))
+
+/**
+ * Maps rental status to progress percentage
+ */
+const mapStatusToPercent = new Map([
+  ['requesting', 10.0],
+  ['active', 70.0],
+  ['returned', 100.0],
+  ['disputed', 90.0],
+  ['denied', 100.0],
+  ['cancelled', 100.0],
+])
+
+/**
+ * Returns progress percentage for a given rental status
+ * @param {string} status - The status text
+ * @returns {number} The status text mapped numerical value
+ */
+function getStatusPercent(status) {
+  return mapStatusToPercent.get(status) || 0
+}
+
+/**
+ * Formats date into readable US locale string
+ * @param {string|Date} value The date in a string or Date object
+ * @returns {string} A formatted date string
+ */
+function formatDateTime(value) {
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+/**
+ * Formats number as USD currency string
+ * @param {number} value The numerical value of the currency
+ * @returns {string} The formatted currency in USD
+ */
+function formatCurrency(value) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
+/**
+ * Updates rental status via API
+ * @param {string} nextStatus The next status in the rental cycle
+ */
+async function updateRequestStatus(nextStatus) {
+  try {
+    const updated = await RentalService.updateRental(
+      props.rentalData.id,
+      nextStatus,
+      props.rentalData.location,
+      props.rentalData.agreed_price,
+      props.rentalData.deleted
+    )
+    emit('rental-updated', updated)
+  } catch (error) {
+    console.error('Failed to update rental status:', error)
+    alert('Could not update this request. Please try again.')
+  }
+}
+
+/**
+ * Approves pending rental changes
+ */
+async function approveChanges() {
+  try {
+    const updated = await RentalService.updateRental(
+      props.rentalData.id,
+      props.rentalData.status,
+      props.rentalData.location,
+      props.rentalData.agreed_price,
+      props.rentalData.deleted,
+      true
+    )
+    emit('rental-updated', updated)
+  } catch (error) {
+    console.error('Failed to approve rental changes:', error)
+    alert('Could not approve these changes. Please try again.')
+  }
+}
+
+/**
+ * Navigates to rental edit page
+ */
+function goToEditDetails() {
+  router.push({ name: 'rental-edit', params: { id: props.rentalData.id } })
+}
+
+/**
+ * Confirms and denies rental request
+ */
+function confirmAndDenyRequest() {
+  const confirmed = window.confirm(
+    'Are you sure you want to deny this rental request? This will notify the renter and mark the request as denied.'
+  )
+  if (!confirmed) return
+  updateRequestStatus('denied')
+}
+
+/**
+ * Confirms and cancels pending request
+ */
+function confirmAndCancelRequest() {
+  const confirmed = window.confirm(
+    'Are you sure you want to cancel this rental request? This will notify the vendor and mark the request as canceled.'
+  )
+  if (!confirmed) return
+  updateRequestStatus('cancelled')
+}
+
+/**
+ * Confirms and cancels active rental
+ */
+function confirmAndCancelActiveRental() {
+  const confirmed = window.confirm(
+    'Are you sure you want to cancel this rental? This will notify the other party and mark the rental as canceled.'
+  )
+  if (!confirmed) return
+  updateRequestStatus('cancelled')
+}
+
+/**
+ * Marks rental as returned after confirmation
+ */
+function confirmAndMarkReturned() {
+  const confirmed = window.confirm(
+    'Mark this rental as returned and complete the agreement? This action updates the rental to completed.'
+  )
+  if (!confirmed) return
+  updateRequestStatus('returned')
+}
+
+/**
+ * Starts timer for live time updates
+ */
+onMounted(() => {
+  currentTimeIntervalId = setInterval(() => {
+    currentTime.value = Date.now()
+  }, 60000)
+})
+
+/**
+ * Cleans up interval on component unmount
+ */
+onUnmounted(() => {
+  if (currentTimeIntervalId) {
+    clearInterval(currentTimeIntervalId)
+    currentTimeIntervalId = null
+  }
+})
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

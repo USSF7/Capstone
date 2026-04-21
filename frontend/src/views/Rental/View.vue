@@ -1,6 +1,11 @@
 <!-- View a specific rental's details -->
 <script lang="js" setup>
 
+/**
+ * The rental view page
+ * @module RentalView
+ */
+
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FwbSpinner, FwbCard } from 'flowbite-vue'
@@ -15,38 +20,112 @@ import RentalMessagingCard from './components/RentalMessagingCard.vue'
 import RentalLogisticsCard from './components/RentalLogisticsCard.vue'
 import GoogleMap from '../../components/GoogleMap.vue'
 
+/**
+ * Vue Route instance
+ */
 const route = useRoute()
+
+/**
+ * Vue Router instance
+ */
 const router = useRouter()
+
+/**
+ * The rental ID
+ */
 const rentalID = ref()
+
+/**
+ * The data associated with the rental
+ */
 const rentalData = ref()
+
+/**
+ * The vendor's data
+ */
 const vendorData = ref()
+
+/**
+ * The renter's data
+ */
 const renterData = ref()
+
+/**
+ * The user's data
+ */
 const userData = ref()
+
+/**
+ * The user ID of the other user in the rental
+ */
 const otherParticipantID = ref(null)
+
+/**
+ * State of whether the data has loaded
+ */
 const dataLoaded = ref(false)
+
+/**
+ * State of displaying the review equipment modal
+ */
 const showReviewEquipmentModal = ref(false)
+
+/**
+ * State of displaying the review user modal
+ */
 const showReviewUserModal = ref(false)
+
+/**
+ * The poll interval ID
+ */
 let pollIntervalId = null
+
+/**
+ * The last rental snapshot
+ */
 let lastRentalSnapshot = ''
 
+/**
+ * Polling every 5 seconds for live updates
+ */
 const POLL_INTERVAL_MS = 5000
 
+/**
+ * Returns the first equipment item for the rental.
+ */
 const primaryEquipment = computed(() => rentalData.value?.equipment?.[0] || null)
 
+/**
+ * Currently selected equipment, which is used for the review modal.
+ */
 const currentEquipment = ref()
+
+/**
+ * Stores selected equipment from child component.
+ * @param {Object} value - Equipment object
+ */
 const handleStoringCurrentEquipment = (value) => {
     currentEquipment.value = value
 }
 
+/**
+ * Determines if the current viewer is the vendor.
+ */
 const isVendorViewer = computed(() =>
     !!(userData.value && rentalData.value && userData.value.id === rentalData.value.vendor_id)
 )
 
+/**
+ * Determines which user should be reviewed.
+ */
 const reviewUserTarget = computed(() => {
     if (!rentalData.value || !vendorData.value || !renterData.value) return null
     return isVendorViewer.value ? renterData.value : vendorData.value
 })
 
+/**
+ * Returns meeting location as a map point.
+ */
 const meetingPoint = computed(() => {
     if (rentalData.value?.meeting_lat == null || rentalData.value?.meeting_lng == null) return null
     return {
@@ -55,6 +134,9 @@ const meetingPoint = computed(() => {
     }
 })
 
+/**
+ * Builds marker list for map visualization.
+ */
 const mapMarkers = computed(() => {
     const markers = []
 
@@ -92,6 +174,9 @@ const mapMarkers = computed(() => {
     return markers
 })
 
+/**
+ * Determines map center priority
+ */
 const mapCenter = computed(() => {
     if (meetingPoint.value) return meetingPoint.value
     if (renterData.value?.latitude != null && renterData.value?.longitude != null) {
@@ -103,6 +188,12 @@ const mapCenter = computed(() => {
     return null
 })
 
+/**
+ * Creates a lightweight snapshot of rental data for change detection.
+ * 
+ * @param {Object} rental
+ * @returns {string} JSON string snapshot
+ */
 function getRentalSnapshot(rental) {
     if (!rental) return ''
 
@@ -123,6 +214,9 @@ function getRentalSnapshot(rental) {
     })
 }
 
+/**
+ * Computes derived review data for each equipment item.
+ */
 async function computeEquipmentReviewData() {
     for (let i = 0; i < rentalData.value.equipment.length; i++) {
         if (!rentalData.value.equipment[i].equipmentReviews) {
@@ -155,6 +249,11 @@ async function computeEquipmentReviewData() {
     }
 }
 
+/**
+ * Computes review summary for a user.
+ *
+ * @param {Ref<Object>} userData - Vue ref containing user object
+ */
 async function computeUserReviewData(userData) {
     if (!userData.value.userReviews) {
         userData.value.userReviews = []
@@ -185,6 +284,9 @@ async function computeUserReviewData(userData) {
     }
 }
 
+/**
+ * Loads full rental page data.
+ */
 async function loadData() {
     try {
         // Getting the rental id from the route
@@ -248,6 +350,9 @@ async function loadData() {
     }
 }
 
+/**
+ * Polls backend for rental updates.
+ */
 async function pollForUpdates() {
     if (!rentalID.value || !dataLoaded.value) return
 
@@ -290,11 +395,17 @@ async function pollForUpdates() {
     }
 }
 
+/**
+ * Triggered when rental is updated via child component.
+ */
 async function handleRentalUpdated() {
   // Re-fetch full rental with equipment
   await loadData()
 }
 
+/**
+ * Initial load and start polling
+ */
 onMounted(async () => {
     await loadData()
 
@@ -303,6 +414,9 @@ onMounted(async () => {
     }, POLL_INTERVAL_MS)
 })
 
+/**
+ * Cleanup polling interval
+ */
 onUnmounted(() => {
     if (pollIntervalId) {
         clearInterval(pollIntervalId)

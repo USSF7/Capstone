@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Equipment/Search.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Equipment/Search.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Equipment search functions
+ * @module EquipmentSearch
+ */
+
+import { ref, computed, onMounted } from 'vue'
+import { FwbButton, FwbInput, FwbSpinner } from 'flowbite-vue'
+import { useAuthStore } from '../../stores/auth'
+import locationService from '../../services/locationService'
+import GoogleMap from '../../components/GoogleMap.vue'
+import EquipmentResultsGrid from '../../components/EquipmentResultsGrid.vue'
+
+/**
+ * Auth store containing user location data.
+ * @memberof EquipmentSearch
+ */
+const auth = useAuthStore()
+
+/**
+ * Backend base URL for serving images.
+ * @type {string}
+ */
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
+/**
+ * Equipment name input for searching for specific equipment.
+ */
+const nameFilter = ref('')
+
+/**
+ * Search radius from the user's location.
+ */
+const radius = ref(25)
+
+/**
+ * Search results from the filter name and radius.
+ */
+const results = ref([])
+
+/**
+ * User interface loading flag.
+ */
+const loading = ref(false)
+
+/**
+ * User interface error flag.
+ */
+const error = ref(null)
+
+/**
+ * User interface display map flag.
+ */
+const showMap = ref(false)
+
+/**
+ * User interface equipment searched flag.
+ */
+const searched = ref(false)
+
+/**
+ * User latitude coordinate derived from auth store.
+ */
+const userLat = computed(() => auth.user?.latitude)
+
+/**
+ * User longitude coordinate derived from auth store.
+ */
+const userLng = computed(() => auth.user?.longitude)
+
+/**
+ * Whether the user has a valid location set.
+ */
+const hasLocation = computed(() => userLat.value != null &amp;&amp; userLng.value != null)
+
+/**
+ * Escapes HTML to prevent XSS in map info windows.
+ *
+ * @param {string} value
+ * @returns {string} A user interface payload.
+ */
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&amp;', '&amp;amp;')
+    .replaceAll('&lt;', '&amp;lt;')
+    .replaceAll('>', '&amp;gt;')
+    .replaceAll('"', '&amp;quot;')
+    .replaceAll("'", '&amp;#39;')
+}
+
+/**
+ * Builds HTML content for a map marker info window.
+ *
+ * @param {any} item - The equipment object.
+ * @returns {string} HTML string for Google Maps InfoWindow
+ */
+function buildMapLabel(item) {
+  const safeName = escapeHtml(item.name)
+  const detailsUrl = `/equipment/${item.id}/view`
+  const hasPicture = !!item.picture
+  const pictureSrc = hasPicture ? `${BACKEND_URL}/${item.picture}` : ''
+
+  return `
+    &lt;div style="display:flex;gap:10px;align-items:flex-start;max-width:250px;">
+      ${hasPicture
+        ? `&lt;img src="${pictureSrc}" alt="${safeName}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;" />`
+        : `&lt;div style="width:52px;height:52px;border-radius:6px;border:1px solid #e5e7eb;background:#f3f4f6;">&lt;/div>`}
+      &lt;div>
+        &lt;div style="font-weight:600;color:#111827;line-height:1.2;">${safeName}&lt;/div>
+        &lt;div style="font-size:12px;color:#374151;">$${item.price}/day&lt;/div>
+        &lt;div style="font-size:12px;color:#6b7280;">${item.distance_miles} mi away&lt;/div>
+        &lt;a href="${detailsUrl}" style="display:inline-block;margin-top:6px;font-size:12px;color:#2563eb;text-decoration:underline;">View equipment&lt;/a>
+      &lt;/div>
+    &lt;/div>
+  `
+}
+
+/**
+ * Transforms search results into map marker objects.
+ */
+const mapMarkers = computed(() =>
+  results.value.map((r) => ({
+    lat: r.owner_lat,
+    lng: r.owner_lng,
+    title: r.name,
+    label: buildMapLabel(r),
+  }))
+)
+
+/**
+ * Equipment search result item.
+ * @typedef {Object} EquipmentResult
+ * @property {number} id - The equipment ID number.
+ * @property {string} name - The equipment name.
+ * @property {number} price - The price of the equipment.
+ * @property {number} distance_miles - The distance from the renter's location to the vendor's location.
+ * @property {string} [picture] - Picture of the equipment.
+ * @property {number} owner_lat - The latitude coordinate value of the vendor.
+ * @property {number} owner_lng - The longitude coordinate value of the vendor.
+ */
+
+/**
+ * Executes a search for nearby equipment.
+ */
+async function search() {
+  if (!hasLocation.value) return
+  loading.value = true
+  error.value = null
+  searched.value = true
+  try {
+    const data = await locationService.searchEquipmentNearby(
+      userLat.value,
+      userLng.value,
+      radius.value,
+      nameFilter.value || null
+    )
+    results.value = data.results
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    loading.value = false
+  }
+}
+
+/**
+ * Automatically runs an initial search on mount if the user has a location set.
+ */
+onMounted(() => {
+  if (hasLocation.value) search()
+})
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

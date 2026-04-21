@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Profile/Earnings.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Profile/Earnings.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The My Earnings page that displays a vendor's earnings
+ * @module ProfileEarnings
+ */
+
+import { ref, onMounted, computed } from 'vue'
+import { FwbTable, FwbTableBody, FwbTableCell, FwbTableHead, FwbTableHeadCell, FwbTableRow, FwbListGroup, FwbListGroupItem, FwbSpinner } from 'flowbite-vue'
+import { Line } from "vue-chartjs"
+import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, TimeScale, plugins } from "chart.js"
+import { useAuthStore } from '../../stores/auth'
+import RentalService from '../../services/rentalService'
+import UserService from '../../services/userService'
+import AuthService from '../../services/authService'
+import 'chartjs-adapter-date-fns'
+
+/**
+ * Auth store providing current logged-in user.
+ */
+const auth = useAuthStore()
+
+/** 
+ * Whether the current user is a vendor 
+ */
+const isVendor = ref(false)
+
+/** 
+ * List of completed rentals for the vendor
+ */
+const vendorRentalsData = ref()
+
+/**
+ * Flag indicating whether initial data has loaded
+ */
+const vendorRentalsDataLoaded = ref(false)
+
+/**
+ * Cached list of all users
+ */
+const usersData = ref()
+
+/**
+ * Chart-ready dataset of individual rentals
+ */
+const chartDataRentals = ref([])
+
+/**
+ * Chart-ready dataset aggregated by month
+ */
+const chartDataRentalsByMonth = ref([])
+
+/** 
+ * Current authenticated user's ID
+ */
+const vendorId = computed(() => auth.user?.id)
+
+/**
+ * Validates whether the logged-in user has vendor permissions.
+ * Sets isVendor based on auth store user data.
+ */
+async function validateVendorStatus() {
+    // Determine if the user is a vendor
+    if (auth.user?.vendor == true) {
+        isVendor.value = true
+    }
+    else {
+        isVendor.value = false
+    }
+}
+
+/**
+ * Loads completed rentals for the vendor and prepares raw rental list, chart dataset (per rental and monthly aggregated earnings), and user lookup data.
+ * Handles sorting and transformation of rental earnings over time.
+ */
+async function loadCompletedVendorRentals() {
+    try {
+        // Getting the vendor's completed rentals data
+        vendorRentalsData.value = await RentalService.getRentalsByVendorAndStatus(vendorId.value, 'returned')
+        vendorRentalsData.value = vendorRentalsData.value.sort((a, b) => new Date(b.end_date) - new Date(a.end_date))
+
+        // Putting some of the vendor's completed rentals data into chartDataRentals
+        chartDataRentals.value = vendorRentalsData.value.map(rental => ({
+            x: new Date(rental.end_date),
+            y: rental.agreed_price
+        }))
+        .sort((a, b) => a.x - b.x)
+
+        // Sorting the completed rentals data into months (using 0-indexed months to match Date.getMonth())
+        let currentDate = new Date()
+        let currentMonthYear = { Month: currentDate.getMonth(), Year: currentDate.getFullYear() }
+        let pastMonthYear = { Month: currentDate.getMonth(), Year: currentDate.getFullYear() - 1 }
+
+        while ((pastMonthYear.Month != currentMonthYear.Month) || (pastMonthYear.Year != currentMonthYear.Year)) {
+            // Adding the earnings from the current month and year together
+            let sumEarnings = 0.0
+            for (let i = 0; i &lt; chartDataRentals.value.length; i++) {
+                if ((pastMonthYear.Month == chartDataRentals.value[i].x.getMonth()) &amp;&amp;
+                    (pastMonthYear.Year  == chartDataRentals.value[i].x.getFullYear())) {
+                    sumEarnings += chartDataRentals.value[i].y
+                }
+            }
+
+            // Adding the month's earnings to chartDataRentalsByMonth
+            chartDataRentalsByMonth.value.push({ x: new Date(pastMonthYear.Year, pastMonthYear.Month), y: sumEarnings })
+
+            // Incrementing pastMonthYear
+            pastMonthYear.Month += 1
+
+            if (pastMonthYear.Month > 11) {
+                pastMonthYear.Month = 0
+                pastMonthYear.Year += 1
+            }
+        }
+
+        // Getting all of the users in the database
+        usersData.value = await UserService.getUsers()
+    }
+    catch (error) {
+        console.error("Error getting vendor's rental data:", error)
+
+        // Alerting the user that the user's data could not be loaded
+        alert("Error: Rental data could not be loaded.")
+    }
+}
+
+/**
+ * Runs on component mount.
+ * Validates vendor status.
+ * Loads rental data if user is a vendor.
+ * Marks page as ready for rendering.
+ */
+onMounted(async () => {
+    // Validating the user's vendor status
+    await validateVendorStatus()
+
+    // Loading in the vendor's rental data
+    if (isVendor.value == true) {
+        await loadCompletedVendorRentals()
+    }
+
+    // Displaying the page to the user
+    vendorRentalsDataLoaded.value = true
+})
+
+/**
+ * Computes total earnings from all completed rentals.
+ * @returns {number} Total revenue earned.
+ */
+function computeTotalEarnings() {
+    let sum = 0.0
+    if (vendorRentalsData.value != undefined) {
+        for (let i = 0; i &lt; vendorRentalsData.value.length; i++) {
+            sum += vendorRentalsData.value[i].agreed_price
+        }
+    }
+
+    return sum
+}
+
+/**
+ * Computes total number of completed rentals.
+ * @returns {number} Count of rentals.
+ */
+function computeNumberOfCompletedRentals() {
+    let numOfCompletedRentals = 0
+    if (vendorRentalsData.value != undefined) {
+        numOfCompletedRentals = vendorRentalsData.value.length
+    }
+
+    return numOfCompletedRentals
+}
+
+/**
+ * Retrieves a user's name from cached user data.
+ * @param {number} userId - ID of the user.
+ * @returns {string} User's name.
+ */
+function getUserName(userId) {
+    let userName = ""
+    if (usersData.value != undefined) {
+        userName = usersData.value[userId - 1].name
+    }
+
+    return userName
+}
+
+/**
+ * Formats a timestamp into a readable US locale date-time string.
+ * @param {string|Date} value - Date value to format.
+ * @returns {string} Formatted date string.
+ */
+function formatDateTime(value) {
+    return new Date(value).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+    })
+}
+
+// Setting up the monthly earnings line graph
+ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, TimeScale)
+
+const chartData = computed(() => ({
+  datasets: [
+    {
+      label: 'Earnings',
+      data: chartDataRentalsByMonth.value,
+      borderColor: 'green',
+      backgroundColor: 'rgba(0,128,0,0.2)',
+      tension: 0
+    }
+  ]
+}))
+
+const chartOptions = {
+  scales: {
+    x: {
+        type: 'time',
+        title: {
+            display: true,
+            text: 'Date'
+        }
+    },
+    y: {
+        title: {
+          display: true,
+          text: 'Money (USD)'
+        },
+        ticks: {
+          callback: (value) => '$' + value.toFixed(2)
+        }
+    }
+  },
+  plugins: {
+    tooltip: {
+        callbacks: {
+            title: function(context) {
+                const date = new Date(context[0].parsed.x)
+                return date.toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric'
+                })
+            },
+            label: function(context) {
+                return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`
+            }
+        }
+    }
+  }
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

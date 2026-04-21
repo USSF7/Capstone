@@ -1,7 +1,18 @@
 <script setup>
+/**
+ * On the view rental page, this is a component that displays the messages between the vendor and the renter.
+ * @module RentalComponentsMessagingCard
+ */
+
 import { FwbCard } from 'flowbite-vue'
 import MessageBox from '../../../components/Messaging/MessageBox.vue'
 
+/**
+ * Component props
+ * @property {number} currentUserId - ID of logged-in user
+ * @property {number} otherUserId - ID of conversation partner
+ * @property {number} rentalId - Rental context ID for scoped messaging
+ */
 defineProps({
   currentUserId: { type: Number, required: true },
   otherUserId: { type: Number, required: true },

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: services/locationService.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: services/locationService.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import api from './api'
+
+/**
+ * Service for handling location-related backend operations.
+ *
+ * @class LocationService
+ */
+class LocationService {
+  /**
+   * Retrieves the Google Maps API key from the backend.
+   *
+   * @returns {Promise&lt;Object>} Response containing the maps API key.
+   */
+  async getMapsKey() {
+    return api.get('/location/maps-key')
+  }
+
+  /**
+   * Geocodes a structured address into latitude/longitude coordinates.
+   *
+   * @param {string} streetAddress - Street address.
+   * @param {string} city - City name.
+   * @param {string} state - State or province.
+   * @param {string} zipCode - Postal/ZIP code.
+   * @returns {Promise&lt;Object>} Geocoding result with coordinates and metadata.
+   */
+  async geocode(streetAddress, city, state, zipCode) {
+    return api.post('/location/geocode', {
+      street_address: streetAddress,
+      city,
+      state,
+      zip_code: zipCode,
+    })
+  }
+
+  /**
+   * Geocodes a freeform address string into coordinates.
+   *
+   * @param {string} address - Full address string entered by the user.
+   * @returns {Promise&lt;Object>} Geocoding result with latitude and longitude.
+   */
+  async geocodeFreeform(address) {
+    return api.post('/location/geocode-freeform', { address })
+  }
+
+  /**
+   * Searches for equipment near a geographic coordinate.
+   *
+   * @param {number} lat - Latitude of search center.
+   * @param {number} lng - Longitude of search center.
+   * @param {number} [radius=25] - Search radius in kilometers.
+   * @param {string|null} [name=null] - Optional equipment name filter.
+   * @returns {Promise&lt;Object>} List of nearby equipment results.
+   */
+  async searchEquipmentNearby(lat, lng, radius = 25, name = null) {
+    let url = `/location/equipment/search?lat=${lat}&amp;lng=${lng}&amp;radius=${radius}`
+    if (name) url += `&amp;name=${encodeURIComponent(name)}`
+    return api.get(url)
+  }
+
+  /**
+   * Retrieves suggested meeting locations for a rental.
+   *
+   * @param {number|string} rentalId - Rental ID.
+   * @returns {Promise&lt;Object>} Suggested meeting locations.
+   */
+  async getMeetingSuggestions(rentalId) {
+    return api.get(`/location/rental/${rentalId}/meeting-suggestions`)
+  }
+
+  /**
+   * Retrieves meeting location suggestions between two geographic points.
+   *
+   * @param {number} renterLat - Renter latitude.
+   * @param {number} renterLng - Renter longitude.
+   * @param {number} vendorLat - Vendor latitude.
+   * @param {number} vendorLng - Vendor longitude.
+   * @returns {Promise&lt;Object>} Suggested meeting locations between both users.
+   */
+  async getMeetingSuggestionsForPoints(renterLat, renterLng, vendorLat, vendorLng) {
+    return api.get(
+      `/location/meeting-suggestions?renter_lat=${encodeURIComponent(renterLat)}&amp;renter_lng=${encodeURIComponent(renterLng)}&amp;vendor_lat=${encodeURIComponent(vendorLat)}&amp;vendor_lng=${encodeURIComponent(vendorLng)}`
+    )
+  }
+
+  /**
+   * Sets the meeting location for a rental.
+   *
+   * @param {number|string} rentalId - Rental ID.
+   * @param {Object} placeData - Location payload.
+   * @returns {Promise&lt;Object>} Updated rental/location response.
+   */
+  async setMeetingLocation(rentalId, placeData) {
+    return api.post(`/location/rental/${rentalId}/meeting-location`, placeData)
+  }
+}
+
+export default new LocationService()
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

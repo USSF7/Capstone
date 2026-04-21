@@ -1,8 +1,43 @@
 <script setup>
+/**
+ * Google Maps functions
+ * @module GoogleMaps
+ */
+
 import { ref, onMounted, watch, toRefs } from 'vue'
 import { Loader } from '@googlemaps/js-api-loader'
 import locationService from '../services/locationService'
 
+/**
+ * Latitude/longitude coordinate.
+ * @typedef {{ lat: number, lng: number }} LatLng
+ */
+
+/**
+ * Marker displayed on the map.
+ * @typedef {Object} MapMarker
+ * @property {number} lat - Latitude coordinate value
+ * @property {number} lng - Longitude coordinate value
+ * @property {string} [title] - Title of the marker
+ * @property {string} [label] - Info window content
+ * @property {string} [color] - Custom marker color
+ * @property {boolean} [selected] - Highlights marker
+ * @property {number} [zIndex] - The index of the marker
+ */
+
+/**
+ * Component props.
+ * @typedef {Object} Props
+ * @property {LatLng} center - Initial map center
+ * @property {number} [zoom=13] - Initial zoom level
+ * @property {MapMarker[]} [markers=[]] - Markers to render
+ * @property {boolean} [showDirections=false] - Whether to display route
+ * @property {LatLng|null} [origin=null] - Route origin
+ * @property {LatLng|null} [destination=null] - Route destination
+ * @property {string} [height='400px'] - Map container height
+ */
+
+/** @type {Props} */
 const props = defineProps({
   center: { type: Object, required: true },
   zoom: { type: Number, default: 13 },
@@ -13,20 +48,65 @@ const props = defineProps({
   height: { type: String, default: '400px' },
 })
 
+/**
+ * Emits map-related events.
+ * @type {(event: 'marker-click', marker: MapMarker) => void}
+ */
 const emit = defineEmits(['marker-click'])
 
 const { center, markers, showDirections, origin, destination } = toRefs(props)
 
+/**
+ * DOM element for mounting the Google Map.
+ * @type {import('vue').Ref<HTMLElement|null>}
+ */
 const mapContainer = ref(null)
+
+/**
+ * Loading state for map initialization.
+ * @type {import('vue').Ref<boolean>}
+ */
 const loading = ref(true)
+
+/**
+ * Error message if map fails to load.
+ * @type {import('vue').Ref<string|null>}
+ */
 const error = ref(null)
 
+/**
+ * Holds the google maps object.
+ * @type {google.maps.Map|null}
+ */
 let map = null
+
+/**
+ * Holds all of the marker objects in the map.
+ * @type {google.maps.Marker[]}
+ */
 let markerObjects = []
+
+/**
+ * Holds the direction render information.
+ * @type {google.maps.DirectionsRenderer|null}
+ */
 let directionsRenderer = null
+
+/**
+ * Holds the data to Google.
+ * @type {typeof google|null}
+ */
 let google = null
+
+/**
+ * Window that displays Google Maps information.
+ * @type {google.maps.InfoWindow|null}
+ */
 let activeInfoWindow = null
 
+/**
+ * Initializes the Google Map and loads markers and directions.
+ */
 async function initMap() {
   try {
     const { key } = await locationService.getMapsKey()
@@ -51,6 +131,9 @@ async function initMap() {
   }
 }
 
+/**
+ * Removes all markers and closes any open info window.
+ */
 function clearMarkers() {
   markerObjects.forEach((m) => m.setMap(null))
   markerObjects = []
@@ -60,6 +143,9 @@ function clearMarkers() {
   }
 }
 
+/**
+ * Renders markers on the map based on props.
+ */
 function updateMarkers() {
   if (!map || !google) return
   clearMarkers()
@@ -109,6 +195,9 @@ function updateMarkers() {
   }
 }
 
+/**
+ * Fetches and renders driving directions between origin and destination.
+ */
 function updateDirections() {
   if (!map || !google || !props.origin || !props.destination) return
   if (directionsRenderer) {
@@ -130,12 +219,26 @@ function updateDirections() {
   )
 }
 
+/**
+ * Lifecycle of the component.
+ */
 onMounted(initMap)
 
+/**
+ * Updates markers when marker data changes
+ */
 watch(markers, updateMarkers, { deep: true })
+
+/**
+ * Updates directions when routing-related props change
+ */
 watch([showDirections, origin, destination], () => {
   if (props.showDirections) updateDirections()
 }, { deep: true })
+
+/**
+ * Re-centers map when center changes
+ */
 watch(center, () => {
   if (map) map.setCenter(props.center)
 }, { deep: true })

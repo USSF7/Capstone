@@ -1,5 +1,10 @@
 <script>
 
+/**
+ * A component that allows a user to review another user.
+ * @module RentalReviewUser
+ */
+
 import { FwbAvatar, FwbButton, FwbTextarea } from 'flowbite-vue'
 import ReviewService from '../../services/reviewService'
 import RentalService from '../../services/rentalService'
@@ -12,25 +17,85 @@ export default {
         FwbTextarea,
         ReviewService
     },
+
+    /**
+     * Props passed from parent component
+     */
     props: {
+        /**
+         * Name of the user being reviewed
+         * @type {string}
+         */
         userName: String,
+
+        /**
+         * Profile image path/filename for the user
+         * @type {string}
+         */
         userPicture: String,
+
+        /**
+         * ID of the user being reviewed
+         * @type {number}
+         */
         userID: Number,
+
+        /**
+         * ID of the user submitting the review
+         * @type {number}
+         */
         submitterID: Number,
+
+        /**
+         * ID of the rental associated with this review
+         * @type {number}
+         */
         rentalID: Number
     },
+
+    /**
+     * Reactive component state
+     */
     data() {
         return {
+            /**
+             * Selected star rating (1–5)
+             * @type {number}
+             */
             rating: 0,
+
+            /**
+             * Hover state for star preview effect
+             * @type {number}
+             */
             hover: 0,
+
+            /**
+             * Text content of the review
+             * @type {string}
+             */
             message: '',
+
+            /**
+             * Backend base URL for loading user images
+             * @type {string}
+             */
             BACKEND_URL: import.meta.env.VITE_BACKEND_URL
         }
     },
     methods: {
+        /**
+         * Sets the selected rating when a star is clicked
+         *
+         * @param {number} value - Selected star value (1–5)
+         */
         setRating(value) {
             this.rating = value
         },
+
+        /**
+         * Submits the user review to the backend
+         */
         async submitReview() {
             try {
                 // Creating the review

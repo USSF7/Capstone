@@ -1,45 +1,106 @@
 <script setup>
+/**
+ * On the view rental page, this is a component that displays the equipment's information.
+ * @module RentalComponentsEquipmentCard
+ */
+
 import { ref, computed, watch } from 'vue'
 import { FwbCard, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbBadge, FwbButton } from 'flowbite-vue'
 
+/**
+ * Base URL for loading equipment images from backend
+ */
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+/**
+ * Component props
+ * @property {Object} rentalData - Rental object containing equipment list and metadata
+ * @property {number} currentUserId - ID of the currently logged-in user
+ */
 const props = defineProps({
   rentalData: { type: Object, required: true },
   currentUserId: { type: Number, required: true }
 })
 
+/**
+ * Component events
+ * - open-review-equipment: triggers review modal
+ * - send-current-equipment: sends currently selected equipment to parent
+ */
 const emit = defineEmits(['open-review-equipment', 'send-current-equipment'])
+
+/**
+ * Index of currently displayed equipment item
+ */
 const currentPage = ref(0)
 
+/**
+ * List of equipment associated with rental
+ * @returns {Array} List of equipment
+ */
 const equipmentList = computed(() => props.rentalData?.equipment || [])
+
+/**
+ * Currently selected equipment item in carousel
+ * @returns {Object|null} The current equipment
+ */
 const currentEquipment = computed(() => equipmentList.value[currentPage.value] || null)
+
+/**
+ * True if rental contains more than one equipment item
+ */
 const hasMultipleEquipment = computed(() => equipmentList.value.length > 1)
 
+/**
+ * Emits currently selected equipment whenever it changes
+ */
 watch(currentEquipment, (newValue) => {
   emit('send-current-equipment', newValue)
 })
 
+/**
+ * True if rental is returned
+ */
 const isReturned = computed(() => props.rentalData.status === 'returned')
+
+/**
+ * True if current user is the vendor who owns this rental
+ */
 const isVendorViewer = computed(() => props.currentUserId === props.rentalData?.vendor_id)
+
+/**
+ * Determines whether current user is allowed to leave a review
+ */
 const canReviewEquipment = computed(() => !isVendorViewer.value)
 
+/**
+ * True if current equipment has already been reviewed
+ */
 const equipmentAlreadyReviewed = computed(() => {
   const equipmentReviewed = currentEquipment.value.equipment_reviewed === true
   return equipmentReviewed
 })
 
+/**
+ * Ensures pagination index resets if equipment list shrinks
+ */
 watch(equipmentList, (newList) => {
   if (currentPage.value >= newList.length) {
     currentPage.value = 0
   }
 })
 
+/**
+ * Navigates to previous equipment item
+ */
 function goToPreviousPage() {
   if (!hasMultipleEquipment.value) return
   currentPage.value = (currentPage.value - 1 + equipmentList.value.length) % equipmentList.value.length
 }
 
+/**
+ * Navigates to next equipment item
+ */
 function goToNextPage() {
   if (!hasMultipleEquipment.value) return
   currentPage.value = (currentPage.value + 1) % equipmentList.value.length

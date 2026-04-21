@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Profile/Edit.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Profile/Edit.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The edit profile page
+ * @module ProfileEdit
+ */
+
+import { ref, onMounted, computed } from 'vue'
+import { FwbInput, FwbButton, FwbCheckbox, FwbSpinner, FwbAvatar, FwbFileInput } from 'flowbite-vue'
+import { DocumentArrowUpIcon } from '@heroicons/vue/24/solid'
+import { useAuthStore } from '../../stores/auth'
+import UserService from '../../services/userService'
+import AuthService from '../../services/authService'
+import router from '../../router'
+
+/**
+ * Backend base URL for serving uploaded profile images.
+ */
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
+/**
+ * Maximum allowed profile picture size (2MB).
+ */
+const MAX_FILE_SIZE = 2 * 1024 * 1024
+
+/**
+ * Auth store providing current logged-in user.
+ */
+const auth = useAuthStore()
+
+/**
+ * First name field.
+ */
+const firstName = ref('')
+
+/**
+ * Last name field.
+ */
+const lastName = ref('')
+
+/**
+ * Email field.
+ */
+const email = ref('')
+
+/**
+ * Phone number field.
+ */
+const phoneNum = ref('')
+
+/**
+ * Street address field.
+ */
+const streetAddress = ref('')
+
+/**
+ * City field.
+ */
+const city = ref('')
+
+/**
+ * State field.
+ */
+const state = ref('')
+
+/**
+ * Zip code field.
+ */
+const zipCode = ref('')
+
+/**
+ * Date of birth field.
+ */
+const dateOfBirth = ref('')
+
+/**
+ * User role vendor status.
+ */
+const vendorStatus = ref(false)
+
+/**
+ * User role renter status.
+ */
+const renterStatus = ref(false)
+
+/**
+ * User data loaded state.
+ */
+const userDataLoaded = ref(false)
+
+/**
+ * Uploaded profile picture filename stored in backend
+ */
+const picture = ref('')
+
+/**
+ * State for displaying the file upload button.
+ */
+const displayFileUploadButton = ref(true)
+
+/**
+ * State for displaying the file upload box.
+ */
+const displayFileUploadBox = ref(false)
+
+/**
+ * State for displaying the file upload spinner.
+ */
+const displayFileUploadSpinner = ref(false)
+
+/**
+ * State for displaying the user's uploaded picture file.
+ */
+const displayFileUploadPhoto = ref(false)
+
+/**
+ * Whether selected file passes validation.
+ */
+const canUploadPhoto = ref(false)
+
+/**
+ * Selected image file before it is uploaded.
+ */
+const userPhoto = ref(null)
+
+/**
+ * Gets the user's ID from auth.
+ */
+const userId = computed(() => auth.user?.id)
+
+/**
+ * Ensures at least one user role is selected.
+ */
+const isUserTypeValid = computed(() => {
+    return vendorStatus.value || renterStatus.value
+})
+
+/**
+ * Formats phone number input into (XXX) XXX-XXXX format.
+ */
+function formatPhoneNumber(event) {
+    const digits = event.target.value.replace(/\D/g, '').slice(0, 10)
+    if (!digits) {
+        phoneNum.value = ''
+        return
+    }
+    if (digits.length &lt;= 3) phoneNum.value = `(${digits}`
+    else if (digits.length &lt;= 6) phoneNum.value = `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+    else phoneNum.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
+/**
+ * Loads the user's current data.
+ */
+async function loadUserData() {
+    try {
+        // Getting the user's data
+        const userData = await UserService.getUser(userId.value)
+
+        // Storing the user's data into the component variables
+        const parts = (userData.name || '').split(' ')
+        firstName.value = parts[0] || ''
+        lastName.value = parts.slice(1).join(' ') || ''
+        email.value = userData.email
+        phoneNum.value = userData.phone
+        streetAddress.value = userData.street_address
+        city.value = userData.city
+        state.value = userData.state
+        zipCode.value = String(userData.zip_code)
+        dateOfBirth.value = userData.date_of_birth
+        vendorStatus.value = userData.vendor
+        renterStatus.value = userData.renter
+        picture.value = userData.picture
+
+        // If the equipment already has a picture, then display it.
+        if (picture.value !== '') {
+            displayFileUploadButton.value = false
+            displayFileUploadBox.value = false
+            displayFileUploadPhoto.value = true
+            displayFileUploadSpinner.value = false
+            canUploadPhoto.value = false
+        }
+
+        // Displaying the page to the user
+        userDataLoaded.value = true
+    }
+    catch (error) {
+        console.error("Error getting user data:", error)
+
+        // Alerting the user that their data could not be loaded
+        alert("Error: Account data could not be loaded.")
+    }
+}
+
+/**
+ * Submits updated profile data to the backend.
+ */
+async function updateAccount(event) {
+    event.preventDefault()
+
+    // Updating the user's data in the database
+    try {
+        await UserService.updateUser(
+            userId.value,
+            firstName.value + " " + lastName.value,
+            email.value,
+            phoneNum.value,
+            dateOfBirth.value,
+            streetAddress.value,
+            city.value,
+            state.value,
+            zipCode.value,
+            vendorStatus.value,
+            renterStatus.value,
+            picture.value
+        )
+
+        // Refresh user data in the auth store
+        const user = await AuthService.getMe()
+        auth.setAuth({
+            access_token: auth.accessToken,
+            refresh_token: auth.refreshToken,
+            user
+        })
+
+        // Successful account update
+        alert("Account has been successfully updated.")
+
+        // Going back to the view profile page
+        router.push({ name: 'view_profile', params: { id: userId.value } })
+    }
+    catch (error) {
+        console.error("Error updating user:", error)
+
+        // Unsuccessful account update
+        alert("Error: Account was not properly updated. Please try again.")
+    }
+}
+
+/**
+ * Cancels the account update and directs the user back to the view profile page.
+ */
+function cancelUpdate() {
+    router.push({ name: 'view_profile', params: { id: userId.value } })
+}
+
+/**
+ * Switches user interface into file upload mode.
+ */
+function onClickDisplayFileUploadBox() {
+  displayFileUploadButton.value = false
+  displayFileUploadBox.value = true
+  displayFileUploadSpinner.value = false
+  displayFileUploadPhoto.value = false
+  canUploadPhoto.value = false
+}
+
+/**
+ * Resets upload state and removes selected file.
+ */
+function onClickDisplayFileUploadButton() {
+  displayFileUploadButton.value = true
+  displayFileUploadBox.value = false
+  displayFileUploadSpinner.value = false
+  displayFileUploadPhoto.value = false
+  canUploadPhoto.value = false
+
+  // Setting the equipment picture reference back to null
+  userPhoto.value = null
+
+  // Setting the equipment picture dirctory back to an empty string
+  picture.value = ''
+}
+
+/**
+ * Validates selected image file.
+ */
+function handleFileChange(event) {
+  // Getting the file
+  const file = event.target.files[0]
+
+  if (!file) {
+    return
+  }
+
+  // Validating that the file is the correct file type
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ]
+
+  if (allowedTypes.includes(file.type) == false) {
+    canUploadPhoto.value = false
+    userPhoto.value = null
+    alert('Invalid file type. Please upload JPG, PNG, or WebP.')
+    return
+  }
+
+  // Validating that the file is not too large
+  if (file.size > MAX_FILE_SIZE) {
+    canUploadPhoto.value = false
+    userPhoto.value = null
+    alert("The inputted picture file is too large. The maximum file size is 2 MB.")
+    return
+  }
+
+  // Allowing the user to upload the file
+  canUploadPhoto.value = true
+}
+
+/**
+ * Uploads image to backend and stores returned filename in form.
+ */
+async function onClickUploadFile() {
+  displayFileUploadButton.value = false
+  displayFileUploadBox.value = false
+  displayFileUploadPhoto.value = false
+  displayFileUploadSpinner.value = true
+  canUploadPhoto.value = false
+
+  // Sending the picture to be saved in the backend
+  const file = userPhoto.value
+  let result = await UserService.uploadUserPicture(file)
+
+  // Checking if the picture was successfully stored in the backend
+  if (result.success == false) {
+    alert("Picture file did not upload properly. Please try again.")
+
+    // Resetting to the file upload box
+    onClickDisplayFileUploadBox()
+
+    // Setting the equipment picture reference back to null
+    userPhoto.value = null
+
+    // Setting the equipment picture dirctory back to an empty string
+    picture.value = ''
+
+    return
+  }
+
+  // Storing the picture filepath in the form object for the equipment
+  picture.value = result.filename
+
+  // Displaying the picture to the user
+  displayFileUploadSpinner.value = false
+  displayFileUploadPhoto.value = true
+}
+
+/**
+ * Deletes uploaded image and resets state.
+ */
+async function onClickCancelUploadedFile() {
+  displayFileUploadButton.value = true
+  displayFileUploadBox.value = false
+  displayFileUploadPhoto.value = false
+  displayFileUploadSpinner.value = false
+  canUploadPhoto.value = false
+
+  // Setting the equipment picture reference back to null
+  userPhoto.value = null
+
+  // Delete the photo from the backend
+  let result = await UserService.deleteUploadedUserPicture(picture.value)
+  
+  // Setting the equipment picture dirctory back to an empty string
+  picture.value = ''
+}
+
+/**
+ * Re-opens upload flow and removes previously uploaded image.
+ */
+async function onClickReuploadFile() {
+  displayFileUploadButton.value = false
+  displayFileUploadBox.value = true
+  displayFileUploadPhoto.value = false
+  displayFileUploadSpinner.value = false
+  canUploadPhoto.value = false
+
+  // Setting the equipment picture reference back to null
+  userPhoto.value = null
+
+  // Delete the photo from the backend
+  let result = await UserService.deleteUploadedUserPicture(picture.value)
+
+  // Setting the equipment picture dirctory back to an empty string
+  picture.value = ''
+}
+
+/**
+ * Load user data when component mounts.
+ */
+onMounted(async () => {
+    await loadUserData()
+})
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

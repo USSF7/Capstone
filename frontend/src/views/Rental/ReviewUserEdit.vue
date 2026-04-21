@@ -1,5 +1,10 @@
 <script>
 
+/**
+ * A component that allows a user to edit their review of another user.
+ * @module RentalReviewUserEdit
+ */
+
 import { FwbAvatar, FwbButton, FwbTextarea } from 'flowbite-vue'
 import ReviewService from '../../services/reviewService'
 
@@ -10,31 +15,107 @@ export default {
         FwbTextarea,
         ReviewService
     },
+
+    /**
+     * Props passed from parent component
+     */
     props: {
+        /**
+         * Name of the user being reviewed
+         * @type {string}
+         */
         userName: String,
+
+        /**
+         * Profile image path/filename for the user
+         * @type {string}
+         */
         userPicture: String,
+
+        /**
+         * ID of the user being reviewed
+         * @type {number}
+         */
         userID: Number,
+
+        /**
+         * ID of the user submitting the review
+         * @type {number}
+         */
         submitterID: Number,
+
+        /**
+         * ID of the review being edited
+         * @type {number}
+         */
         reviewId: Number,
+
+        /**
+         * Existing rating value (1–5). Used to initialize the star selection UI.
+         * @type {number}
+         */
         reviewRating: Number,
+
+        /**
+         * Existing review text. Used to initialize the textarea.
+         * @type {string}
+         */
         reviewText: String
     },
+
+    /**
+     * Reactive component state
+     */
     data() {
         return {
+            /**
+             * Selected rating (1–5)
+             * @type {number}
+             */
             rating: 0,
+
+            /**
+             * Hover state for star preview
+             * @type {number}
+             */
             hover: 0,
+
+            /**
+             * Editable review message
+             * @type {string}
+             */
             message: '',
+
+            /**
+             * Backend base URL for loading profile images
+             * @type {string}
+             */
             BACKEND_URL: import.meta.env.VITE_BACKEND_URL
         }
     },
+
+    /**
+     * Initializes local state from incoming props
+     *
+     * @returns {void}
+     */
     mounted() {
         this.rating = this.reviewRating || 0
         this.message = this.reviewText || ''
     },
     methods: {
+        /**
+         * Sets the selected rating when a star is clicked
+         *
+         * @param {number} value - Star value (1–5)
+         */
         setRating(value) {
             this.rating = value
         },
+
+        /**
+         * Submits updated review data to backend
+         */
         async submitReview() {
             try {
                 // Creating the review

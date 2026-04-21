@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Rental/Edit.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Rental/Edit.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The edit rental page
+ * @module RentalEdit
+ */
+
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FwbButton, FwbInput, FwbSpinner } from 'flowbite-vue'
+import AuthService from '../../services/authService'
+import RentalService from '../../services/rentalService'
+import locationService from '../../services/locationService'
+import RentalMeetingLocationField from './components/RentalMeetingLocationField.vue'
+
+/**
+ * Vue Route instance
+ */
+const route = useRoute()
+
+/**
+ * Vue Router instance
+ */
+const router = useRouter()
+
+/**
+ * Reactive rental ID extracted from the route parameters.
+ */
+const rentalId = computed(() => Number(route.params.id))
+
+/**
+ * User interface state flag controlling loading state.
+ */
+const loading = ref(true)
+
+/**
+ * User interface state flag controlling submission state.
+ */
+const submitting = ref(false)
+
+/**
+ * Error message displayed in the UI when validation or API calls fail.
+ */
+const error = ref('')
+
+/**
+ * Authenticated user object fetched from backend.
+ */
+const currentUser = ref(null)
+
+/**
+ * Rental object being edited.
+ */
+const rental = ref(null)
+
+/**
+ * Form input agreed price
+ */
+const agreedPrice = ref('')
+
+/**
+ * Form input start date
+ */
+const startDate = ref('')
+
+/**
+ * Form input end date
+ */
+const endDate = ref('')
+
+/**
+ * Form input location
+ */
+const location = ref('')
+
+/**
+ * Meeting location latitude coordinate
+ */
+const meetingLat = ref(null)
+
+/**
+ * Meeting location longitude coordinate
+ */
+const meetingLng = ref(null)
+
+/**
+ * Minimum allowed start date
+ */
+const minimumStartDate = ref('')
+
+/**
+ * Pads a number with a leading zero if needed (used for date formatting).
+ *
+ * @param {number|string} value - Numeric value to pad.
+ * @returns {string} Two-digit string representation.
+ */
+function pad(value) {
+	return String(value).padStart(2, '0')
+}
+
+/**
+ * Adds a number of hours to a Date object.
+ *
+ * @param {Date} date - Base date.
+ * @param {number} hours - Number of hours to add.
+ * @returns {Date} New Date instance with added hours.
+ */
+function addHours(date, hours) {
+	const result = new Date(date)
+	result.setHours(result.getHours() + hours)
+	return result
+}
+
+/**
+ * Converts a Date or ISO string into a datetime-local input-compatible string.
+ *
+ * @param {string|Date} value - Date value to convert.
+ * @returns {string} Formatted datetime-local string or empty string if invalid.
+ */
+function toDateTimeLocalValue(value) {
+	if (!value) return ''
+	const date = new Date(value)
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/**
+ * Converts a datetime-local string into a UTC ISO string for backend storage.
+ *
+ * @param {string} value - Local datetime string (YYYY-MM-DDTHH:mm)
+ * @returns {string} ISO 8601 UTC string.
+ */
+function toUtcIsoString(value) {
+	if (!value) return ''
+	return new Date(value).toISOString()
+}
+
+/**
+ * Loads rental data and validates user authorization.
+ */
+async function loadData() {
+	try {
+		error.value = ''
+		currentUser.value = await AuthService.getMe()
+		rental.value = await RentalService.getRental(rentalId.value)
+
+		const isParticipant = [rental.value.renter_id, rental.value.vendor_id].includes(currentUser.value.id)
+		if (!isParticipant) {
+			error.value = 'You are not authorized to edit this rental.'
+			return
+		}
+
+		agreedPrice.value = String(rental.value.agreed_price)
+		startDate.value = toDateTimeLocalValue(rental.value.start_date)
+		endDate.value = toDateTimeLocalValue(rental.value.end_date)
+		minimumStartDate.value = toDateTimeLocalValue(addHours(new Date(), 2))
+		location.value = rental.value.location || ''
+		meetingLat.value = rental.value.meeting_lat ?? null
+		meetingLng.value = rental.value.meeting_lng ?? null
+	} catch (e) {
+		error.value = e.message || 'Failed to load rental details.'
+	} finally {
+		loading.value = false
+	}
+}
+
+/**
+ * Saves updated rental information to the backend.
+ */
+async function saveChanges() {
+	if (!agreedPrice.value || Number(agreedPrice.value) &lt;= 0) {
+		error.value = 'Offer price must be greater than 0.'
+		return
+	}
+
+	if (!startDate.value || !endDate.value) {
+		error.value = 'Start and end dates are required.'
+		return
+	}
+
+	if (minimumStartDate.value &amp;&amp; new Date(startDate.value) &lt; new Date(minimumStartDate.value)) {
+		error.value = 'Start date must be at least 2 hours in the future.'
+		return
+	}
+
+	if (new Date(endDate.value) &lt;= new Date(startDate.value)) {
+		error.value = 'End date must be after start date.'
+		return
+	}
+
+	if (!location.value.trim()) {
+		error.value = 'Meeting location is required.'
+		return
+	}
+
+	try {
+		submitting.value = true
+		error.value = ''
+
+		let finalMeetingLat = meetingLat.value
+		let finalMeetingLng = meetingLng.value
+		if ((finalMeetingLat == null || finalMeetingLng == null) &amp;&amp; location.value.trim()) {
+			try {
+				const coords = await locationService.geocodeFreeform(location.value.trim())
+				finalMeetingLat = coords.lat
+				finalMeetingLng = coords.lng
+			} catch (geoError) {
+				console.warn('Could not geocode meeting location:', geoError)
+			}
+		}
+
+		const updated = await RentalService.updateRentalDetails(rentalId.value, {
+			location: location.value.trim(),
+			meeting_lat: finalMeetingLat,
+			meeting_lng: finalMeetingLng,
+			agreed_price: Number(agreedPrice.value),
+			start_date: toUtcIsoString(startDate.value),
+			end_date: toUtcIsoString(endDate.value),
+			deleted: rental.value.deleted,
+		})
+
+		router.push({ name: 'rental_view', params: { id: updated.id } })
+	} catch (e) {
+		error.value = e.message || 'Failed to save rental changes.'
+	} finally {
+		submitting.value = false
+	}
+}
+
+/**
+ * Loads rental data when component is mounted.
+ */
+onMounted(loadData)
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

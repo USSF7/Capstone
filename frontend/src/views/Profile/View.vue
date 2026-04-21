@@ -1,6 +1,11 @@
 <!-- View a specific users profile details -->
 <script lang="js" setup>
 
+/**
+ * The view profile page that displays a user's information and reviews
+ * @module ProfileView
+ */
+
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton, FwbCard, FwbSpinner } from 'flowbite-vue'
@@ -13,6 +18,9 @@ import aiService from '../../services/aiService'
 import router from '../../router'
 import ReviewUserEdit from '../Rental/ReviewUserEdit.vue'
 
+/**
+ * Month names used for custom date formatting.
+ */
 const months = [
     "January", 
     "February", 
@@ -28,29 +36,116 @@ const months = [
     "December"
 ]
 
+/**
+ * Backend base URL for loading user images.
+ */
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+/**
+ * Route instance for navigation.
+ */
 const route = useRoute()
+
+/**
+ * ID of the profile being viewed.
+ */
 const userID = ref()
+
+/**
+ * Logged-in user data.
+ */
 const userData = ref()
+
+/**
+ * Profile being viewed.
+ */
 const viewingUserData = ref()
+
+/**
+ * Indicates whether profile data has finished loading.
+ */
 const userDataLoaded = ref(false)
+
+/**
+ * Reviews for the viewed user.
+ */
 const userReviews = ref()
+
+/** 
+ * AI-generated review summary text.
+ */
 const reviewSummary = ref('')
+
+/**
+ * Loading state for AI summary generation.
+ */
 const reviewSummaryLoading = ref(false)
+
+/**
+ * Number of reviews.
+ */
 const numRatings = ref(0)
+
+/** 
+ * Human-readable review count string.
+ */
 const numRatingsText = ref('')
+
+/**
+ * Average user review rating.
+ */
 const averageRating = ref(0.0)
+
+/** 
+ * Cache for submitter user info to reduce API calls.
+ */
 const submitterNameCache = new Map()
+
+/**
+ * Controls visibility of review edit modal.
+ */
 const showReviewUserModal = ref(false)
+
+/** 
+ * Selected review ID for editing. 
+ */
 const popUpReviewId = ref(0)
+
+/**
+ * Selected review rating for editing.
+ */
 const popUpReviewRating = ref(0.0)
+
+/** 
+ * Selected review text for editing.
+ */
 const popUpReviewText = ref('')
+
+/**
+ * Equipment owned by vendor
+ */
 const vendorEquipment = ref([])
+
+/**
+ * True if vendor has at least one listed equipment item.
+ */
 const hasVendorEquipment = computed(() => Array.isArray(vendorEquipment.value) && vendorEquipment.value.length > 0)
+
+/**
+ * True if viewed user is a vendor.
+ */
 const viewedUserIsVendor = computed(() => Boolean(userData.value?.vendor || hasVendorEquipment.value))
+
+/**
+ * True if viewer is NOT the same as the profile being viewed.
+ */
 const isViewingAnotherUser = computed(() => Number(userData.value?.id) !== Number(viewingUserData.value?.id))
 
+/**
+ * Formats a review date into "Month Day, Year".
+ * @param {string|Date} isoDate - ISO date string.
+ * @returns {string} Formatted date.
+ */
 function reviewDateFormatting(isoDate) {
     const date = new Date(isoDate)
     let day = date.getDate()
@@ -60,11 +155,21 @@ function reviewDateFormatting(isoDate) {
     return months[month] + " " + day.toString() + ", " + year.toString()
 }
 
+/**
+ * Formats a date into locale string
+ * @param {string|Date} isoDate - ISO date string.
+ * @returns {string} Formatted date.
+ */
 function dateFormatting(isoDate) {
     const date = new Date(isoDate)
     return date.toLocaleDateString()
 }
 
+/**
+ * Computes age from date of birth
+ * @param {string|Date} dateOfBirth Date of the user's birth.
+ * @returns {number} Age in years.
+ */
 function computeAge(dateOfBirth) {
     // Using date objects
     const currentDate = new Date()
@@ -83,6 +188,10 @@ function computeAge(dateOfBirth) {
     return age
 }
 
+/**
+ * Returns a human-readable account type label.
+ * @returns {string} The account type.
+ */
 function displayUserSiteStatus() {
     if ((userData.value.vendor == true) && (userData.value.renter == true)) {
         return "Vendor / Renter"
@@ -95,14 +204,24 @@ function displayUserSiteStatus() {
     }
 }
 
+/**
+ * Navigates to profile edit page
+ */
 function editAccount() {
     router.push({ name: 'edit_profile' })
 }
 
+/**
+ * Navigates to equipment rental request page for this vendor.
+ */
 function createEquipmentRequest() {
     router.push({ name: 'rental_create', query: { vendorId: userData.value.id } })
 }
 
+/**
+ * Soft-deletes a review after confirmation.
+ * @param {number} reviewId - The review ID.
+ */
 async function deleteReview(reviewId) {
     // Double checking if the user wants to delete their review
     const confirmed = confirm("Are you sure you want to delete your review?\n\nWarning: Deleting this review will permanently remove it. You will only be able to submit another review about this user after completing another rental with them.")
@@ -116,6 +235,10 @@ async function deleteReview(reviewId) {
     }
 }
 
+/**
+ * Opens review edit modal and loads review data.
+ * @param {number} reviewId - The review ID.
+ */
 async function editReview(reviewId) {
     // Get the review data
     let review = await reviewService.getReview(reviewId)
@@ -129,10 +252,16 @@ async function editReview(reviewId) {
     showReviewUserModal.value = true
 }
 
+/**
+ * Sorts reviews in descending order.
+ */
 async function sortUserReviewsDescending() {
     userReviews.value.sort((a, b) => new Date(b.date) - new Date(a.date))
 }
 
+/**
+ * Enriches reviews with submitter name and profile picture.
+ */
 async function addSubmitterName() {
     if (!userReviews.value?.length) {
         return
@@ -164,6 +293,9 @@ async function addSubmitterName() {
     }
 }
 
+/**
+ * Computes review statistics.
+ */
 async function computeReviewData() {
     // Computing the total number of ratings
     numRatings.value = userReviews.value.length
@@ -189,6 +321,9 @@ async function computeReviewData() {
     }
 }
 
+/**
+ * Loads AI-generated summary of user reviews.
+ */
 async function loadReviewSummary() {
     reviewSummary.value = ''
 
@@ -212,6 +347,9 @@ async function loadReviewSummary() {
     }
 }
 
+/**
+ * Loads user data.
+ */
 async function loadUserData() {
     try {
         userDataLoaded.value = false
@@ -253,6 +391,9 @@ async function loadUserData() {
     }
 }
 
+/**
+ * Reloads profile when route ID changes.
+ */
 watch(() => route.params.id, async (newId) => {
     if (!newId) {
         return

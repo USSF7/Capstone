@@ -137,6 +137,11 @@
 
 <script setup>
 
+/**
+ * The create equipment inventory page.
+ * @module InventoryCreate
+ */
+
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { FwbInput, FwbSelect, FwbFileInput, FwbButton, FwbSpinner, FwbImg } from 'flowbite-vue'
@@ -144,6 +149,9 @@ import { useAuthStore } from '../../stores/auth'
 import equipmentService from '../../services/equipmentService'
 import { DocumentArrowUpIcon } from '@heroicons/vue/24/solid'
 
+/**
+ * Available equipment condition options.
+ */
 const conditions = [
   { value: 'Mint', name: '🔵 Mint' },
   { value: 'Above Average', name: '🟢 Above Average' },
@@ -151,24 +159,74 @@ const conditions = [
   { value: 'Below Average', name: '🔴 Below Average' }
 ]
 
+/**
+ * Backend base URL used for uploaded images.
+ */
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+/**
+ * Maximum allowed file size (2MB).
+ */
 const MAX_FILE_SIZE = 2 * 1024 * 1024
 
+/**
+ * Auth store containing user identity and session data.
+ */
 const auth = useAuthStore()
+
+/**
+ * Current authenticated user ID (owner of equipment).
+ */
 const OWNER_ID = computed(() => auth.user?.id)
 
+/**
+ * Router instance for navigation.
+ */
 const router = useRouter()
+
+/**
+ * Global loading state for form submission.
+ */
 const loading = ref(false)
+
+/**
+ * Global error message.
+ */
 const error = ref('')
 
+/**
+ * State for displaying the file upload button.
+ */
 const displayFileUploadButton = ref(true)
+
+/**
+ * State for displaying the file upload box.
+ */
 const displayFileUploadBox = ref(false)
+
+/**
+ * State for displaying the file upload spinner.
+ */
 const displayFileUploadSpinner = ref(false)
+
+/**
+ * State for displaying the user's uploaded picture file.
+ */
 const displayFileUploadPhoto = ref(false)
+
+/**
+ * Whether selected file passes validation.
+ */
 const canUploadPhoto = ref(false)
+
+/**
+ * Selected image file before it is uploaded.
+ */
 const equipmentPhoto = ref(null)
 
+/**
+ * Form model for new equipment.
+ */
 const form = ref({
   equipmentName: '',
   price: 0,
@@ -177,6 +235,9 @@ const form = ref({
   picture: '',
 })
 
+/**
+ * Submits equipment creation request.
+ */
 const submitForm = async () => {
   loading.value = true
   error.value = ''
@@ -199,6 +260,9 @@ const submitForm = async () => {
   }
 }
 
+/**
+ * Switches user interface into file upload mode.
+ */
 function onClickDisplayFileUploadBox() {
   displayFileUploadButton.value = false
   displayFileUploadBox.value = true
@@ -207,6 +271,9 @@ function onClickDisplayFileUploadBox() {
   canUploadPhoto.value = false
 }
 
+/**
+ * Resets upload state and removes selected file.
+ */
 function onClickDisplayFileUploadButton() {
   displayFileUploadButton.value = true
   displayFileUploadBox.value = false
@@ -221,6 +288,9 @@ function onClickDisplayFileUploadButton() {
   form.value.picture = ''
 }
 
+/**
+ * Validates selected image file.
+ */
 function handleFileChange(event) {
   // Getting the file
   const file = event.target.files[0]
@@ -255,6 +325,9 @@ function handleFileChange(event) {
   canUploadPhoto.value = true
 }
 
+/**
+ * Uploads image to backend and stores returned filename in form.
+ */
 async function onClickUploadFile() {
   displayFileUploadButton.value = false
   displayFileUploadBox.value = false
@@ -290,6 +363,9 @@ async function onClickUploadFile() {
   displayFileUploadPhoto.value = true
 }
 
+/**
+ * Deletes uploaded image and resets state.
+ */
 async function onClickCancelUploadedFile() {
   displayFileUploadButton.value = true
   displayFileUploadBox.value = false
@@ -307,6 +383,9 @@ async function onClickCancelUploadedFile() {
   form.value.picture = ''
 }
 
+/**
+ * Re-opens upload flow and removes previously uploaded image.
+ */
 async function onClickReuploadFile() {
   displayFileUploadButton.value = false
   displayFileUploadBox.value = true

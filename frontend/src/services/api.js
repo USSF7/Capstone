@@ -2,11 +2,34 @@
  * API Client for communicating with the backend
  */
 
+/**
+ * Base URL for all API requests.
+ * 
+ * @constant {string}
+ */
 const API_BASE_URL = 'http://localhost:5000/api'
 
+/**
+ * API Client for communicating with the backend.
+ * 
+ * @class ApiClient
+ */
 class ApiClient {
+  /**
+   * Tracks the current token refresh promise to prevent multiple simultaneous refresh requests.
+   * 
+   * @type {Promise<boolean>|null}
+   * @private
+   */
   _refreshing = null
 
+  /**
+   * Attempts to refresh the access token using the refresh token.
+   * 
+   * @returns {Promise<boolean>} Returns true if refresh succeeded, false otherwise
+   * 
+   * @private
+   */
   async _refreshToken() {
     const refreshToken = localStorage.getItem('refresh_token')
     if (!refreshToken) return false
@@ -30,6 +53,17 @@ class ApiClient {
     return true
   }
 
+  /**
+   * Core request handler used by all HTTP methods.
+   * 
+   * @param {string} endpoint - API endpoint 
+   * @param {RequestInit} [options={}] - Fetch configuration options
+   * @param {boolean} [_retried=false] - Internal flag to prevent infinite retry loops
+   * 
+   * @returns {Promise<any>} Parsed JSON response from the API
+   * 
+   * @throws {Error} If request fails or server returns an error response
+   */
   async request(endpoint, options = {}, _retried = false) {
     const url = `${API_BASE_URL}${endpoint}`
     const token = localStorage.getItem('access_token')
@@ -80,10 +114,23 @@ class ApiClient {
     }
   }
 
+  /**
+   * Sends a GET request.
+   * 
+   * @param {string} endpoint - API endpoint
+   * @returns {Promise<any>}
+   */
   get(endpoint) {
     return this.request(endpoint, { method: 'GET' })
   }
 
+  /**
+   * Sends a POST request with JSON payload.
+   * 
+   * @param {string} endpoint - API endpoint
+   * @param {Object} data - Request body data
+   * @returns {Promise<any>}
+   */
   post(endpoint, data) {
     return this.request(endpoint, {
       method: 'POST',
@@ -91,6 +138,13 @@ class ApiClient {
     })
   }
 
+  /**
+   * Sends a POST request with FormData
+   * 
+   * @param {string} endpoint - API endpoint
+   * @param {FormData} formData - FormData payload
+   * @returns {Promise<any>}
+   */
   postForm(endpoint, formData) {
     return this.request(endpoint, {
       method: 'POST',
@@ -98,6 +152,13 @@ class ApiClient {
     })
   }
 
+  /**
+   * Sends a PUT request with JSON payload.
+   * 
+   * @param {string} endpoint - API endpoint
+   * @param {Object} data - Request body data
+   * @returns {Promise<any>}
+   */
   put(endpoint, data) {
     return this.request(endpoint, {
       method: 'PUT',
@@ -105,6 +166,13 @@ class ApiClient {
     })
   }
 
+  /**
+   * Sends a DELETE request.
+   * 
+   * @param {string} endpoint - API endpoint
+   * @param {Object} [data={}] - Optional request body
+   * @returns {Promise<any>}
+   */
   delete(endpoint, data = {}) {
     return this.request(endpoint, { 
       method: 'DELETE',

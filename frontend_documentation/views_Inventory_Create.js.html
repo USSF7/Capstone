@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Inventory/Create.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Inventory/Create.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The create equipment inventory page.
+ * @module InventoryCreate
+ */
+
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { FwbInput, FwbSelect, FwbFileInput, FwbButton, FwbSpinner, FwbImg } from 'flowbite-vue'
+import { useAuthStore } from '../../stores/auth'
+import equipmentService from '../../services/equipmentService'
+import { DocumentArrowUpIcon } from '@heroicons/vue/24/solid'
+
+/**
+ * Available equipment condition options.
+ */
+const conditions = [
+  { value: 'Mint', name: '🔵 Mint' },
+  { value: 'Above Average', name: '🟢 Above Average' },
+  { value: 'Average', name: '🟡 Average' },
+  { value: 'Below Average', name: '🔴 Below Average' }
+]
+
+/**
+ * Backend base URL used for uploaded images.
+ */
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
+/**
+ * Maximum allowed file size (2MB).
+ */
+const MAX_FILE_SIZE = 2 * 1024 * 1024
+
+/**
+ * Auth store containing user identity and session data.
+ */
+const auth = useAuthStore()
+
+/**
+ * Current authenticated user ID (owner of equipment).
+ */
+const OWNER_ID = computed(() => auth.user?.id)
+
+/**
+ * Router instance for navigation.
+ */
+const router = useRouter()
+
+/**
+ * Global loading state for form submission.
+ */
+const loading = ref(false)
+
+/**
+ * Global error message.
+ */
+const error = ref('')
+
+/**
+ * State for displaying the file upload button.
+ */
+const displayFileUploadButton = ref(true)
+
+/**
+ * State for displaying the file upload box.
+ */
+const displayFileUploadBox = ref(false)
+
+/**
+ * State for displaying the file upload spinner.
+ */
+const displayFileUploadSpinner = ref(false)
+
+/**
+ * State for displaying the user's uploaded picture file.
+ */
+const displayFileUploadPhoto = ref(false)
+
+/**
+ * Whether selected file passes validation.
+ */
+const canUploadPhoto = ref(false)
+
+/**
+ * Selected image file before it is uploaded.
+ */
+const equipmentPhoto = ref(null)
+
+/**
+ * Form model for new equipment.
+ */
+const form = ref({
+  equipmentName: '',
+  price: 0,
+  condition: '',
+  description: '',
+  picture: '',
+})
+
+/**
+ * Submits equipment creation request.
+ */
+const submitForm = async () => {
+  loading.value = true
+  error.value = ''
+
+  try {
+    await equipmentService.createEquipment(
+      OWNER_ID.value,
+      form.value.equipmentName,
+      form.value.price,
+      form.value.description,
+      form.value.picture,
+      form.value.condition
+    )
+    router.push({ name: 'inventory' })
+  } catch (err) {
+    error.value = err.message || 'Failed to create equipment'
+    console.error('Error creating equipment:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+/**
+ * Switches user interface into file upload mode.
+ */
+function onClickDisplayFileUploadBox() {
+  displayFileUploadButton.value = false
+  displayFileUploadBox.value = true
+  displayFileUploadSpinner.value = false
+  displayFileUploadPhoto.value = false
+  canUploadPhoto.value = false
+}
+
+/**
+ * Resets upload state and removes selected file.
+ */
+function onClickDisplayFileUploadButton() {
+  displayFileUploadButton.value = true
+  displayFileUploadBox.value = false
+  displayFileUploadSpinner.value = false
+  displayFileUploadPhoto.value = false
+  canUploadPhoto.value = false
+
+  // Setting the equipment picture reference back to null
+  equipmentPhoto.value = null
+
+  // Setting the equipment picture dirctory back to an empty string
+  form.value.picture = ''
+}
+
+/**
+ * Validates selected image file.
+ */
+function handleFileChange(event) {
+  // Getting the file
+  const file = event.target.files[0]
+
+  if (!file) {
+    return
+  }
+
+  // Validating that the file is the correct file type
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ]
+
+  if (allowedTypes.includes(file.type) == false) {
+    canUploadPhoto.value = false
+    equipmentPhoto.value = null
+    alert('Invalid file type. Please upload JPG, PNG, or WebP.')
+    return
+  }
+
+  // Validating that the file is not too large
+  if (file.size > MAX_FILE_SIZE) {
+    canUploadPhoto.value = false
+    equipmentPhoto.value = null
+    alert("The inputted picture file is too large. The maximum file size is 2 MB.")
+    return
+  }
+
+  // Allowing the user to upload the file
+  canUploadPhoto.value = true
+}
+
+/**
+ * Uploads image to backend and stores returned filename in form.
+ */
+async function onClickUploadFile() {
+  displayFileUploadButton.value = false
+  displayFileUploadBox.value = false
+  displayFileUploadPhoto.value = false
+  displayFileUploadSpinner.value = true
+  canUploadPhoto.value = false
+
+  // Sending the picture to be saved in the backend
+  const file = equipmentPhoto.value
+  let result = await equipmentService.uploadEquipmentPicture(file)
+
+  // Checking if the picture was successfully stored in the backend
+  if (result.success == false) {
+    alert("Picture file did not upload properly. Please try again.")
+
+    // Resetting to the file upload box
+    onClickDisplayFileUploadBox()
+
+    // Setting the equipment picture reference back to null
+    equipmentPhoto.value = null
+
+    // Setting the equipment picture dirctory back to an empty string
+    form.value.picture = ''
+
+    return
+  }
+
+  // Storing the picture filepath in the form object for the equipment
+  form.value.picture = result.filename
+
+  // Displaying the picture to the user
+  displayFileUploadSpinner.value = false
+  displayFileUploadPhoto.value = true
+}
+
+/**
+ * Deletes uploaded image and resets state.
+ */
+async function onClickCancelUploadedFile() {
+  displayFileUploadButton.value = true
+  displayFileUploadBox.value = false
+  displayFileUploadPhoto.value = false
+  displayFileUploadSpinner.value = false
+  canUploadPhoto.value = false
+
+  // Setting the equipment picture reference back to null
+  equipmentPhoto.value = null
+
+  // Delete the photo from the backend
+  let result = await equipmentService.deleteUploadedEquipmentPicture(form.value.picture)
+  
+  // Setting the equipment picture dirctory back to an empty string
+  form.value.picture = ''
+}
+
+/**
+ * Re-opens upload flow and removes previously uploaded image.
+ */
+async function onClickReuploadFile() {
+  displayFileUploadButton.value = false
+  displayFileUploadBox.value = true
+  displayFileUploadPhoto.value = false
+  displayFileUploadSpinner.value = false
+  canUploadPhoto.value = false
+
+  // Setting the equipment picture reference back to null
+  equipmentPhoto.value = null
+
+  // Delete the photo from the backend
+  let result = await equipmentService.deleteUploadedEquipmentPicture(form.value.picture)
+
+  // Setting the equipment picture dirctory back to an empty string
+  form.value.picture = ''
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

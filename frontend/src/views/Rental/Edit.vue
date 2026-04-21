@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * The edit rental page
+ * @module RentalEdit
+ */
+
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FwbButton, FwbInput, FwbSpinner } from 'flowbite-vue'
@@ -7,47 +12,130 @@ import RentalService from '../../services/rentalService'
 import locationService from '../../services/locationService'
 import RentalMeetingLocationField from './components/RentalMeetingLocationField.vue'
 
+/**
+ * Vue Route instance
+ */
 const route = useRoute()
+
+/**
+ * Vue Router instance
+ */
 const router = useRouter()
 
+/**
+ * Reactive rental ID extracted from the route parameters.
+ */
 const rentalId = computed(() => Number(route.params.id))
 
+/**
+ * User interface state flag controlling loading state.
+ */
 const loading = ref(true)
+
+/**
+ * User interface state flag controlling submission state.
+ */
 const submitting = ref(false)
+
+/**
+ * Error message displayed in the UI when validation or API calls fail.
+ */
 const error = ref('')
 
+/**
+ * Authenticated user object fetched from backend.
+ */
 const currentUser = ref(null)
+
+/**
+ * Rental object being edited.
+ */
 const rental = ref(null)
 
+/**
+ * Form input agreed price
+ */
 const agreedPrice = ref('')
+
+/**
+ * Form input start date
+ */
 const startDate = ref('')
+
+/**
+ * Form input end date
+ */
 const endDate = ref('')
+
+/**
+ * Form input location
+ */
 const location = ref('')
+
+/**
+ * Meeting location latitude coordinate
+ */
 const meetingLat = ref(null)
+
+/**
+ * Meeting location longitude coordinate
+ */
 const meetingLng = ref(null)
+
+/**
+ * Minimum allowed start date
+ */
 const minimumStartDate = ref('')
 
+/**
+ * Pads a number with a leading zero if needed (used for date formatting).
+ *
+ * @param {number|string} value - Numeric value to pad.
+ * @returns {string} Two-digit string representation.
+ */
 function pad(value) {
 	return String(value).padStart(2, '0')
 }
 
+/**
+ * Adds a number of hours to a Date object.
+ *
+ * @param {Date} date - Base date.
+ * @param {number} hours - Number of hours to add.
+ * @returns {Date} New Date instance with added hours.
+ */
 function addHours(date, hours) {
 	const result = new Date(date)
 	result.setHours(result.getHours() + hours)
 	return result
 }
 
+/**
+ * Converts a Date or ISO string into a datetime-local input-compatible string.
+ *
+ * @param {string|Date} value - Date value to convert.
+ * @returns {string} Formatted datetime-local string or empty string if invalid.
+ */
 function toDateTimeLocalValue(value) {
 	if (!value) return ''
 	const date = new Date(value)
 	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+/**
+ * Converts a datetime-local string into a UTC ISO string for backend storage.
+ *
+ * @param {string} value - Local datetime string (YYYY-MM-DDTHH:mm)
+ * @returns {string} ISO 8601 UTC string.
+ */
 function toUtcIsoString(value) {
 	if (!value) return ''
 	return new Date(value).toISOString()
 }
 
+/**
+ * Loads rental data and validates user authorization.
+ */
 async function loadData() {
 	try {
 		error.value = ''
@@ -74,6 +162,9 @@ async function loadData() {
 	}
 }
 
+/**
+ * Saves updated rental information to the backend.
+ */
 async function saveChanges() {
 	if (!agreedPrice.value || Number(agreedPrice.value) <= 0) {
 		error.value = 'Offer price must be greater than 0.'
@@ -134,6 +225,9 @@ async function saveChanges() {
 	}
 }
 
+/**
+ * Loads rental data when component is mounted.
+ */
 onMounted(loadData)
 </script>
 

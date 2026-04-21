@@ -1,10 +1,26 @@
 <script setup>
+/**
+ * A component that displays the meeting location for the rental.
+ * @module RentalMeetingLocation
+ */
+
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import RentalMeetingLocationField from './components/RentalMeetingLocationField.vue'
 
+/**
+ * Vue Route instance
+ */
 const route = useRoute()
+
+/**
+ * The rental ID from the route
+ */
 const rentalId = computed(() => Number(route.params.id))
+
+/**
+ * The meeting location of the rental
+ */
 const location = ref('')
 </script>
 

@@ -1,11 +1,48 @@
 <script setup>
+/**
+ * A component that displays equipment and vendor information to the user.
+ * @module EquipmentResultsGrid
+ */
+
 import { FwbCard, FwbBadge } from 'flowbite-vue'
 import { useRouter } from 'vue-router'
 
+/**
+ * Base URL for backend assets.
+ * @type {string}
+ */
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+/**
+ * Vue Router instance for navigation.
+ */
 const router = useRouter()
 
+/**
+ * Represents a single equipment item.
+ * @typedef {Object} Item
+ * @property {number} id - Equipment ID number
+ * @property {string} name - Name of the equipment
+ * @property {string} [description] - Description about the equipment
+ * @property {string} [picture] - Image path relative to backend that displays the equipment
+ * @property {string} condition - The equipment's condition
+ * @property {number} price - The equipment's price per day
+ * @property {number} distance_miles - Distance from the user in miles
+ * @property {number|null} [owner_id] - Vendor ID number
+ * @property {string} [owner_name] - Vendor display name
+ * @property {number|null} [owner_rating] - Vendor's numerical rating
+ * @property {number} [owner_rating_count] - Vendor's number of reviews
+ * @property {string} [owner_city] - Vendor's city
+ * @property {string} [owner_state] - Vendor's current state
+ */
+
+/**
+ * Component props
+ * @typedef {Object} Props
+ * @property {Item[]} items - List of equipment items to display. Each equipment item stores relevant information about the equipment.
+ */
+
+/** @type {Props} */
 defineProps({
   items: {
     type: Array,
@@ -13,10 +50,21 @@ defineProps({
   },
 })
 
+/**
+ * Builds the route location to the item details page.
+ *
+ * @param {Item} item - The object that stores relevant information about the equipment.
+ * @returns {{ name: string, params: { id: number } }} The route location to a specific equipment view.
+ */
 function getLink(item) {
   return { name: 'equipment-view', params: { id: item.id } }
 }
 
+/**
+ * Navigates to a vendor's profile page.
+ *
+ * @param {number|null|undefined} ownerId - The vendor's ID number.
+ */
 function goToVendorProfile(ownerId) {
   if (!ownerId) return
   router.push({ name: 'view_profile', params: { id: ownerId } })

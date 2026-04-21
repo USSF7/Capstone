@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Equipment search functions
+ * @module EquipmentSearch
+ */
+
 import { ref, computed, onMounted } from 'vue'
 import { FwbButton, FwbInput, FwbSpinner } from 'flowbite-vue'
 import { useAuthStore } from '../../stores/auth'
@@ -6,21 +11,74 @@ import locationService from '../../services/locationService'
 import GoogleMap from '../../components/GoogleMap.vue'
 import EquipmentResultsGrid from '../../components/EquipmentResultsGrid.vue'
 
+/**
+ * Auth store containing user location data.
+ */
 const auth = useAuthStore()
+
+/**
+ * Backend base URL for serving images.
+ * @type {string}
+ */
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+/**
+ * Equipment name input for searching for specific equipment.
+ */
 const nameFilter = ref('')
+
+/**
+ * Search radius from the user's location.
+ */
 const radius = ref(25)
+
+/**
+ * Search results from the filter name and radius.
+ * @type {import('vue').Ref<Array<any>>}
+ */
 const results = ref([])
+
+/**
+ * User interface loading flag.
+ */
 const loading = ref(false)
+
+/**
+ * User interface error flag.
+ */
 const error = ref(null)
+
+/**
+ * User interface display map flag.
+ */
 const showMap = ref(false)
+
+/**
+ * User interface equipment searched flag.
+ */
 const searched = ref(false)
 
+/**
+ * User latitude coordinate derived from auth store.
+ */
 const userLat = computed(() => auth.user?.latitude)
+
+/**
+ * User longitude coordinate derived from auth store.
+ */
 const userLng = computed(() => auth.user?.longitude)
+
+/**
+ * Whether the user has a valid location set.
+ */
 const hasLocation = computed(() => userLat.value != null && userLng.value != null)
 
+/**
+ * Escapes HTML to prevent XSS in map info windows.
+ *
+ * @param {string} value
+ * @returns {string} A user interface payload.
+ */
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -30,6 +88,12 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;')
 }
 
+/**
+ * Builds HTML content for a map marker info window.
+ *
+ * @param {any} item - The equipment object.
+ * @returns {string} HTML string for Google Maps InfoWindow
+ */
 function buildMapLabel(item) {
   const safeName = escapeHtml(item.name)
   const detailsUrl = `/equipment/${item.id}/view`
@@ -51,6 +115,9 @@ function buildMapLabel(item) {
   `
 }
 
+/**
+ * Transforms search results into map marker objects.
+ */
 const mapMarkers = computed(() =>
   results.value.map((r) => ({
     lat: r.owner_lat,
@@ -60,6 +127,21 @@ const mapMarkers = computed(() =>
   }))
 )
 
+/**
+ * Equipment search result item.
+ * @typedef {Object} EquipmentResult
+ * @property {number} id - The equipment ID number.
+ * @property {string} name - The equipment name.
+ * @property {number} price - The price of the equipment.
+ * @property {number} distance_miles - The distance from the renter's location to the vendor's location.
+ * @property {string} [picture] - Picture of the equipment.
+ * @property {number} owner_lat - The latitude coordinate value of the vendor.
+ * @property {number} owner_lng - The longitude coordinate value of the vendor.
+ */
+
+/**
+ * Executes a search for nearby equipment.
+ */
 async function search() {
   if (!hasLocation.value) return
   loading.value = true
@@ -80,6 +162,9 @@ async function search() {
   }
 }
 
+/**
+ * Automatically runs an initial search on mount if the user has a location set.
+ */
 onMounted(() => {
   if (hasLocation.value) search()
 })

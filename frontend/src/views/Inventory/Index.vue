@@ -2,21 +2,59 @@
 
 <script lang="js" setup>
 
+    /**
+     * The index page for the inventory view
+     * @module InventoryIndex
+     */
+
     import { onMounted, ref, computed } from 'vue'
     import { FwbCard, FwbButton, FwbBadge, FwbRating } from 'flowbite-vue'
     import { useAuthStore } from '../../stores/auth'
     import EquipmentService from '../../services/equipmentService'
     import UserService from '../../services/userService'
 
+    /**
+     * Base URL for backend assets (used for image rendering).
+     */
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+    /**
+     * Auth store containing user identity and session data.
+     */
     const auth = useAuthStore()
+
+    /**
+     * Full user object returned from backend, which includes inventory.
+     */
     const userData = ref()
+
+    /**
+     * User interface state for fetching user and inventory data.
+     */
     const loading = ref(true)
+
+    /**
+     * Holds any API or runtime error messages for display.
+     */
     const error = ref('')
+
+    /**
+     * Computed current authenticated user ID.
+     */
     const userId = computed(() => auth.user?.id)
+
+    /**
+     * Derived inventory list from loaded user data.
+     * Falls back to empty array if not yet loaded.
+     */
     const inventory = computed(() => userData.value?.inventory || [])
 
+    /**
+     * Converts equipment condition into user interface badge color type.
+     * 
+     * @param {string} condition - The condition of the equipment.
+     * @returns {string} The badge color symbolizing the condition of the equipment.
+     */
     function getConditionBadgeType(condition) {
       if (condition === 'Mint') return 'default'
       if (condition === 'Above Average') return 'green'
@@ -24,16 +62,26 @@
       return 'red'
     }
 
+    /**
+     * Loads the full user profile, which is used as a base data container.
+     */
     async function loadUser() {
         // Get the current user's data
         userData.value = await UserService.getUser(userId.value)
     }
 
+    /**
+     * Loads equipment owned by the current user.
+     * Overwrites userData.inventory after user is loaded.
+     */
     async function loadInventory() {
         // Get the current user's inventory data
         userData.value.inventory = await EquipmentService.getEquipmentByOwner(userId.value)
     }
 
+    /**
+     * Deletes an equipment item after confirmation.
+     */
     async function deleteEquipment(equipmentId) {
         if (!confirm('Are you sure you want to delete this equipment?')) return
         try {
@@ -45,6 +93,9 @@
         }
     }
 
+    /**
+     * Loading user data and their equipment inventory data.
+     */
     onMounted(async () => {
         await loadUser()
         await loadInventory()

@@ -1,6 +1,11 @@
 <!-- Details on a user's overall earnings -->
 <script lang="js" setup>
 
+/**
+ * The My Earnings page that displays a vendor's earnings
+ * @module ProfileEarnings
+ */
+
 import { ref, onMounted, computed } from 'vue'
 import { FwbTable, FwbTableBody, FwbTableCell, FwbTableHead, FwbTableHeadCell, FwbTableRow, FwbListGroup, FwbListGroupItem, FwbSpinner } from 'flowbite-vue'
 import { Line } from "vue-chartjs"
@@ -11,16 +16,50 @@ import UserService from '../../services/userService'
 import AuthService from '../../services/authService'
 import 'chartjs-adapter-date-fns'
 
+/**
+ * Auth store providing current logged-in user.
+ */
 const auth = useAuthStore()
+
+/** 
+ * Whether the current user is a vendor 
+ */
 const isVendor = ref(false)
+
+/** 
+ * List of completed rentals for the vendor
+ */
 const vendorRentalsData = ref()
+
+/**
+ * Flag indicating whether initial data has loaded
+ */
 const vendorRentalsDataLoaded = ref(false)
+
+/**
+ * Cached list of all users
+ */
 const usersData = ref()
+
+/**
+ * Chart-ready dataset of individual rentals
+ */
 const chartDataRentals = ref([])
+
+/**
+ * Chart-ready dataset aggregated by month
+ */
 const chartDataRentalsByMonth = ref([])
 
+/** 
+ * Current authenticated user's ID
+ */
 const vendorId = computed(() => auth.user?.id)
 
+/**
+ * Validates whether the logged-in user has vendor permissions.
+ * Sets isVendor based on auth store user data.
+ */
 async function validateVendorStatus() {
     // Determine if the user is a vendor
     if (auth.user?.vendor == true) {
@@ -31,6 +70,10 @@ async function validateVendorStatus() {
     }
 }
 
+/**
+ * Loads completed rentals for the vendor and prepares raw rental list, chart dataset (per rental and monthly aggregated earnings), and user lookup data.
+ * Handles sorting and transformation of rental earnings over time.
+ */
 async function loadCompletedVendorRentals() {
     try {
         // Getting the vendor's completed rentals data
@@ -82,6 +125,12 @@ async function loadCompletedVendorRentals() {
     }
 }
 
+/**
+ * Runs on component mount.
+ * Validates vendor status.
+ * Loads rental data if user is a vendor.
+ * Marks page as ready for rendering.
+ */
 onMounted(async () => {
     // Validating the user's vendor status
     await validateVendorStatus()
@@ -95,6 +144,10 @@ onMounted(async () => {
     vendorRentalsDataLoaded.value = true
 })
 
+/**
+ * Computes total earnings from all completed rentals.
+ * @returns {number} Total revenue earned.
+ */
 function computeTotalEarnings() {
     let sum = 0.0
     if (vendorRentalsData.value != undefined) {
@@ -106,6 +159,10 @@ function computeTotalEarnings() {
     return sum
 }
 
+/**
+ * Computes total number of completed rentals.
+ * @returns {number} Count of rentals.
+ */
 function computeNumberOfCompletedRentals() {
     let numOfCompletedRentals = 0
     if (vendorRentalsData.value != undefined) {
@@ -115,6 +172,11 @@ function computeNumberOfCompletedRentals() {
     return numOfCompletedRentals
 }
 
+/**
+ * Retrieves a user's name from cached user data.
+ * @param {number} userId - ID of the user.
+ * @returns {string} User's name.
+ */
 function getUserName(userId) {
     let userName = ""
     if (usersData.value != undefined) {
@@ -124,6 +186,11 @@ function getUserName(userId) {
     return userName
 }
 
+/**
+ * Formats a timestamp into a readable US locale date-time string.
+ * @param {string|Date} value - Date value to format.
+ * @returns {string} Formatted date string.
+ */
 function formatDateTime(value) {
     return new Date(value).toLocaleString('en-US', {
         month: 'short',

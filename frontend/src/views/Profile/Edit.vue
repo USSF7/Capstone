@@ -1,6 +1,11 @@
 <!-- Edit an account details view -->
 <script lang="js" setup>
 
+/**
+ * The edit profile page
+ * @module ProfileEdit
+ */
+
 import { ref, onMounted, computed } from 'vue'
 import { FwbInput, FwbButton, FwbCheckbox, FwbSpinner, FwbAvatar, FwbFileInput } from 'flowbite-vue'
 import { DocumentArrowUpIcon } from '@heroicons/vue/24/solid'
@@ -9,38 +14,131 @@ import UserService from '../../services/userService'
 import AuthService from '../../services/authService'
 import router from '../../router'
 
+/**
+ * Backend base URL for serving uploaded profile images.
+ */
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+/**
+ * Maximum allowed profile picture size (2MB).
+ */
 const MAX_FILE_SIZE = 2 * 1024 * 1024
 
+/**
+ * Auth store providing current logged-in user.
+ */
 const auth = useAuthStore()
+
+/**
+ * First name field.
+ */
 const firstName = ref('')
+
+/**
+ * Last name field.
+ */
 const lastName = ref('')
+
+/**
+ * Email field.
+ */
 const email = ref('')
+
+/**
+ * Phone number field.
+ */
 const phoneNum = ref('')
+
+/**
+ * Street address field.
+ */
 const streetAddress = ref('')
+
+/**
+ * City field.
+ */
 const city = ref('')
+
+/**
+ * State field.
+ */
 const state = ref('')
+
+/**
+ * Zip code field.
+ */
 const zipCode = ref('')
+
+/**
+ * Date of birth field.
+ */
 const dateOfBirth = ref('')
+
+/**
+ * User role vendor status.
+ */
 const vendorStatus = ref(false)
+
+/**
+ * User role renter status.
+ */
 const renterStatus = ref(false)
+
+/**
+ * User data loaded state.
+ */
 const userDataLoaded = ref(false)
+
+/**
+ * Uploaded profile picture filename stored in backend
+ */
 const picture = ref('')
 
+/**
+ * State for displaying the file upload button.
+ */
 const displayFileUploadButton = ref(true)
+
+/**
+ * State for displaying the file upload box.
+ */
 const displayFileUploadBox = ref(false)
+
+/**
+ * State for displaying the file upload spinner.
+ */
 const displayFileUploadSpinner = ref(false)
+
+/**
+ * State for displaying the user's uploaded picture file.
+ */
 const displayFileUploadPhoto = ref(false)
+
+/**
+ * Whether selected file passes validation.
+ */
 const canUploadPhoto = ref(false)
+
+/**
+ * Selected image file before it is uploaded.
+ */
 const userPhoto = ref(null)
 
+/**
+ * Gets the user's ID from auth.
+ */
 const userId = computed(() => auth.user?.id)
 
+/**
+ * Ensures at least one user role is selected.
+ */
 const isUserTypeValid = computed(() => {
     return vendorStatus.value || renterStatus.value
 })
 
+/**
+ * Formats phone number input into (XXX) XXX-XXXX format.
+ */
 function formatPhoneNumber(event) {
     const digits = event.target.value.replace(/\D/g, '').slice(0, 10)
     if (!digits) {
@@ -52,6 +150,9 @@ function formatPhoneNumber(event) {
     else phoneNum.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
 }
 
+/**
+ * Loads the user's current data.
+ */
 async function loadUserData() {
     try {
         // Getting the user's data
@@ -92,6 +193,9 @@ async function loadUserData() {
     }
 }
 
+/**
+ * Submits updated profile data to the backend.
+ */
 async function updateAccount(event) {
     event.preventDefault()
 
@@ -134,10 +238,16 @@ async function updateAccount(event) {
     }
 }
 
+/**
+ * Cancels the account update and directs the user back to the view profile page.
+ */
 function cancelUpdate() {
     router.push({ name: 'view_profile', params: { id: userId.value } })
 }
 
+/**
+ * Switches user interface into file upload mode.
+ */
 function onClickDisplayFileUploadBox() {
   displayFileUploadButton.value = false
   displayFileUploadBox.value = true
@@ -146,6 +256,9 @@ function onClickDisplayFileUploadBox() {
   canUploadPhoto.value = false
 }
 
+/**
+ * Resets upload state and removes selected file.
+ */
 function onClickDisplayFileUploadButton() {
   displayFileUploadButton.value = true
   displayFileUploadBox.value = false
@@ -160,6 +273,9 @@ function onClickDisplayFileUploadButton() {
   picture.value = ''
 }
 
+/**
+ * Validates selected image file.
+ */
 function handleFileChange(event) {
   // Getting the file
   const file = event.target.files[0]
@@ -194,6 +310,9 @@ function handleFileChange(event) {
   canUploadPhoto.value = true
 }
 
+/**
+ * Uploads image to backend and stores returned filename in form.
+ */
 async function onClickUploadFile() {
   displayFileUploadButton.value = false
   displayFileUploadBox.value = false
@@ -229,6 +348,9 @@ async function onClickUploadFile() {
   displayFileUploadPhoto.value = true
 }
 
+/**
+ * Deletes uploaded image and resets state.
+ */
 async function onClickCancelUploadedFile() {
   displayFileUploadButton.value = true
   displayFileUploadBox.value = false
@@ -246,6 +368,9 @@ async function onClickCancelUploadedFile() {
   picture.value = ''
 }
 
+/**
+ * Re-opens upload flow and removes previously uploaded image.
+ */
 async function onClickReuploadFile() {
   displayFileUploadButton.value = false
   displayFileUploadBox.value = true
@@ -263,6 +388,9 @@ async function onClickReuploadFile() {
   picture.value = ''
 }
 
+/**
+ * Load user data when component mounts.
+ */
 onMounted(async () => {
     await loadUserData()
 })

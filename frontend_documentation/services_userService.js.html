@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: services/userService.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: services/userService.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import api from './api'
+
+/**
+ * Service for handling user-related API operations.
+ *
+ * @class UserService
+ */
+class UserService {
+  /**
+   * Retrieves all users.
+   *
+   * @returns {Promise&lt;Object>} List of users.
+   */
+  async getUsers() {
+    return api.get('/users')
+  }
+
+  /**
+   * Retrieves a single user by ID.
+   *
+   * @param {number|string} id - User ID.
+   * @returns {Promise&lt;Object>} User object.
+   */
+  async getUser(id) {
+    return api.get(`/users/${id}`)
+  }
+
+  /**
+   * Retrieves all messages associated with a user.
+   *
+   * @param {number|string} id - User ID.
+   * @returns {Promise&lt;Object>} List of user messages.
+   */
+  async getUserMessages(id) {
+    return api.get(`/users/${id}/messages`)
+  }
+
+  /**
+   * Creates a new user account.
+   *
+   * @param {string} name - Full name.
+   * @param {string} email - Email address.
+   * @param {string} password - Account password.
+   * @param {string} phone - Phone number.
+   * @param {string} date_of_birth - Date of birth.
+   * @param {string} street_address - Street address.
+   * @param {string} city - City.
+   * @param {string} state - State.
+   * @param {string} zip_code - ZIP code.
+   * @param {boolean} vendor - Whether the user is a vendor.
+   * @param {boolean} renter - Whether the user is a renter.
+   * @param {string|null} picture - Profile picture URL.
+   * @returns {Promise&lt;Object>} Created user object.
+   */
+  async createUser(name, email, password, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter, picture) {
+    return api.post('/users', { 
+      name: name,
+      email: email,
+      password: password, 
+      phone: phone, 
+      date_of_birth: date_of_birth, 
+      street_address: street_address,
+      city: city, 
+      state: state, 
+      zip_code: zip_code, 
+      vendor: vendor, 
+      renter: renter,
+      picture: picture
+    })
+  }
+
+  /**
+   * Creates a new user account.
+   *
+   * @param {string} name - Full name.
+   * @param {string} email - Email address.
+   * @param {string} password - Account password.
+   * @param {string} phone - Phone number.
+   * @param {string} date_of_birth - Date of birth.
+   * @param {string} street_address - Street address.
+   * @param {string} city - City.
+   * @param {string} state - State.
+   * @param {string} zip_code - ZIP code.
+   * @param {boolean} vendor - Whether the user is a vendor.
+   * @param {boolean} renter - Whether the user is a renter.
+   * @param {string|null} picture - Profile picture  URL.
+   * @returns {Promise&lt;Object>} Created user object.
+   */
+  async updateUser(id, name, email, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter, picture) {
+    return api.put(`/users/${id}`, { 
+      name: name, 
+      email: email, 
+      phone: phone, 
+      date_of_birth: date_of_birth, 
+      street_address: street_address, 
+      city: city, 
+      state: state, 
+      zip_code: zip_code, 
+      vendor: vendor, 
+      renter: renter,
+      picture: picture
+    })
+  }
+
+  /**
+   * Deletes a user by ID.
+   *
+   * @param {number|string} id - User ID.
+   * @returns {Promise&lt;Object>} Deletion response.
+   */
+  async deleteUser(id) {
+    return api.delete(`/users/${id}`)
+  }
+
+  /**
+   * Uploads a profile picture for a user.
+   *
+   * @param {File} userPicture - Image file to upload.
+   * @returns {Promise&lt;Object>} Uploaded file URL path.
+   */
+  async uploadUserPicture(userPicture) {
+    const formData = new FormData()
+    formData.append('picture_file', userPicture)
+
+    return api.postForm('/users/picture', formData)
+  }
+
+  /**
+   * Deletes an uploaded user profile picture from storage.
+   *
+   * @param {string} pictureFilePath - File path of the image to delete.
+   * @returns {Promise&lt;Object>} Deletion response.
+   */
+  async deleteUploadedUserPicture(pictureFilePath) {
+    return api.delete('/users/picture/delete', {
+      filepath: pictureFilePath
+    })
+  }
+}
+
+export default new UserService()</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
