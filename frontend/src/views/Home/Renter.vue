@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Home page for the renter view
+ * @module HomeRenter 
+ */
+
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FwbCard, FwbProgress, FwbSpinner, FwbButton } from 'flowbite-vue'

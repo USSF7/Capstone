@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Profile/Calendar.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Profile/Calendar.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The calendar view that displays upcoming and previous rentals
+ * @module ProfileCalendar
+ */
+
+import { computed, onMounted, ref } from 'vue'
+import { useAuthStore } from '../../stores/auth'
+import rentalService from '../../services/rentalService'
+
+/**
+ * Auth store providing current logged-in user.
+ */
+const auth = useAuthStore()
+
+/**
+ * Current authenticated user ID (reactive).
+ */
+const USER_ID = computed(() => auth.user?.id)
+
+/**
+ * Loading state for calendar data fetch.
+ */
+const loading = ref(true)
+
+/**
+ * Error message for failed data loading.
+ */
+const error = ref('')
+
+/**
+ * List of rentals.
+ */
+const rentals = ref([])
+
+/**
+ * Currently displayed month (always set to first day of month).
+ */
+const currentMonth = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+
+/**
+ * Weekday labels used in calendar header row.
+ */
+const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/**
+ * Parses backend ISO date string into local Date object.
+ *
+ * @param {string} dateString - ISO date string
+ * @returns {Date} The date in a Date object
+ */
+function parseDateString(dateString) {
+	const [year, month, day] = dateString.split('T')[0].split('-').map(Number)
+	return new Date(year, month - 1, day)
+}
+
+/**
+ * Converts Date object into ISO date key (YYYY-MM-DD).
+ *
+ * @param {Date} date The date in a Date object.
+ * @returns {string} Formatted date in the format of YYYY-MM-DD.
+ */
+function getIsoDate(date) {
+	const year = date.getFullYear()
+	const month = String(date.getMonth() + 1).padStart(2, '0')
+	const day = String(date.getDate()).padStart(2, '0')
+	return `${year}-${month}-${day}`
+}
+
+/**
+ * Returns a new Date offset by a number of days.
+ *
+ * @param {Date} date The date in a Date object.
+ * @param {number} days The number of days.
+ * @returns {Date} The offset date in a Date object
+ */
+function addDays(date, days) {
+	const d = new Date(date)
+	d.setDate(d.getDate() + days)
+	return d
+}
+
+/**
+ * Maps rental status to Tailwind CSS styling classes.
+ * Used to visually distinguish calendar items.
+ *
+ * @param {string} status The current status of a rental.
+ * @returns {string} The CSS styling class.
+ */
+function getStatusClasses(status) {
+	switch (status) {
+		case 'requesting':
+			return 'bg-amber-100 text-amber-800'
+		case 'active':
+			return 'bg-emerald-100 text-emerald-800'
+		case 'returned':
+			return 'bg-blue-100 text-blue-800'
+		case 'disputed':
+		case 'denied':
+		case 'cancelled':
+			return 'bg-red-100 text-red-800'
+		default:
+			return 'bg-slate-100 text-slate-800'
+	}
+}
+
+/**
+ * Loads calendar-related rental data for the current user.
+ */
+async function loadCalendarData() {
+	loading.value = true
+	error.value = ''
+
+	try {
+		const [renterRentals, vendorRentals] = await Promise.all([
+			rentalService.getRentalsByRenter(USER_ID.value),
+			rentalService.getRentalsByVendor(USER_ID.value)
+		])
+
+		const rentalMap = new Map()
+		for (const rental of [...renterRentals, ...vendorRentals]) {
+			if (!rentalMap.has(rental.id)) {
+				rentalMap.set(rental.id, rental)
+			}
+		}
+
+		rentals.value = Array.from(rentalMap.values())
+	} catch (err) {
+		error.value = err.message || 'Failed to load calendar data'
+	} finally {
+		loading.value = false
+	}
+}
+
+/**
+ * Computed map of rentals grouped by date.
+ */
+const itemsByDate = computed(() => {
+	const map = {}
+
+	for (const rental of rentals.value) {
+		if (rental.status === 'cancelled' || rental.status === 'denied') {
+			continue
+		}
+
+		const start = parseDateString(rental.start_date)
+		const end = parseDateString(rental.end_date)
+
+		for (let d = new Date(start); d &lt;= end; d = addDays(d, 1)) {
+			const key = getIsoDate(d)
+			if (!map[key]) map[key] = []
+
+			map[key].push({
+				id: rental.id,
+				title: `Rental #${rental.id}`,
+				status: rental.status,
+				description: `Rental #${rental.id} (${rental.status}) at ${rental.location || 'No location'}`
+			})
+		}
+	}
+
+	return map
+})
+
+/**
+ * Human-readable label for current calendar month.
+ */
+const monthLabel = computed(() => {
+	return currentMonth.value.toLocaleDateString('en-US', {
+		month: 'long',
+		year: 'numeric'
+	})
+})
+
+/**
+ * Generates full calendar grid including leading and trailing days.
+ */
+const calendarDays = computed(() => {
+	const year = currentMonth.value.getFullYear()
+	const month = currentMonth.value.getMonth()
+
+	const firstOfMonth = new Date(year, month, 1)
+	const firstWeekDay = firstOfMonth.getDay()
+	const daysInMonth = new Date(year, month + 1, 0).getDate()
+	const daysInPrevMonth = new Date(year, month, 0).getDate()
+
+	const today = new Date()
+	const todayKey = getIsoDate(today)
+
+	const days = []
+
+	for (let i = firstWeekDay - 1; i >= 0; i--) {
+		const date = new Date(year, month - 1, daysInPrevMonth - i)
+		const key = getIsoDate(date)
+		days.push({
+			date,
+			isoKey: key,
+			inCurrentMonth: false,
+			isToday: key === todayKey,
+			items: itemsByDate.value[key] || []
+		})
+	}
+
+	for (let day = 1; day &lt;= daysInMonth; day++) {
+		const date = new Date(year, month, day)
+		const key = getIsoDate(date)
+		days.push({
+			date,
+			isoKey: key,
+			inCurrentMonth: true,
+			isToday: key === todayKey,
+			items: itemsByDate.value[key] || []
+		})
+	}
+
+	while (days.length % 7 !== 0) {
+		const offset = days.length - (firstWeekDay + daysInMonth)
+		const date = new Date(year, month + 1, offset + 1)
+		const key = getIsoDate(date)
+		days.push({
+			date,
+			isoKey: key,
+			inCurrentMonth: false,
+			isToday: key === todayKey,
+			items: itemsByDate.value[key] || []
+		})
+	}
+
+	return days
+})
+
+/**
+ * Navigate calendar to previous month.
+ */
+function goToPreviousMonth() {
+	currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() - 1, 1)
+}
+
+/**
+ * Navigate calendar to next month.
+ */
+function goToNextMonth() {
+	currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() + 1, 1)
+}
+
+/**
+ * Reset calendar view to current month.
+ */
+function goToToday() {
+	const now = new Date()
+	currentMonth.value = new Date(now.getFullYear(), now.getMonth(), 1)
+}
+
+/**
+ * Loads calendar data on component mount.
+ */
+onMounted(loadCalendarData)
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

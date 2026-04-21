@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * On the view rental page, this is a component that displays the equipment's information.
+ * @module RentalComponentsEquipmentCard
+ */
+
 import { ref, computed, watch } from 'vue'
 import { FwbCard, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbBadge, FwbButton } from 'flowbite-vue'
 

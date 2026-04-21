@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: components/Messaging/MessageBox.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: components/Messaging/MessageBox.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * A component that displays the messaging feed between the vendor and the renter, and it allows the vendor and the renter to send messages to each other.
+ * @module MessageBox
+ */
+
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import messageService from '../../services/messageService'
+
+/**
+ * Interval for polling in milliseconds.
+ * @type {number}
+ * @constant
+ */
+const POLL_INTERVAL_MS = 3000
+
+/**
+ * Props for the component
+ * @typedef {Object} Props
+ * @property {string} [title="Messages"] - Title displayed in the UI
+ * @property {number} currentUserId - ID of the current user (required)
+ * @property {number|null} [otherUserId=null] - ID of the other user in the conversation
+ * @property {number|null} [rentalId=null] - Associated rental ID
+ */
+
+/** @type {Props} */
+const props = defineProps({
+	title: {
+		type: String,
+		default: 'Messages',
+	},
+	currentUserId: {
+		type: Number,
+		required: true,
+	},
+	otherUserId: {
+		type: Number,
+		default: null,
+	},
+	rentalId: {
+		type: Number,
+		default: null,
+	},
+})
+
+/**
+ * Emits the send event from this component.
+ */
+const emit = defineEmits(['sent'])
+
+/**
+ * DOM reference to the message list container.
+ * Used for scroll management.
+ */
+const listEl = ref(null)
+
+/**
+ * Array of messages in the current conversation.
+ */
+const messages = ref([])
+
+/**
+ * Current message draft input by the user.
+ */
+const draft = ref('')
+
+/**
+ * Loading state when fetching messages.
+ */
+const loading = ref(false)
+
+/**
+ * Message send operation in progress.
+ */
+const sending = ref(false)
+
+/**
+ * Holds error message for user interface display.
+ */
+const error = ref('')
+
+/**
+ * Prevents overlapping fetch requests during polling.
+ */
+const isRefreshing = ref(false)
+
+/**
+ * Stores the polling interval ID.
+ */
+const pollTimer = ref(null)
+
+/**
+ * Gets the recipient user ID.
+ */
+const activeRecipientId = computed(() => toInt(props.otherUserId))
+
+/**
+ * Determines whether the conversation is tied to a rental.
+ */
+const isRentalThread = computed(() => Number.isInteger(props.rentalId))
+
+/**
+ * Determines if the app has the proper user and rental data to load and send messages.
+ */
+const readyToChat = computed(() => {
+	return Number.isInteger(props.currentUserId) &amp;&amp; Number.isInteger(activeRecipientId.value) &amp;&amp; isRentalThread.value
+})
+
+/**
+ * Safely converts a value to an integer. Returns null if invalid.
+ *
+ * @param {any} value - The integer value in a different format.
+ * @returns {number|null} The integer value as a Number type.
+ */
+function toInt(value) {
+	const intValue = Number(value)
+	if (!Number.isFinite(intValue)) return null
+	if (intValue &lt;= 0) return null
+	return Math.trunc(intValue)
+}
+
+/**
+ * Builds optional parameters for conversation API calls. Includes rentalId only when relevant.
+ *
+ * @returns {{ rentalId: number|null }} The rental ID as a Number type.
+ */
+function getConversationOptions() {
+	return {
+		rentalId: isRentalThread.value ? props.rentalId : null,
+	}
+}
+
+/**
+ * Formats an ISO date string into a localized string.
+ *
+ * @param {string} isoDate - The iso formatted date.
+ * @returns {string} Presentable formatted date.
+ */
+function formatDateTime(isoDate) {
+	if (!isoDate) return ''
+	return new Date(isoDate).toLocaleString()
+}
+
+/**
+ * Scrolls the message list to the bottom after the application updates.
+ */
+async function scrollToBottom() {
+	await nextTick()
+	if (listEl.value) {
+		listEl.value.scrollTop = listEl.value.scrollHeight
+	}
+}
+
+/**
+ * Determines whether the user is near the bottom of the message list.
+ *
+ * @returns {boolean} True if the user is near the bottom of the message list. False otherwise.
+ */
+function isNearBottom() {
+	if (!listEl.value) return true
+	const threshold = 48
+	const distanceFromBottom = listEl.value.scrollHeight - listEl.value.scrollTop - listEl.value.clientHeight
+	return distanceFromBottom &lt;= threshold
+}
+
+/**
+ * Loads messages for the current conversation.
+ *
+ * @param {{ silent: boolean }} [options] - silent: Skips loading and error user interface updates when set to true.
+ */
+async function loadMessages({ silent = false } = {}) {
+	if (!readyToChat.value) {
+		messages.value = []
+		return
+	}
+	if (isRefreshing.value) return
+	isRefreshing.value = true
+
+	if (!silent) {
+		loading.value = true
+		error.value = ''
+	}
+	try {
+		const wasNearBottom = isNearBottom()
+		const previousCount = messages.value.length
+		const nextMessages = await messageService.getConversation(props.currentUserId, activeRecipientId.value, getConversationOptions())
+		messages.value = nextMessages
+
+		if (!silent || (nextMessages.length > previousCount &amp;&amp; wasNearBottom)) {
+			await scrollToBottom()
+		}
+	} catch (e) {
+		if (!silent) {
+			error.value = e.message || 'Failed to load messages.'
+		}
+	} finally {
+		if (!silent) {
+			loading.value = false
+		}
+		isRefreshing.value = false
+	}
+}
+
+/**
+ * Stops polling for new messages.
+ */
+function stopPolling() {
+	if (pollTimer.value) {
+		clearInterval(pollTimer.value)
+		pollTimer.value = null
+	}
+}
+
+/**
+ * Starts polling for new messages at a fixed interval.
+ */
+function startPolling() {
+	stopPolling()
+	pollTimer.value = setInterval(() => {
+		loadMessages({ silent: true })
+	}, POLL_INTERVAL_MS)
+}
+
+/**
+ * Sends a new message to the conversation. Clears the draft and refreshes messages on success.
+ */
+async function sendMessage() {
+	if (!readyToChat.value || !draft.value.trim()) return
+
+	sending.value = true
+	error.value = ''
+	try {
+		await messageService.createMessage(props.currentUserId, activeRecipientId.value, draft.value.trim(), getConversationOptions())
+		draft.value = ''
+		await loadMessages()
+		emit('sent')
+	} catch (e) {
+		error.value = e.message || 'Failed to send message.'
+	} finally {
+		sending.value = false
+	}
+}
+
+/**
+ * Reloads messages when relevant props change.
+ */
+watch(
+	() => [props.currentUserId, props.otherUserId, props.rentalId],
+	() => {
+		loadMessages({ silent: true })
+	},
+	{ immediate: true }
+)
+
+/**
+ * Starts or stops polling depending on readiness state.
+ */
+watch(
+	() => readyToChat.value,
+	(isReady) => {
+		if (!isReady) {
+			stopPolling()
+			messages.value = []
+			return
+		}
+
+		loadMessages()
+		startPolling()
+	},
+	{ immediate: true }
+)
+
+/**
+ * Cleanup polling when component is destroyed.
+ */
+onUnmounted(() => {
+	stopPolling()
+})
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Displays the surrounding view of the application, which mainly includes the navigation side bar.
+ * @module App
+ */
+
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'

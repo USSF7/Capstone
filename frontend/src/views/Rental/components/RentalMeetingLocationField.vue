@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * On the view rental page, this is a component that displays a Google Maps map that shows the meeting location.
+ * @module RentalComponentsLocationCard
+ */
+
 import { computed, onMounted, ref, watch } from 'vue'
 import { FwbInput, FwbSpinner } from 'flowbite-vue'
 import authService from '../../../services/authService'

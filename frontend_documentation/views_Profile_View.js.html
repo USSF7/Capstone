@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Profile/View.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Profile/View.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The view profile page that displays a user's information and reviews
+ * @module ProfileView
+ */
+
+import { computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton, FwbCard, FwbSpinner } from 'flowbite-vue'
+import { PencilIcon, TrashIcon } from '@heroicons/vue/24/solid'
+import UserService from '../../services/userService'
+import EquipmentService from '../../services/equipmentService'
+import reviewService from '../../services/reviewService'
+import authService from '../../services/authService'
+import aiService from '../../services/aiService'
+import router from '../../router'
+import ReviewUserEdit from '../Rental/ReviewUserEdit.vue'
+
+/**
+ * Month names used for custom date formatting.
+ */
+const months = [
+    "January", 
+    "February", 
+    "March", 
+    "April", 
+    "May", 
+    "June", 
+    "July", 
+    "August", 
+    "September", 
+    "October", 
+    "November", 
+    "December"
+]
+
+/**
+ * Backend base URL for loading user images.
+ */
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
+/**
+ * Route instance for navigation.
+ */
+const route = useRoute()
+
+/**
+ * ID of the profile being viewed.
+ */
+const userID = ref()
+
+/**
+ * Logged-in user data.
+ */
+const userData = ref()
+
+/**
+ * Profile being viewed.
+ */
+const viewingUserData = ref()
+
+/**
+ * Indicates whether profile data has finished loading.
+ */
+const userDataLoaded = ref(false)
+
+/**
+ * Reviews for the viewed user.
+ */
+const userReviews = ref()
+
+/** 
+ * AI-generated review summary text.
+ */
+const reviewSummary = ref('')
+
+/**
+ * Loading state for AI summary generation.
+ */
+const reviewSummaryLoading = ref(false)
+
+/**
+ * Number of reviews.
+ */
+const numRatings = ref(0)
+
+/** 
+ * Human-readable review count string.
+ */
+const numRatingsText = ref('')
+
+/**
+ * Average user review rating.
+ */
+const averageRating = ref(0.0)
+
+/** 
+ * Cache for submitter user info to reduce API calls.
+ */
+const submitterNameCache = new Map()
+
+/**
+ * Controls visibility of review edit modal.
+ */
+const showReviewUserModal = ref(false)
+
+/** 
+ * Selected review ID for editing. 
+ */
+const popUpReviewId = ref(0)
+
+/**
+ * Selected review rating for editing.
+ */
+const popUpReviewRating = ref(0.0)
+
+/** 
+ * Selected review text for editing.
+ */
+const popUpReviewText = ref('')
+
+/**
+ * Equipment owned by vendor
+ */
+const vendorEquipment = ref([])
+
+/**
+ * True if vendor has at least one listed equipment item.
+ */
+const hasVendorEquipment = computed(() => Array.isArray(vendorEquipment.value) &amp;&amp; vendorEquipment.value.length > 0)
+
+/**
+ * True if viewed user is a vendor.
+ */
+const viewedUserIsVendor = computed(() => Boolean(userData.value?.vendor || hasVendorEquipment.value))
+
+/**
+ * True if viewer is NOT the same as the profile being viewed.
+ */
+const isViewingAnotherUser = computed(() => Number(userData.value?.id) !== Number(viewingUserData.value?.id))
+
+/**
+ * Formats a review date into "Month Day, Year".
+ * @param {string|Date} isoDate - ISO date string.
+ * @returns {string} Formatted date.
+ */
+function reviewDateFormatting(isoDate) {
+    const date = new Date(isoDate)
+    let day = date.getDate()
+    let month = date.getMonth()
+    let year = date.getFullYear()
+
+    return months[month] + " " + day.toString() + ", " + year.toString()
+}
+
+/**
+ * Formats a date into locale string
+ * @param {string|Date} isoDate - ISO date string.
+ * @returns {string} Formatted date.
+ */
+function dateFormatting(isoDate) {
+    const date = new Date(isoDate)
+    return date.toLocaleDateString()
+}
+
+/**
+ * Computes age from date of birth
+ * @param {string|Date} dateOfBirth Date of the user's birth.
+ * @returns {number} Age in years.
+ */
+function computeAge(dateOfBirth) {
+    // Using date objects
+    const currentDate = new Date()
+    const birthDate = new Date(dateOfBirth)
+
+    // Computing years of age
+    let age = currentDate.getFullYear() - birthDate.getFullYear()
+
+    // Subtracting a year if the user's birthday has not occurred
+    const hadBirthday = (currentDate.getMonth() > birthDate.getMonth()) || ((currentDate.getMonth() == birthDate.getMonth()) &amp;&amp; (currentDate.getDate() >= birthDate.getDate()))
+
+    if (!hadBirthday) {
+        age--
+    }
+
+    return age
+}
+
+/**
+ * Returns a human-readable account type label.
+ * @returns {string} The account type.
+ */
+function displayUserSiteStatus() {
+    if ((userData.value.vendor == true) &amp;&amp; (userData.value.renter == true)) {
+        return "Vendor / Renter"
+    }
+    else if (userData.value.vendor == true) {
+        return "Vendor"
+    }
+    else {
+        return "Renter"
+    }
+}
+
+/**
+ * Navigates to profile edit page
+ */
+function editAccount() {
+    router.push({ name: 'edit_profile' })
+}
+
+/**
+ * Navigates to equipment rental request page for this vendor.
+ */
+function createEquipmentRequest() {
+    router.push({ name: 'rental_create', query: { vendorId: userData.value.id } })
+}
+
+/**
+ * Soft-deletes a review after confirmation.
+ * @param {number} reviewId - The review ID.
+ */
+async function deleteReview(reviewId) {
+    // Double checking if the user wants to delete their review
+    const confirmed = confirm("Are you sure you want to delete your review?\n\nWarning: Deleting this review will permanently remove it. You will only be able to submit another review about this user after completing another rental with them.")
+    
+    if (confirmed === true) {
+        // Deleting the user's review
+        await reviewService.switchDeletedReviewStatus(reviewId, true)
+
+        // Reloading user data
+        window.location.reload()
+    }
+}
+
+/**
+ * Opens review edit modal and loads review data.
+ * @param {number} reviewId - The review ID.
+ */
+async function editReview(reviewId) {
+    // Get the review data
+    let review = await reviewService.getReview(reviewId)
+
+    // Store review information
+    popUpReviewId.value = reviewId
+    popUpReviewRating.value = review.rating
+    popUpReviewText.value = review.review
+
+    // Open pop-up menu
+    showReviewUserModal.value = true
+}
+
+/**
+ * Sorts reviews in descending order.
+ */
+async function sortUserReviewsDescending() {
+    userReviews.value.sort((a, b) => new Date(b.date) - new Date(a.date))
+}
+
+/**
+ * Enriches reviews with submitter name and profile picture.
+ */
+async function addSubmitterName() {
+    if (!userReviews.value?.length) {
+        return
+    }
+
+    try {
+        const submitterIds = [...new Set(userReviews.value.map(r => r.submitter_id).filter(Boolean))]
+
+        await Promise.all(submitterIds.map(async (submitterId) => {
+            if (!submitterNameCache.has(submitterId)) {
+                const userInfo = await UserService.getUser(submitterId)
+                submitterNameCache.set(submitterId, {
+                    name: userInfo?.name || 'Unknown user',
+                    picture: userInfo?.picture || ''
+                })
+            }
+        }))
+
+        for (let i = 0; i &lt; userReviews.value.length; i++) {
+            const submitterId = userReviews.value[i].submitter_id
+            const cached = submitterNameCache.get(submitterId)
+
+            userReviews.value[i].submitter_name = cached?.name || 'Unknown user'
+            userReviews.value[i].picture = cached?.picture || ''
+        }
+    }
+    catch (error) {
+        console.warn('Unable to enrich review submitter names:', error)
+    }
+}
+
+/**
+ * Computes review statistics.
+ */
+async function computeReviewData() {
+    // Computing the total number of ratings
+    numRatings.value = userReviews.value.length
+
+    if (numRatings.value == 1) {
+        numRatingsText.value = numRatings.value.toString() + " review"
+    }
+    else {
+        numRatingsText.value = numRatings.value.toString() + " reviews"
+    }
+
+    // Computing the average rating
+    if (numRatings.value == 0) {
+        averageRating.value = 0.0
+    }
+    else {
+        let sumRatings = 0.0
+        for (let i = 0; i &lt; userReviews.value.length; i++) {
+            sumRatings += userReviews.value[i].rating
+        }
+        let avgRating = sumRatings / numRatings.value
+        averageRating.value = avgRating.toFixed(2)
+    }
+}
+
+/**
+ * Loads AI-generated summary of user reviews.
+ */
+async function loadReviewSummary() {
+    reviewSummary.value = ''
+
+    // Only summarize when there is at least one review.
+    if (numRatings.value === 0) {
+        return
+    }
+
+    reviewSummaryLoading.value = true
+
+    try {
+        const response = await aiService.summarizeReviews('user', userData.value.id)
+        reviewSummary.value = (response?.summary || '').trim()
+    }
+    catch (error) {
+        console.warn('Unable to load AI summary for vendor reviews:', error)
+        reviewSummary.value = ''
+    }
+    finally {
+        reviewSummaryLoading.value = false
+    }
+}
+
+/**
+ * Loads user data.
+ */
+async function loadUserData() {
+    try {
+        userDataLoaded.value = false
+        reviewSummary.value = ''
+        reviewSummaryLoading.value = false
+
+        // Fetch viewer + target profile in parallel.
+        userID.value = route.params.id
+        const [viewerData, targetUserData] = await Promise.all([
+            authService.getMe(),
+            UserService.getUser(userID.value),
+        ])
+
+        viewingUserData.value = viewerData
+        userData.value = targetUserData
+        const targetUserId = Number(userID.value)
+        const [reviews, vendorEquipmentData] = await Promise.all([
+            reviewService.getReviewsForModel("user", userData.value.id),
+            EquipmentService.getEquipmentByOwner(targetUserId),
+        ])
+
+        userReviews.value = reviews
+        vendorEquipment.value = Array.isArray(vendorEquipmentData) ? vendorEquipmentData : []
+        await sortUserReviewsDescending()
+        await computeReviewData()
+
+        // Displaying the page to the user
+        userDataLoaded.value = true
+
+        // Fill non-critical data after initial render to reduce perceived load time.
+        addSubmitterName()
+        loadReviewSummary()
+    }
+    catch (error) {
+        console.error("Error getting user data:", error)
+
+        // Alerting the user that the user's data could not be loaded
+        alert("Error: Account data could not be loaded.")
+    }
+}
+
+/**
+ * Reloads profile when route ID changes.
+ */
+watch(() => route.params.id, async (newId) => {
+    if (!newId) {
+        return
+    }
+
+    await loadUserData()
+}, {
+    immediate: true
+})
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

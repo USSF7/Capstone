@@ -1,6 +1,11 @@
 <!-- Details on a user's overall earnings -->
 <script lang="js" setup>
 
+/**
+ * The My Earnings page that displays a vendor's earnings
+ * @module ProfileEarnings
+ */
+
 import { ref, onMounted, computed } from 'vue'
 import { FwbTable, FwbTableBody, FwbTableCell, FwbTableHead, FwbTableHeadCell, FwbTableRow, FwbListGroup, FwbListGroupItem, FwbSpinner } from 'flowbite-vue'
 import { Line } from "vue-chartjs"

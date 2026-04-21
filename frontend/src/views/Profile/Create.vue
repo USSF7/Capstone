@@ -1,6 +1,11 @@
 <!-- Complete profile after registration/OAuth -->
 <script lang="js" setup>
 
+/**
+ * The create profile page
+ * @module ProfileCreate
+ */
+
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FwbInput, FwbCheckbox, FwbA, FwbButton, FwbAvatar, FwbFileInput, FwbSpinner } from 'flowbite-vue'

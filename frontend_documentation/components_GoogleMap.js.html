@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: components/GoogleMap.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: components/GoogleMap.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Google Maps functions
+ * @module GoogleMaps
+ */
+
+import { ref, onMounted, watch, toRefs } from 'vue'
+import { Loader } from '@googlemaps/js-api-loader'
+import locationService from '../services/locationService'
+
+/**
+ * Latitude/longitude coordinate.
+ * @typedef {{ lat: number, lng: number }} LatLng
+ */
+
+/**
+ * Marker displayed on the map.
+ * @typedef {Object} MapMarker
+ * @property {number} lat - Latitude coordinate value
+ * @property {number} lng - Longitude coordinate value
+ * @property {string} [title] - Title of the marker
+ * @property {string} [label] - Info window content
+ * @property {string} [color] - Custom marker color
+ * @property {boolean} [selected] - Highlights marker
+ * @property {number} [zIndex] - The index of the marker
+ */
+
+/**
+ * Component props.
+ * @typedef {Object} Props
+ * @property {LatLng} center - Initial map center
+ * @property {number} [zoom=13] - Initial zoom level
+ * @property {MapMarker[]} [markers=[]] - Markers to render
+ * @property {boolean} [showDirections=false] - Whether to display route
+ * @property {LatLng|null} [origin=null] - Route origin
+ * @property {LatLng|null} [destination=null] - Route destination
+ * @property {string} [height='400px'] - Map container height
+ */
+
+/** @type {Props} */
+const props = defineProps({
+  center: { type: Object, required: true },
+  zoom: { type: Number, default: 13 },
+  markers: { type: Array, default: () => [] },
+  showDirections: { type: Boolean, default: false },
+  origin: { type: Object, default: null },
+  destination: { type: Object, default: null },
+  height: { type: String, default: '400px' },
+})
+
+/**
+ * Emits map-related events.
+ */
+const emit = defineEmits(['marker-click'])
+
+const { center, markers, showDirections, origin, destination } = toRefs(props)
+
+/**
+ * DOM element for mounting the Google Map.
+ */
+const mapContainer = ref(null)
+
+/**
+ * Loading state for map initialization.
+ */
+const loading = ref(true)
+
+/**
+ * Error message if map fails to load.
+ */
+const error = ref(null)
+
+/**
+ * Holds the google maps object.
+ * @type {google.maps.Map|null}
+ */
+let map = null
+
+/**
+ * Holds all of the marker objects in the map.
+ * @type {google.maps.Marker[]}
+ */
+let markerObjects = []
+
+/**
+ * Holds the direction render information.
+ * @type {google.maps.DirectionsRenderer|null}
+ */
+let directionsRenderer = null
+
+/**
+ * Holds the data to Google.
+ */
+let google = null
+
+/**
+ * Window that displays Google Maps information.
+ * @type {google.maps.InfoWindow|null}
+ */
+let activeInfoWindow = null
+
+/**
+ * Initializes the Google Map and loads markers and directions.
+ */
+async function initMap() {
+  try {
+    const { key } = await locationService.getMapsKey()
+    const loader = new Loader({
+      apiKey: key,
+      version: 'weekly',
+      libraries: ['places'],
+    })
+    google = await loader.load()
+    map = new google.maps.Map(mapContainer.value, {
+      center: props.center,
+      zoom: props.zoom,
+    })
+    updateMarkers()
+    if (props.showDirections &amp;&amp; props.origin &amp;&amp; props.destination) {
+      updateDirections()
+    }
+    loading.value = false
+  } catch (e) {
+    error.value = e.message
+    loading.value = false
+  }
+}
+
+/**
+ * Removes all markers and closes any open info window.
+ */
+function clearMarkers() {
+  markerObjects.forEach((m) => m.setMap(null))
+  markerObjects = []
+  if (activeInfoWindow) {
+    activeInfoWindow.close()
+    activeInfoWindow = null
+  }
+}
+
+/**
+ * Renders markers on the map based on props.
+ */
+function updateMarkers() {
+  if (!map || !google) return
+  clearMarkers()
+  const bounds = new google.maps.LatLngBounds()
+  props.markers.forEach((m) => {
+    const markerOptions = {
+      position: { lat: m.lat, lng: m.lng },
+      map,
+      title: m.title || '',
+      zIndex: m.zIndex,
+    }
+
+    if (m.color || m.selected) {
+      markerOptions.icon = {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: m.selected ? 9 : 7,
+        fillColor: m.color || '#2563EB',
+        fillOpacity: 1,
+        strokeColor: '#FFFFFF',
+        strokeWeight: 1.5,
+      }
+    }
+
+    const marker = new google.maps.Marker({
+      ...markerOptions,
+    })
+
+    marker.addListener('click', () => {
+      emit('marker-click', m)
+    })
+
+    if (m.label) {
+      const infoWindow = new google.maps.InfoWindow({ content: m.label })
+      marker.addListener('click', () => {
+        if (activeInfoWindow &amp;&amp; activeInfoWindow !== infoWindow) {
+          activeInfoWindow.close()
+        }
+        infoWindow.open(map, marker)
+        activeInfoWindow = infoWindow
+      })
+    }
+    markerObjects.push(marker)
+    bounds.extend(marker.getPosition())
+  })
+  if (props.markers.length > 1) {
+    map.fitBounds(bounds, 60)
+  }
+}
+
+/**
+ * Fetches and renders driving directions between origin and destination.
+ */
+function updateDirections() {
+  if (!map || !google || !props.origin || !props.destination) return
+  if (directionsRenderer) {
+    directionsRenderer.setMap(null)
+  }
+  const directionsService = new google.maps.DirectionsService()
+  directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers: false })
+  directionsService.route(
+    {
+      origin: props.origin,
+      destination: props.destination,
+      travelMode: google.maps.TravelMode.DRIVING,
+    },
+    (result, status) => {
+      if (status === 'OK') {
+        directionsRenderer.setDirections(result)
+      }
+    }
+  )
+}
+
+/**
+ * Lifecycle of the component.
+ */
+onMounted(initMap)
+
+/**
+ * Updates markers when marker data changes
+ */
+watch(markers, updateMarkers, { deep: true })
+
+/**
+ * Updates directions when routing-related props change
+ */
+watch([showDirections, origin, destination], () => {
+  if (props.showDirections) updateDirections()
+}, { deep: true })
+
+/**
+ * Re-centers map when center changes
+ */
+watch(center, () => {
+  if (map) map.setCenter(props.center)
+}, { deep: true })
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

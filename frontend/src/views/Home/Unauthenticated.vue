@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Home page view for unauthenticated users 
+ * @module HomeUnauthenticated
+ */
+
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { FwbButton } from 'flowbite-vue'

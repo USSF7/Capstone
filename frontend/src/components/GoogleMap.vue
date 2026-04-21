@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Google Maps functions
+ * @module GoogleMaps
+ */
+
 import { ref, onMounted, watch, toRefs } from 'vue'
 import { Loader } from '@googlemaps/js-api-loader'
 import locationService from '../services/locationService'

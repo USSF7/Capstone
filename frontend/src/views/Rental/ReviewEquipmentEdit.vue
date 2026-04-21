@@ -1,5 +1,10 @@
 <script>
 
+/**
+ * A component that allows a user to edit their review of a vendor's equipment.
+ * @module RentalReviewEquipmentEdit
+ */
+
 import { FwbImg, FwbButton, FwbTextarea } from 'flowbite-vue'
 import ReviewService from '../../services/reviewService'
 

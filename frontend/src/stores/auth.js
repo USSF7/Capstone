@@ -1,3 +1,8 @@
+/**
+ * Authentication functions for managing user authentication.
+ * @module StoresAuth
+ */
+
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 

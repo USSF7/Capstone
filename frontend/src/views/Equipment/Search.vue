@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Equipment search functions
+ * @module EquipmentSearch
+ */
+
 import { ref, computed, onMounted } from 'vue'
 import { FwbButton, FwbInput, FwbSpinner } from 'flowbite-vue'
 import { useAuthStore } from '../../stores/auth'

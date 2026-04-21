@@ -107,6 +107,11 @@
 </template>
 
 <script setup>
+/**
+ * The calendar view that displays upcoming and previous rentals
+ * @module ProfileCalendar
+ */
+
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import rentalService from '../../services/rentalService'

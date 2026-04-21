@@ -136,6 +136,11 @@
 </template>
 
 <script setup>
+/**
+ * The edit equipment inventory page
+ * @module InventoryEdit
+ */
+
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { FwbInput, FwbSelect, FwbButton, FwbFileInput, FwbImg, FwbSpinner } from 'flowbite-vue'

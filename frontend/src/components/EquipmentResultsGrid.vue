@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * A component that displays equipment and vendor information to the user.
+ * @module EquipmentResultsGrid
+ */
+
 import { FwbCard, FwbBadge } from 'flowbite-vue'
 import { useRouter } from 'vue-router'
 

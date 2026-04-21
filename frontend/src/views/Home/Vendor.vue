@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Home page for the vendor view
+ * @module HomeVendor 
+ */
+
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FwbCard, FwbSpinner, FwbButton } from 'flowbite-vue'

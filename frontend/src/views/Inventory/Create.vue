@@ -137,6 +137,11 @@
 
 <script setup>
 
+/**
+ * The create equipment inventory page.
+ * @module InventoryCreate
+ */
+
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { FwbInput, FwbSelect, FwbFileInput, FwbButton, FwbSpinner, FwbImg } from 'flowbite-vue'

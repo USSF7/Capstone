@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * The create rental page
+ * @module RentalCreate
+ */
+
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FwbButton, FwbSpinner } from 'flowbite-vue'

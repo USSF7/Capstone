@@ -1,6 +1,11 @@
 <!-- Edit an account details view -->
 <script lang="js" setup>
 
+/**
+ * The edit profile page
+ * @module ProfileEdit
+ */
+
 import { ref, onMounted, computed } from 'vue'
 import { FwbInput, FwbButton, FwbCheckbox, FwbSpinner, FwbAvatar, FwbFileInput } from 'flowbite-vue'
 import { DocumentArrowUpIcon } from '@heroicons/vue/24/solid'

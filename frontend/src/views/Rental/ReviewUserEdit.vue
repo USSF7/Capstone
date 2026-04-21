@@ -1,5 +1,10 @@
 <script>
 
+/**
+ * A component that allows a user to edit their review of another user.
+ * @module RentalReviewUserEdit
+ */
+
 import { FwbAvatar, FwbButton, FwbTextarea } from 'flowbite-vue'
 import ReviewService from '../../services/reviewService'
 

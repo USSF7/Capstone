@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Rental/Create.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Rental/Create.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The create rental page
+ * @module RentalCreate
+ */
+
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FwbButton, FwbSpinner } from 'flowbite-vue'
+import { useAuthStore } from '../../stores/auth'
+import UserService from '../../services/userService'
+import EquipmentService from '../../services/equipmentService'
+import RentalService from '../../services/rentalService'
+import locationService from '../../services/locationService'
+import RentalMeetingLocationField from './components/RentalMeetingLocationField.vue'
+
+/**
+ * Vue Route instance
+ */
+const route = useRoute()
+
+/**
+ * Vue Router instance
+ */
+const router = useRouter()
+
+/**
+ * Auth store providing current logged-in user.
+ */
+const auth = useAuthStore()
+
+/**
+ * Vendor ID to identify vendor.
+ */
+const vendorId = ref(null)
+
+/**
+ * Equipment ID to identify equipment.
+ */
+const equipmentId = ref(null)
+
+/**
+ * Vendor information
+ */
+const vendor = ref(null)
+
+/**
+ * All of vendor's equipment
+ */
+const vendorEquipment = ref([])
+
+/**
+ * Selected equipment IDs
+ */
+const selectedEquipmentIds = ref([])
+
+/**
+ * Form input agreed price
+ */
+const agreedPrice = ref('')
+
+/**
+ * Form input pickup location
+ */
+const pickupLocation = ref('')
+
+/**
+ * Latitude Coordinate for pickup location
+ */
+const meetingLat = ref(null)
+
+/**
+ * Longitude Coordinate for pickup location
+ */
+const meetingLng = ref(null)
+
+/**
+ * Start date
+ */
+const startDate = ref('')
+
+/**
+ * End date
+ */
+const endDate = ref('')
+
+/**
+ * Form input start date
+ */
+const startDatePart = ref('')
+
+/**
+ * Form input start time
+ */
+const startTimePart = ref('')
+
+/**
+ * Form input end date
+ */
+const endDatePart = ref('')
+
+/**
+ * Form input end time
+ */
+const endTimePart = ref('')
+
+/**
+ * Loading state
+ */
+const loading = ref(true)
+
+/**
+ * Submitting state
+ */
+const submitting = ref(false)
+
+/**
+ * Loading equipment state
+ */
+const loadingEquipment = ref(false)
+
+/**
+ * Error message in the user interface
+ */
+const error = ref('')
+
+/**
+ * Current authenticated user ID
+ */
+const userId = computed(() => auth.user?.id)
+
+/**
+ * Minimum lead time before rental start (hours)
+ */
+const minimumLeadTimeHours = 2
+
+/**
+ * Earliest valid start datetime
+ */
+const minimumStartDate = ref('')
+
+/**
+ * All valid 15-minute time slots in a day
+ */
+const quarterHourTimes = Array.from({ length: 96 }, (_, index) => {
+	const hours = Math.floor(index / 4)
+	const minutes = (index % 4) * 15
+	return `${pad(hours)}:${pad(minutes)}`
+})
+
+/**
+ * Pads a numeric value to two digits
+ * @param {number} value The current value
+ * @returns {string} The padded value with two digits
+ */
+function pad(value) {
+	return String(value).padStart(2, '0')
+}
+
+/**
+ * Adds hours to a Date object
+ * @param {Date} date The inputted date
+ * @param {number} hours The inputted hours
+ * @returns {Date} The new date object with the added hours
+ */
+function addHours(date, hours) {
+	const result = new Date(date)
+	result.setHours(result.getHours() + hours)
+	return result
+}
+
+/**
+ * Rounds a date up to the next 15-minute interval
+ * @param {Date} date The inputted date
+ * @returns {Date} The date rounded up to the next quarter hour
+ */
+function roundUpToNextQuarterHour(date) {
+	const result = new Date(date)
+	result.setSeconds(0, 0)
+	const minutes = result.getMinutes()
+	const remainder = minutes % 15
+
+	if (remainder !== 0) {
+		result.setMinutes(minutes + (15 - remainder))
+	}
+
+	return result
+}
+
+/**
+ * Converts datetime-local string to input format
+ * @param {Date|string} value The inputted date
+ * @returns {string} The date in input format
+ */
+function toDateTimeLocalValue(value) {
+	if (!value) return ''
+	const date = new Date(value)
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+/**
+ * Parses datetime-local string into Date
+ * @param {string} value The inputted date
+ * @returns {Date|null} Date parsed into a Date object
+ */
+function fromDateTimeLocalValue(value) {
+	return value ? new Date(value) : null
+}
+
+/**
+ * Converts a datetime-local string into the nearest valid 15-minute increment.
+ *
+ * @param {string} value - A datetime-local string
+ * @returns {string} A normalized datetime-local string rounded up to the next 15-minute interval
+ */
+function normalizeDateTimeLocalToQuarterHour(value) {
+	const date = fromDateTimeLocalValue(value)
+	if (!date) return ''
+	return toDateTimeLocalValue(roundUpToNextQuarterHour(date))
+}
+
+/**
+ * Checks whether a datetime-local string is already aligned to a 15-minute increment.
+ *
+ * @param {string} value - A datetime-local string
+ * @returns {boolean} True if the time is exactly on a quarter-hour boundary, otherwise false.
+ */
+function isQuarterHourValue(value) {
+	const date = fromDateTimeLocalValue(value)
+	if (!date) return false
+	return date.getMinutes() % 15 === 0 &amp;&amp; date.getSeconds() === 0
+}
+
+/**
+ * Converts a datetime-local value into an ISO 8601 UTC string.
+ *
+ * @param {string} value - A datetime-local string.
+ * @returns {string} ISO string in UTC format, or empty string if input is false.
+ */
+function toUtcIsoString(value) {
+	if (!value) return ''
+	return new Date(value).toISOString()
+}
+
+/**
+ * Extracts the date portion (YYYY-MM-DD) from a datetime-local string.
+ *
+ * @param {string} value - A datetime-local string.
+ * @returns {string} The date portion of the string, or empty string if invalid.
+ */
+function getDatePart(value) {
+	return value?.split('T')[0] || ''
+}
+
+/**
+ * Extracts the time portion (HH:mm) from a datetime-local string.
+ *
+ * @param {string} value - A datetime-local string.
+ * @returns {string} The time portion (24-hour format), or empty string if invalid.
+ */
+function getTimePart(value) {
+	return value?.split('T')[1]?.slice(0, 5) || ''
+}
+
+/**
+ * Combines separate date and time strings into a single datetime-local string.
+ *
+ * @param {string} datePart - Date string in YYYY-MM-DD format.
+ * @param {string} timePart - Time string in HH:mm format.
+ * @returns {string} Combined datetime-local string or empty string if inputs are incomplete.
+ */
+function combineDateTimeLocal(datePart, timePart) {
+	if (!datePart || !timePart) return ''
+	return `${datePart}T${timePart}`
+}
+
+/**
+ * Formats a 24-hour time string into a human-readable 12-hour format.
+ *
+ * @param {string} time24 - Time in 24-hour format (HH:mm)
+ * @returns {string} Formatted 12-hour time string, or original value if parsing fails.
+ */
+function formatTime12Hour(time24) {
+	if (!time24) return ''
+	const [hourPart, minutePart] = time24.split(':')
+	const hour = Number(hourPart)
+	if (!Number.isFinite(hour)) return time24
+
+	const period = hour >= 12 ? 'PM' : 'AM'
+	const hour12 = hour % 12 === 0 ? 12 : hour % 12
+	return `${hour12}:${minutePart} ${period}`
+}
+
+/**
+ * Safely parses a value into a strictly positive integer.
+ *
+ * @param {string|number} value - Input value to parse.
+ * @returns {number|null} A positive integer if valid, otherwise null.
+ */
+function parsePositiveInt(value) {
+	const parsed = Number.parseInt(value, 10)
+	return Number.isInteger(parsed) &amp;&amp; parsed > 0 ? parsed : null
+}
+
+/**
+ * Extracts the date portion (YYYY-MM-DD) from the minimum allowed start datetime.
+ */
+const minimumStartDatePart = computed(() => getDatePart(minimumStartDate.value))
+
+/**
+ * Extracts the time portion (HH:mm) from the minimum allowed start datetime.
+ */
+const minimumStartTimePart = computed(() => getTimePart(minimumStartDate.value))
+
+/**
+ * Generates valid selectable start-time options based on the selected start date.
+ *
+ * @returns {ComputedRef&lt;string[]>} Array of valid HH:mm time strings for start time selection.
+ */
+const startTimeOptions = computed(() => {
+	if (!startDatePart.value || startDatePart.value !== minimumStartDatePart.value) {
+		return quarterHourTimes
+	}
+
+	return quarterHourTimes.filter((time) => time >= minimumStartTimePart.value)
+})
+
+/**
+ * Generates valid selectable end-time options based on the selected start/end dates.
+ *
+ * @returns {ComputedRef&lt;string[]>} Array of valid HH:mm time strings for end time selection.
+ */
+const endTimeOptions = computed(() => {
+	if (!endDatePart.value || !startDatePart.value || !startTimePart.value) {
+		return quarterHourTimes
+	}
+
+	if (endDatePart.value !== startDatePart.value) {
+		return quarterHourTimes
+	}
+
+	return quarterHourTimes.filter((time) => time > startTimePart.value)
+})
+
+/**
+ * Syncs split date/time UI fields with their combined datetime-local representations.
+ */
+function syncDatePartsFromValues() {
+	startDatePart.value = getDatePart(startDate.value)
+	startTimePart.value = getTimePart(startDate.value)
+	endDatePart.value = getDatePart(endDate.value)
+	endTimePart.value = getTimePart(endDate.value)
+}
+
+/**
+ * Loads initial rental creation context including vendor data, default times,
+ * and initial pickup location.
+ */
+async function loadContext() {
+	try {
+		error.value = ''
+
+		// Accept common query param variants for deep links.
+		vendorId.value = parsePositiveInt(
+			route.query.vendorId ?? route.query.vendor_id ?? route.params.vendorId
+		)
+		equipmentId.value = parsePositiveInt(
+			route.query.equipmentId ?? route.query.equipment_id
+		)
+
+		if (!vendorId.value) {
+			error.value = 'No vendor was provided. Start from an equipment listing to create a request.'
+			return
+		}
+
+		vendor.value = await UserService.getUser(vendorId.value)
+		if (!vendor.value?.vendor) {
+			error.value = 'Selected user is not a vendor.'
+			return
+		}
+
+
+		const today = new Date()
+		const earliestStart = roundUpToNextQuarterHour(addHours(today, minimumLeadTimeHours + 1))
+		const defaultEnd = addHours(earliestStart, 24)
+		minimumStartDate.value = toDateTimeLocalValue(earliestStart)
+		startDate.value = minimumStartDate.value
+		endDate.value = toDateTimeLocalValue(defaultEnd)
+		syncDatePartsFromValues()
+
+		pickupLocation.value = [auth.user?.street_address, auth.user?.city, auth.user?.state, auth.user?.zip_code]
+			.filter(Boolean)
+			.join(', ')
+
+		await loadEquipmentAvailability()
+	} catch (e) {
+		error.value = e.message || 'Failed to load rental request context.'
+	} finally {
+		loading.value = false
+	}
+}
+
+/**
+ * Fetches vendor equipment availability for the selected time range.
+ */
+async function loadEquipmentAvailability() {
+	if (!vendorId.value || !startDate.value || !endDate.value) return
+
+	try {
+		loadingEquipment.value = true
+		const response = await RentalService.getVendorEquipmentAvailability(
+			vendorId.value,
+			toUtcIsoString(startDate.value),
+			toUtcIsoString(endDate.value)
+		)
+		vendorEquipment.value = response.equipment || []
+
+		const availableIds = new Set(vendorEquipment.value.filter((item) => item.available).map((item) => item.id))
+		selectedEquipmentIds.value = selectedEquipmentIds.value.filter((id) => availableIds.has(id))
+
+		if (equipmentId.value) {
+			const initialItem = vendorEquipment.value.find((item) => item.id === equipmentId.value)
+			if (initialItem &amp;&amp; initialItem.available &amp;&amp; !selectedEquipmentIds.value.includes(initialItem.id)) {
+				selectedEquipmentIds.value.push(initialItem.id)
+			}
+		}
+	} catch (e) {
+		error.value = e.message || 'Failed to load equipment availability.'
+	} finally {
+		loadingEquipment.value = false
+	}
+}
+
+/**
+ * Handles user changes to date or time inputs.
+ */
+function onDateChange() {
+	error.value = ''
+
+	if (startDatePart.value &amp;&amp; !startTimeOptions.value.includes(startTimePart.value)) {
+		startTimePart.value = startTimeOptions.value[0] || ''
+	}
+
+	if (endDatePart.value &amp;&amp; !endTimeOptions.value.includes(endTimePart.value)) {
+		endTimePart.value = endTimeOptions.value[0] || ''
+	}
+
+	startDate.value = combineDateTimeLocal(startDatePart.value, startTimePart.value)
+	endDate.value = combineDateTimeLocal(endDatePart.value, endTimePart.value)
+
+	if (startDate.value &amp;&amp; endDate.value) {
+		loadEquipmentAvailability()
+	}
+}
+
+/**
+ * Toggles selection state of a vendor equipment item.
+ *
+ * @param {Object} equipment - Equipment object from vendor list.
+ * @param {number} equipment.id - Unique equipment identifier.
+ * @param {boolean} equipment.available - Whether item can be selected.
+ */
+function toggleEquipmentSelection(equipment) {
+	if (!equipment.available) return
+
+	const index = selectedEquipmentIds.value.indexOf(equipment.id)
+	if (index >= 0) {
+		selectedEquipmentIds.value.splice(index, 1)
+	} else {
+		selectedEquipmentIds.value.push(equipment.id)
+	}
+}
+
+/**
+ * Submits a rental request to the backend.
+ */
+async function submitRequest() {
+	if (!userId.value) {
+		error.value = 'You must be logged in.'
+		return
+	}
+
+	if (!vendorId.value) {
+		error.value = 'Vendor is required.'
+		return
+	}
+
+	if (!agreedPrice.value || Number(agreedPrice.value) &lt;= 0) {
+		error.value = 'Offer price must be greater than 0.'
+		return
+	}
+
+	if (!startDate.value || !endDate.value) {
+		error.value = 'Start and end dates are required.'
+		return
+	}
+
+	startDate.value = normalizeDateTimeLocalToQuarterHour(startDate.value)
+	endDate.value = normalizeDateTimeLocalToQuarterHour(endDate.value)
+	syncDatePartsFromValues()
+
+	if (!isQuarterHourValue(startDate.value) || !isQuarterHourValue(endDate.value)) {
+		error.value = 'Please select times in 15-minute increments.'
+		return
+	}
+
+	if (minimumStartDate.value &amp;&amp; fromDateTimeLocalValue(startDate.value) &lt; fromDateTimeLocalValue(minimumStartDate.value)) {
+		error.value = 'Start date must be at least 2 hours in the future.'
+		return
+	}
+
+	if (new Date(endDate.value) &lt;= new Date(startDate.value)) {
+		error.value = 'End date must be after start date.'
+		return
+	}
+
+	if (!pickupLocation.value?.trim()) {
+		error.value = 'Pickup location is required.'
+		return
+	}
+
+	if (!selectedEquipmentIds.value.length) {
+		error.value = 'Select at least one available equipment item.'
+		return
+	}
+
+	try {
+		submitting.value = true
+		error.value = ''
+
+		let finalMeetingLat = meetingLat.value
+		let finalMeetingLng = meetingLng.value
+		if ((finalMeetingLat == null || finalMeetingLng == null) &amp;&amp; pickupLocation.value.trim()) {
+			try {
+				const coords = await locationService.geocodeFreeform(pickupLocation.value.trim())
+				finalMeetingLat = coords.lat
+				finalMeetingLng = coords.lng
+			} catch (geoError) {
+				// Keep flow functional even if geocoding fails.
+				console.warn('Could not geocode meeting location:', geoError)
+			}
+		}
+
+		const rental = await RentalService.createRentalRequestWithEquipment(
+			vendorId.value,
+			Number(agreedPrice.value),
+			toUtcIsoString(startDate.value),
+			toUtcIsoString(endDate.value),
+			pickupLocation.value.trim(),
+			selectedEquipmentIds.value,
+			finalMeetingLat,
+			finalMeetingLng
+		)
+
+		router.push({ name: 'rental_view', params: { id: rental.id } })
+	} catch (e) {
+		error.value = e.message || 'Failed to create rental request.'
+	} finally {
+		submitting.value = false
+	}
+}
+
+onMounted(loadContext)
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

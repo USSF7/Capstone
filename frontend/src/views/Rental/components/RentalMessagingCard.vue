@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * On the view rental page, this is a component that displays the messages between the vendor and the renter.
+ * @module RentalComponentsMessagingCard
+ */
+
 import { FwbCard } from 'flowbite-vue'
 import MessageBox from '../../../components/Messaging/MessageBox.vue'
 

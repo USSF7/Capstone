@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Authentication callback functions
+ * @module AuthCallback
+ */
+
 import { onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'

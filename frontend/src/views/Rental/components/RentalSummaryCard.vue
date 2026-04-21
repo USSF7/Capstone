@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * This is a component that displays a summary about the rental.
+ * @module RentalComponentsSummaryCard
+ */
+
 import { FwbCard, FwbProgress } from 'flowbite-vue'
 
 /**

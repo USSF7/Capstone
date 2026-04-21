@@ -1,3 +1,8 @@
+/**
+ * The different routes in the application that help organize the different views.
+ * @module Router
+ */
+
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import HomeView from './views/Home/Index.vue'

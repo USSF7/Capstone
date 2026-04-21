@@ -1,6 +1,11 @@
 <!-- View a specific users profile details -->
 <script lang="js" setup>
 
+/**
+ * The view profile page that displays a user's information and reviews
+ * @module ProfileView
+ */
+
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FwbAvatar, FwbRating, FwbListGroup, FwbListGroupItem, FwbButton, FwbCard, FwbSpinner } from 'flowbite-vue'

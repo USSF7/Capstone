@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Functions for managing the meeting location picker on the Google Maps
+ * @module MeetingLocationPicker
+ */
+
 import { ref, onMounted } from 'vue'
 import { FwbButton, FwbCard, FwbSpinner } from 'flowbite-vue'
 import locationService from '../services/locationService'

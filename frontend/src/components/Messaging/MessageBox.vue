@@ -61,6 +61,11 @@
 </template>
 
 <script setup>
+/**
+ * A component that displays the messaging feed between the vendor and the renter, and it allows the vendor and the renter to send messages to each other.
+ * @module MessageBox
+ */
+
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import messageService from '../../services/messageService'
 

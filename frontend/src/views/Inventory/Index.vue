@@ -2,6 +2,11 @@
 
 <script lang="js" setup>
 
+    /**
+     * The index page for the inventory view
+     * @module InventoryIndex
+     */
+
     import { onMounted, ref, computed } from 'vue'
     import { FwbCard, FwbButton, FwbBadge, FwbRating } from 'flowbite-vue'
     import { useAuthStore } from '../../stores/auth'

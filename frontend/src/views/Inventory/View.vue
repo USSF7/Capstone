@@ -1,5 +1,10 @@
 <script lang="js" setup>
 
+/**
+ * The view equipment page
+ * @module InventoryView
+ */
+
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FwbSpinner, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbCard, FwbAvatar, FwbBadge, FwbButton } from 'flowbite-vue'

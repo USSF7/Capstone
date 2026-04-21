@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * The edit rental page
+ * @module RentalEdit
+ */
+
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FwbButton, FwbInput, FwbSpinner } from 'flowbite-vue'

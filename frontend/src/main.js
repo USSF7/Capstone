@@ -1,3 +1,8 @@
+/**
+ * The start of the application.
+ * @module Main
+ */
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './style.css'

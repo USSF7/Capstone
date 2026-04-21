@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Rental/View.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Rental/View.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The rental view page
+ * @module RentalView
+ */
+
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FwbSpinner, FwbCard } from 'flowbite-vue'
+import RentalService from '../../services/rentalService'
+import UserService from '../../services/userService'
+import ReviewService from '../../services/reviewService'
+import AuthService from '../../services/authService'
+import ReviewEquipment from './ReviewEquipment.vue'
+import ReviewUser from './ReviewUser.vue'
+import RentalEquipmentCard from './components/RentalEquipmentCard.vue'
+import RentalMessagingCard from './components/RentalMessagingCard.vue'
+import RentalLogisticsCard from './components/RentalLogisticsCard.vue'
+import GoogleMap from '../../components/GoogleMap.vue'
+
+/**
+ * Vue Route instance
+ */
+const route = useRoute()
+
+/**
+ * Vue Router instance
+ */
+const router = useRouter()
+
+/**
+ * The rental ID
+ */
+const rentalID = ref()
+
+/**
+ * The data associated with the rental
+ */
+const rentalData = ref()
+
+/**
+ * The vendor's data
+ */
+const vendorData = ref()
+
+/**
+ * The renter's data
+ */
+const renterData = ref()
+
+/**
+ * The user's data
+ */
+const userData = ref()
+
+/**
+ * The user ID of the other user in the rental
+ */
+const otherParticipantID = ref(null)
+
+/**
+ * State of whether the data has loaded
+ */
+const dataLoaded = ref(false)
+
+/**
+ * State of displaying the review equipment modal
+ */
+const showReviewEquipmentModal = ref(false)
+
+/**
+ * State of displaying the review user modal
+ */
+const showReviewUserModal = ref(false)
+
+/**
+ * The poll interval ID
+ */
+let pollIntervalId = null
+
+/**
+ * The last rental snapshot
+ */
+let lastRentalSnapshot = ''
+
+/**
+ * Polling every 5 seconds for live updates
+ */
+const POLL_INTERVAL_MS = 5000
+
+/**
+ * Returns the first equipment item for the rental.
+ */
+const primaryEquipment = computed(() => rentalData.value?.equipment?.[0] || null)
+
+/**
+ * Currently selected equipment, which is used for the review modal.
+ */
+const currentEquipment = ref()
+
+/**
+ * Stores selected equipment from child component.
+ * @param {Object} value - Equipment object
+ */
+const handleStoringCurrentEquipment = (value) => {
+    currentEquipment.value = value
+}
+
+/**
+ * Determines if the current viewer is the vendor.
+ */
+const isVendorViewer = computed(() =>
+    !!(userData.value &amp;&amp; rentalData.value &amp;&amp; userData.value.id === rentalData.value.vendor_id)
+)
+
+/**
+ * Determines which user should be reviewed.
+ */
+const reviewUserTarget = computed(() => {
+    if (!rentalData.value || !vendorData.value || !renterData.value) return null
+    return isVendorViewer.value ? renterData.value : vendorData.value
+})
+
+/**
+ * Returns meeting location as a map point.
+ */
+const meetingPoint = computed(() => {
+    if (rentalData.value?.meeting_lat == null || rentalData.value?.meeting_lng == null) return null
+    return {
+        lat: rentalData.value.meeting_lat,
+        lng: rentalData.value.meeting_lng,
+    }
+})
+
+/**
+ * Builds marker list for map visualization.
+ */
+const mapMarkers = computed(() => {
+    const markers = []
+
+    if (renterData.value?.latitude != null &amp;&amp; renterData.value?.longitude != null) {
+        markers.push({
+            lat: renterData.value.latitude,
+            lng: renterData.value.longitude,
+            title: `Renter: ${renterData.value.name}`,
+            label: `&lt;strong>Renter&lt;/strong>&lt;br>${renterData.value.name}`,
+            color: '#2563EB',
+        })
+    }
+
+    if (vendorData.value?.latitude != null &amp;&amp; vendorData.value?.longitude != null) {
+        markers.push({
+            lat: vendorData.value.latitude,
+            lng: vendorData.value.longitude,
+            title: `Vendor: ${vendorData.value.name}`,
+            label: `&lt;strong>Vendor&lt;/strong>&lt;br>${vendorData.value.name}`,
+            color: '#059669',
+        })
+    }
+
+    if (meetingPoint.value) {
+        markers.push({
+            lat: meetingPoint.value.lat,
+            lng: meetingPoint.value.lng,
+            title: 'Meeting Location',
+            label: `&lt;strong>Meeting Location&lt;/strong>&lt;br>${rentalData.value?.location || ''}`,
+            color: '#DC2626',
+            selected: true,
+        })
+    }
+
+    return markers
+})
+
+/**
+ * Determines map center priority
+ */
+const mapCenter = computed(() => {
+    if (meetingPoint.value) return meetingPoint.value
+    if (renterData.value?.latitude != null &amp;&amp; renterData.value?.longitude != null) {
+        return { lat: renterData.value.latitude, lng: renterData.value.longitude }
+    }
+    if (vendorData.value?.latitude != null &amp;&amp; vendorData.value?.longitude != null) {
+        return { lat: vendorData.value.latitude, lng: vendorData.value.longitude }
+    }
+    return null
+})
+
+/**
+ * Creates a lightweight snapshot of rental data for change detection.
+ * 
+ * @param {Object} rental
+ * @returns {string} JSON string snapshot
+ */
+function getRentalSnapshot(rental) {
+    if (!rental) return ''
+
+    return JSON.stringify({
+        status: rental.status,
+        location: rental.location,
+        agreed_price: rental.agreed_price,
+        deleted: rental.deleted,
+        start_date: rental.start_date,
+        end_date: rental.end_date,
+        meeting_lat: rental.meeting_lat,
+        meeting_lng: rental.meeting_lng,
+        vendor_approved: rental.vendor_approved,
+        renter_approved: rental.renter_approved,
+        vendor_reviewed: rental.vendor_reviewed,
+        renter_reviewed: rental.renter_reviewed,
+        equipment_ids: (rental.equipment || []).map((equipment) => equipment.id),
+    })
+}
+
+/**
+ * Computes derived review data for each equipment item.
+ */
+async function computeEquipmentReviewData() {
+    for (let i = 0; i &lt; rentalData.value.equipment.length; i++) {
+        if (!rentalData.value.equipment[i].equipmentReviews) {
+            rentalData.value.equipment[i].equipmentReviews = []
+        }
+
+        // Computing the total number of ratings
+        let numRatings = rentalData.value.equipment[i].equipmentReviews.length
+
+        if (numRatings == 1) {
+            rentalData.value.equipment[i].numRatingsText = numRatings.toString() + " review"
+        }
+        else {
+            rentalData.value.equipment[i].numRatingsText = numRatings.toString() + " reviews"
+        }
+
+        // Computing the average rating
+        if (numRatings == 0) {
+            rentalData.value.equipment[i].averageRating = 0.0
+        }
+        else {
+            let sumRatings = 0.0
+            for (let j = 0; j &lt; rentalData.value.equipment[i].equipmentReviews.length; j++) {
+                sumRatings += rentalData.value.equipment[i].equipmentReviews[j].rating
+            }
+
+            let avgRating = sumRatings / numRatings
+            rentalData.value.equipment[i].averageRating = avgRating.toFixed(2)
+        }
+    }
+}
+
+/**
+ * Computes review summary for a user.
+ *
+ * @param {Ref&lt;Object>} userData - Vue ref containing user object
+ */
+async function computeUserReviewData(userData) {
+    if (!userData.value.userReviews) {
+        userData.value.userReviews = []
+    }
+
+    // Computing the total number of ratings
+    let numRatings = userData.value.userReviews.length
+
+    if (numRatings == 1) {
+        userData.value.numRatingsText = numRatings.toString() + " review"
+    }
+    else {
+        userData.value.numRatingsText = numRatings.toString() + " reviews"
+    }
+
+    // Computing the average rating
+    if (numRatings == 0) {
+        userData.value.averageRating = 0.0
+    }
+    else {
+        let sumRatings = 0.0
+        for (let i = 0; i &lt; userData.value.userReviews.length; i++) {
+            sumRatings += userData.value.userReviews[i].rating
+        }
+
+        let avgRating = sumRatings / numRatings
+        userData.value.averageRating = avgRating.toFixed(2)
+    }
+}
+
+/**
+ * Loads full rental page data.
+ */
+async function loadData() {
+    try {
+        // Getting the rental id from the route
+        rentalID.value = route.params.id
+
+        // Getting the user's data
+        userData.value = await AuthService.getMe()
+
+        // Getting the rental with equipment data
+        rentalData.value = await RentalService.getRentalWithEquipment(rentalID.value)
+        console.log(rentalData.value)
+        currentEquipment.value = primaryEquipment.value
+        lastRentalSnapshot = getRentalSnapshot(rentalData.value)
+
+        // Ensure only renter/vendor can view this page
+        const isParticipant = [rentalData.value.renter_id, rentalData.value.vendor_id].includes(userData.value.id)
+        if (!isParticipant) {
+            alert("You are not authorized to view this rental.")
+            router.push({ name: 'rentals' })
+            return
+        }
+
+        otherParticipantID.value = userData.value.id === rentalData.value.vendor_id
+            ? rentalData.value.renter_id
+            : rentalData.value.vendor_id
+
+        // Getting the vendor's data
+        vendorData.value = await UserService.getUser(rentalData.value.vendor_id)
+        renterData.value = await UserService.getUser(rentalData.value.renter_id)
+
+        // Getting the equipment reviews data for the all of the equipment items
+        for (let i = 0; i &lt; rentalData.value.equipment.length; i++) {
+            if (primaryEquipment.value) {
+                rentalData.value.equipment[i].equipmentReviews = await ReviewService.getReviewsForModel("equipment", rentalData.value.equipment[i].id)
+            } else {
+                rentalData.value.equipment[i].equipmentReviews = []
+            }
+        }
+        await computeEquipmentReviewData()
+
+        // Getting the reviews for the renter and the vendor
+        vendorData.value.userReviews = await ReviewService.getReviewsForModel("user", vendorData.value.id)
+        renterData.value.userReviews = await ReviewService.getReviewsForModel("user", renterData.value.id)
+        await computeUserReviewData(vendorData)
+        await computeUserReviewData(renterData)
+
+        // Displaying the page to the user
+        dataLoaded.value = true
+    }
+    catch (error) {
+        console.error("Error getting rental data:", error)
+
+        if ((error?.message || '').toLowerCase().includes('forbidden') || (error?.message || '').includes('403')) {
+            alert("You are not authorized to view this rental.")
+            router.push({ name: 'rentals' })
+            return
+        }
+
+        // Alerting the user that the rental data could not be loaded
+        alert("Error: Rental data could not be loaded.")
+    }
+}
+
+/**
+ * Polls backend for rental updates.
+ */
+async function pollForUpdates() {
+    if (!rentalID.value || !dataLoaded.value) return
+
+    try {
+        const latestRental = await RentalService.getRentalWithEquipment(rentalID.value)
+        const latestSnapshot = getRentalSnapshot(latestRental)
+
+        // If participant changed or rental is no longer accessible, route out.
+        if (!userData.value || ![latestRental.renter_id, latestRental.vendor_id].includes(userData.value.id)) {
+            router.push({ name: 'rentals' })
+            return
+        }
+
+        const oldEquipmentId = primaryEquipment.value?.id
+        const newEquipmentId = latestRental?.equipment?.[0]?.id
+        const rentalChanged = latestSnapshot !== lastRentalSnapshot
+
+        // Refresh the rental data whenever any live rental field changes.
+        if (rentalChanged) {
+            rentalData.value = latestRental
+            currentEquipment.value = primaryEquipment.value
+            lastRentalSnapshot = latestSnapshot
+        }
+
+        // Re-fetch review aggregate only if the primary equipment changed.
+        if (oldEquipmentId !== newEquipmentId) {
+            for (let i = 0; i &lt; rentalData.value.equipment.length; i++) {
+                if (primaryEquipment.value) {
+                    rentalData.value.equipment[i].equipmentReviews = await ReviewService.getReviewsForModel('equipment', rentalData.value.equipment[i].id)
+                } else {
+                    rentalData.value.equipment[i].equipmentReviews = []
+                }
+            }
+            await computeEquipmentReviewData()
+        }
+    }
+    catch (error) {
+        // Silent during polling to avoid disrupting users with transient failures.
+        console.warn('Rental polling failed:', error?.message || error)
+    }
+}
+
+/**
+ * Triggered when rental is updated via child component.
+ */
+async function handleRentalUpdated() {
+  // Re-fetch full rental with equipment
+  await loadData()
+}
+
+/**
+ * Initial load and start polling
+ */
+onMounted(async () => {
+    await loadData()
+
+    pollIntervalId = setInterval(() => {
+        pollForUpdates()
+    }, POLL_INTERVAL_MS)
+})
+
+/**
+ * Cleanup polling interval
+ */
+onUnmounted(() => {
+    if (pollIntervalId) {
+        clearInterval(pollIntervalId)
+        pollIntervalId = null
+    }
+})
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

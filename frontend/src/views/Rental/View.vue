@@ -1,6 +1,11 @@
 <!-- View a specific rental's details -->
 <script lang="js" setup>
 
+/**
+ * The rental view page
+ * @module RentalView
+ */
+
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FwbSpinner, FwbCard } from 'flowbite-vue'

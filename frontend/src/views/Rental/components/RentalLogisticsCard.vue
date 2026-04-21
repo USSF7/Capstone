@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * On the view rental page, this is a component that displays the logistics of the rental.
+ * @module RentalComponentsLogisticsCard
+ */
+
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FwbCard, FwbProgress, FwbButton, FwbListGroup, FwbListGroupItem, FwbRating } from 'flowbite-vue'

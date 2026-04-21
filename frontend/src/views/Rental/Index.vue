@@ -1,5 +1,9 @@
 <!-- View of all rentals a user is a part of -->
 <script lang="js" setup>
+/**
+ * The rental index page, which displays a user's current and previous rentals.
+ * @module RentalIndex
+ */
 
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'

@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Home page index view
+ * @module HomeIndex
+ */
+
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: views/Inventory/View.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: views/Inventory/View.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * The view equipment page
+ * @module InventoryView
+ */
+
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FwbSpinner, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbCard, FwbAvatar, FwbBadge, FwbButton } from 'flowbite-vue'
+import { PencilIcon, TrashIcon } from '@heroicons/vue/24/solid'
+import authService from '../../services/authService'
+import EquipmentService from '../../services/equipmentService'
+import UserService from '../../services/userService'
+import ReviewService from '../../services/reviewService'
+import aiService from '../../services/aiService'
+import ReviewEquipmentEdit from '../Rental/ReviewEquipmentEdit.vue'
+
+/**
+ * Month lookup table used for formatting review dates.
+ */
+const months = [
+    "January", 
+    "February", 
+    "March", 
+    "April", 
+    "May", 
+    "June", 
+    "July", 
+    "August", 
+    "September", 
+    "October", 
+    "November", 
+    "December"
+]
+
+/**
+ * Backend base URL used for serving uploaded images.
+ */
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
+/**
+ * Route instance for navigation.
+ */
+const route = useRoute()
+
+/**
+ * Router instance for navigation.
+ */
+const router = useRouter()
+
+/**
+ * Reactive state: currently logged-in user viewing the page.
+ */
+const viewingUserData = ref()
+
+/**
+ * Reactive state: owner of the equipment listing.
+ */
+const ownerData = ref()
+
+/**
+ * Reactive state: equipment details.
+ */
+const equipmentData = ref()
+
+/**
+ * Reactive state: list of reviews for this equipment.
+ */
+const equipmentReviews = ref()
+
+/**
+ * Equipment ID from route parameters.
+ */
+const equipmentID = ref()
+
+/**
+ * Indicates whether initial page data has finished loading.
+ */
+const dataLoaded = ref(false)
+
+/**
+ * The number of ratings in string data type.
+ */
+const numRatingsText = ref('')
+
+/**
+ * The number of ratings in number data type.
+ */
+const numRatings = ref(0)
+
+/**
+ * The average rating of the equipment.
+ */
+const averageRating = ref(0.0)
+
+/**
+ * Artificial intelligence computed review summary text.
+ */
+const reviewSummary = ref('')
+
+/**
+ * Loading state for artificial intelligence summary generation.
+ */
+const reviewSummaryLoading = ref(false)
+
+/**
+ * Cache for submitter user data to reduce API calls.
+ */
+const submitterNameCache = new Map()
+
+/**
+ * Controls visibility of the review edit modal.
+ */
+const showReviewEquipmentModal = ref(false)
+
+/**
+ * Popup review ID number.
+ */
+const popUpReviewId = ref(0)
+
+/**
+ * Popup review rating number.
+ */
+const popUpReviewRating = ref(0.0)
+
+/**
+ * Popup review text.
+ */
+const popUpReviewText = ref('')
+
+/**
+ * Deletes a review after user confirmation.
+ * Marks review as deleted via API and reloads page.
+ *
+ * @param {number} reviewId - ID of the review to delete.
+ */
+async function deleteReview(reviewId) {
+    // Double checking if the user wants to delete their review
+    const confirmed = confirm("Are you sure you want to delete your review?\n\nWarning: Deleting your review will permanently remove it. You will only be able to submit another review about this equipment if you rent it again.")
+
+    if (confirmed === true) {
+        // Deleting the user's review
+        await ReviewService.switchDeletedReviewStatus(reviewId, true)
+
+        // Reloading user data
+        window.location.reload()
+    }
+}
+
+/**
+ * Opens the review edit modal and loads selected review data.
+ *
+ * @param {number} reviewId - ID of the review to edit.
+ */
+async function editReview(reviewId) {
+    // Get the review data
+    let review = await ReviewService.getReview(reviewId)
+
+    // Store review information
+    popUpReviewId.value = reviewId
+    popUpReviewRating.value = review.rating
+    popUpReviewText.value = review.review
+
+    // Open pop-up menu
+    showReviewEquipmentModal.value = true
+}
+
+/**
+ * Formats ISO date string into human-readable format.
+ *
+ * @param {string} isoDate - ISO date string.
+ * @returns {string} Human-readable formatted date.
+ */
+function reviewDateFormatting(isoDate) {
+    const date = new Date(isoDate)
+    let day = date.getDate()
+    let month = date.getMonth()
+    let year = date.getFullYear()
+
+    return months[month] + " " + day.toString() + ", " + year.toString()
+}
+
+/**
+ * Sorts equipment reviews by date in descending order.
+ */
+async function sortEquipmentReviewsDescending() {
+    equipmentReviews.value.sort((a, b) => new Date(b.date) - new Date(a.date))
+}
+
+/**
+ * Enriches reviews with submitter name and profile picture.
+ */
+async function addSubmitterName() {
+    if (!equipmentReviews.value?.length) {
+        return
+    }
+
+    try {
+        const submitterIds = [...new Set(equipmentReviews.value.map(r => r.submitter_id).filter(Boolean))]
+
+        await Promise.all(submitterIds.map(async (submitterId) => {
+            if (!submitterNameCache.has(submitterId)) {
+                const userInfo = await UserService.getUser(submitterId)
+                submitterNameCache.set(submitterId, {
+                    name: userInfo?.name || 'Unknown user',
+                    picture: userInfo?.picture || ''
+                })
+            }
+        }))
+
+        for (let i = 0; i &lt; equipmentReviews.value.length; i++) {
+            const submitterId = equipmentReviews.value[i].submitter_id
+            const cached = submitterNameCache.get(submitterId)
+
+            equipmentReviews.value[i].submitter_name = cached?.name || 'Unknown user'
+            equipmentReviews.value[i].picture = cached?.picture || ''
+        }
+    }
+    catch (error) {
+        console.warn('Unable to enrich equipment review submitter names:', error)
+    }
+}
+
+/**
+ * Computes review statistics for equipment.
+ */
+async function computeReviewData() {
+    // Computing the total number of ratings
+    numRatings.value = equipmentReviews.value.length
+
+    if (numRatings.value == 1) {
+        numRatingsText.value = numRatings.value.toString() + " review"
+    }
+    else {
+        numRatingsText.value = numRatings.value.toString() + " reviews"
+    }
+
+    // Computing the average rating
+    if (numRatings.value == 0) {
+        averageRating.value = 0.0
+    }
+    else {
+        let sumRatings = 0.0
+        for (let i = 0; i &lt; equipmentReviews.value.length; i++) {
+            sumRatings += equipmentReviews.value[i].rating
+        }
+        let avgRating = sumRatings / numRatings.value
+        averageRating.value = avgRating.toFixed(2)
+    }
+}
+
+/**
+ * Computes review statistics for the owner's profile.
+ *
+ * @param {Object} userData - Reactive user data object.
+ */
+async function computeUserReviewData(userData) {
+    if (!userData.value.userReviews) {
+        userData.value.userReviews = []
+    }
+
+    // Computing the total number of ratings
+    let numRatings = userData.value.userReviews.length
+
+    if (numRatings == 1) {
+        userData.value.numRatingsText = numRatings.toString() + " review"
+    }
+    else {
+        userData.value.numRatingsText = numRatings.toString() + " reviews"
+    }
+
+    // Computing the average rating
+    if (numRatings == 0) {
+        userData.value.averageRating = 0.0
+    }
+    else {
+        let sumRatings = 0.0
+        for (let i = 0; i &lt; userData.value.userReviews.length; i++) {
+            sumRatings += userData.value.userReviews[i].rating
+        }
+
+        let avgRating = sumRatings / numRatings
+        userData.value.averageRating = avgRating.toFixed(2)
+    }
+}
+
+/**
+ * Loads AI-generated summary of equipment reviews.
+ */
+async function loadReviewSummary() {
+    reviewSummary.value = ''
+
+    if (!equipmentData.value?.id || numRatings.value === 0) {
+        return
+    }
+
+    reviewSummaryLoading.value = true
+
+    try {
+        const response = await aiService.summarizeReviews('equipment', equipmentData.value.id)
+        reviewSummary.value = (response?.summary || '').trim()
+    }
+    catch (error) {
+        console.warn('Unable to load AI summary for equipment reviews:', error)
+        reviewSummary.value = ''
+    }
+    finally {
+        reviewSummaryLoading.value = false
+    }
+}
+
+/**
+ * Main page data loader.
+ */
+async function loadData() {
+    try {
+        dataLoaded.value = false
+        reviewSummary.value = ''
+        reviewSummaryLoading.value = false
+
+        // Getting the viewing user data
+        viewingUserData.value = await authService.getMe()
+
+        // Getting the equipment id from the route
+        equipmentID.value = route.params.id
+
+        // Getting the equipment data
+        equipmentData.value = await EquipmentService.getEquipmentById(equipmentID.value)
+
+        // Fetch owner and reviews in parallel once equipment is available.
+        const [reviewsData, ownerInfo] = await Promise.all([
+            ReviewService.getReviewsForModel("equipment", equipmentData.value.id),
+            UserService.getUser(equipmentData.value.owner_id),
+        ])
+
+        equipmentReviews.value = reviewsData
+        await sortEquipmentReviewsDescending()
+        await computeReviewData()
+        ownerData.value = ownerInfo
+
+        ownerData.value.userReviews = await ReviewService.getReviewsForModel("user", ownerData.value.id)
+        await computeUserReviewData(ownerData)
+
+        // Displaying the page to the user
+        dataLoaded.value = true
+
+        // Fill non-critical data after initial render to improve perceived speed.
+        addSubmitterName()
+        loadReviewSummary()
+    }
+    catch (error) {
+        console.error("Error loading equipment data:", error)
+
+        // Alerting the user that the equipment data could not be loaded
+        alert("Error: Equipment data could not be loaded.")
+    }
+}
+
+/**
+ * Load all page data when component mounts.
+ */
+onMounted(async () => {
+    await loadData()
+})
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-App.html">App</a></li><li><a href="module-AuthCallback.html">AuthCallback</a></li><li><a href="module-AuthLogin.html">AuthLogin</a></li><li><a href="module-AuthLogout.html">AuthLogout</a></li><li><a href="module-EquipmentResultsGrid.html">EquipmentResultsGrid</a></li><li><a href="module-EquipmentSearch.html">EquipmentSearch</a></li><li><a href="module-GoogleMaps.html">GoogleMaps</a></li><li><a href="module-HomeIndex.html">HomeIndex</a></li><li><a href="module-HomeRenter.html">HomeRenter</a></li><li><a href="module-HomeUnauthenticated.html">HomeUnauthenticated</a></li><li><a href="module-HomeVendor.html">HomeVendor</a></li><li><a href="module-InventoryCreate.html">InventoryCreate</a></li><li><a href="module-InventoryEdit.html">InventoryEdit</a></li><li><a href="module-InventoryIndex.html">InventoryIndex</a></li><li><a href="module-InventoryView.html">InventoryView</a></li><li><a href="module-Main.html">Main</a></li><li><a href="module-MeetingLocationPicker.html">MeetingLocationPicker</a></li><li><a href="module-MessageBox.html">MessageBox</a></li><li><a href="module-ProfileCalendar.html">ProfileCalendar</a></li><li><a href="module-ProfileCreate.html">ProfileCreate</a></li><li><a href="module-ProfileEarnings.html">ProfileEarnings</a></li><li><a href="module-ProfileEdit.html">ProfileEdit</a></li><li><a href="module-ProfileView.html">ProfileView</a></li><li><a href="module-RentalComponentsEquipmentCard.html">RentalComponentsEquipmentCard</a></li><li><a href="module-RentalComponentsLocationCard.html">RentalComponentsLocationCard</a></li><li><a href="module-RentalComponentsLogisticsCard.html">RentalComponentsLogisticsCard</a></li><li><a href="module-RentalComponentsMessagingCard.html">RentalComponentsMessagingCard</a></li><li><a href="module-RentalComponentsSummaryCard.html">RentalComponentsSummaryCard</a></li><li><a href="module-RentalCreate.html">RentalCreate</a></li><li><a href="module-RentalEdit.html">RentalEdit</a></li><li><a href="module-RentalIndex.html">RentalIndex</a></li><li><a href="module-RentalMeetingLocation.html">RentalMeetingLocation</a></li><li><a href="module-RentalReviewEquipment.html">RentalReviewEquipment</a></li><li><a href="module-RentalReviewEquipmentEdit.html">RentalReviewEquipmentEdit</a></li><li><a href="module-RentalReviewUser.html">RentalReviewUser</a></li><li><a href="module-RentalReviewUserEdit.html">RentalReviewUserEdit</a></li><li><a href="module-RentalView.html">RentalView</a></li><li><a href="module-Router.html">Router</a></li><li><a href="module-StoresAuth.html">StoresAuth</a></li></ul><h3>Classes</h3><ul><li><a href="AIService.html">AIService</a></li><li><a href="ApiClient.html">ApiClient</a></li><li><a href="AuthService.html">AuthService</a></li><li><a href="EquipmentService.html">EquipmentService</a></li><li><a href="LocationService.html">LocationService</a></li><li><a href="MessageService.html">MessageService</a></li><li><a href="RentalService.html">RentalService</a></li><li><a href="ReviewService.html">ReviewService</a></li><li><a href="UserService.html">UserService</a></li></ul><h3>Global</h3><ul><li><a href="global.html#API_BASE_URL">API_BASE_URL</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a> on Tue Apr 21 2026 02:01:47 GMT-0500 (Central Daylight Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
