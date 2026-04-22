@@ -87,6 +87,7 @@ def create_app(config_name='development'):
             ("zip_code", "INTEGER"),
             ("vendor", "BOOLEAN"),
             ("renter", "BOOLEAN"),
+            ("picture", "VARCHAR(500)"),
             ("ai_review_summary", "TEXT"),
             ("ai_review_summary_updated_at", "TIMESTAMP"),
         ]
@@ -105,6 +106,7 @@ def create_app(config_name='development'):
             ("price", "NUMERIC(10,2) DEFAULT 0"),
             ("description", "VARCHAR(1000)"),
             ("picture", "VARCHAR(500)"),
+            ("condition", "VARCHAR(50)"),
             ("ai_review_summary", "TEXT"),
             ("ai_review_summary_updated_at", "TIMESTAMP"),
         ]
@@ -144,6 +146,31 @@ def create_app(config_name='development'):
         except Exception:
             db.session.rollback()
 
+        # Add approval/review tracking columns to rentals
+        rentals_columns_to_add = [
+            ("renter_approved", "BOOLEAN DEFAULT FALSE NOT NULL"),
+            ("vendor_approved", "BOOLEAN DEFAULT FALSE NOT NULL"),
+            ("renter_reviewed", "BOOLEAN DEFAULT FALSE NOT NULL"),
+            ("vendor_reviewed", "BOOLEAN DEFAULT FALSE NOT NULL"),
+        ]
+        for col_name, col_type in rentals_columns_to_add:
+            try:
+                db.session.execute(text(
+                    f"ALTER TABLE rentals ADD COLUMN {col_name} {col_type}"
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        # Add deleted column to reviews
+        try:
+            db.session.execute(text(
+                "ALTER TABLE reviews ADD COLUMN deleted BOOLEAN DEFAULT FALSE NOT NULL"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
         # Add meeting location columns to rentals
         for col_name, col_type in [("meeting_lat", "DOUBLE PRECISION"), ("meeting_lng", "DOUBLE PRECISION")]:
             try:
@@ -162,6 +189,24 @@ def create_app(config_name='development'):
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+
+        # Add equipment_reviewed to rental_has_equipment
+        try:
+            db.session.execute(text(
+                "ALTER TABLE rental_has_equipment ADD COLUMN equipment_reviewed BOOLEAN DEFAULT FALSE NOT NULL"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        # Add rental_id to messages
+        try:
+            db.session.execute(text(
+                "ALTER TABLE messages ADD COLUMN rental_id INTEGER REFERENCES rentals(id)"
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
     return app
 

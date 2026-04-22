@@ -178,12 +178,12 @@ function computeNumberOfCompletedRentals() {
  * @returns {string} User's name.
  */
 function getUserName(userId) {
-    let userName = ""
-    if (usersData.value != undefined) {
-        userName = usersData.value[userId - 1].name
+    if (usersData.value == undefined) {
+        return ""
     }
 
-    return userName
+    const user = usersData.value.find(candidate => Number(candidate.id) === Number(userId))
+    return user?.name ?? "Unknown user"
 }
 
 /**
