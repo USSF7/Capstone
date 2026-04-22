@@ -1,3 +1,10 @@
+"""
+User service module.
+
+Business logic for user CRUD operations, profile picture management,
+and address geocoding on create/update.
+"""
+
 import json
 import os
 import uuid
@@ -9,12 +16,40 @@ from flask import current_app, jsonify
 USERS_PICTURES_FOLDER = 'images/users'
 os.makedirs(USERS_PICTURES_FOLDER, exist_ok=True)
 
+
 class UserService:
-    """Service layer for User business logic"""
+    """Business logic for User management.
+
+    All methods are static — no instance state is needed.
+    """
 
     @staticmethod
     def create_user(name, email, password, phone, date_of_birth, street_address, city, state, zip_code, vendor, renter, picture):
-        """Create a new user"""
+        """Create a new user with optional geocoding.
+
+        Validates uniqueness of email and phone, hashes the password if
+        provided, and geocodes the address to lat/lng coordinates.
+
+        Args:
+            name: Display name (required).
+            email: Email address (required, must be unique).
+            password: Plaintext password (optional for Google-only users).
+            phone: Phone number (must be unique if provided).
+            date_of_birth: Date of birth string (YYYY-MM-DD).
+            street_address: Street address for geocoding.
+            city: City for geocoding.
+            state: State for geocoding.
+            zip_code: ZIP code for geocoding.
+            vendor: Whether user is a vendor.
+            renter: Whether user is a renter.
+            picture: Relative path to profile picture.
+
+        Returns:
+            The created User instance.
+
+        Raises:
+            ValueError: If required fields missing or email/phone already taken.
+        """
         if not name or not email:
             raise ValueError("Name and email are required")
         
@@ -54,7 +89,30 @@ class UserService:
 
     @staticmethod
     def update_user(user_id, name=None, email=None, phone=None, date_of_birth=None, street_address=None, city=None, state=None, zip_code=None, vendor=None, renter=None, picture=''):
-        """Update a user"""
+        """Update an existing user's profile fields.
+
+        Re-geocodes the address if any address fields changed.
+
+        Args:
+            user_id: The user's primary key.
+            name: New display name.
+            email: New email (uniqueness checked).
+            phone: New phone (uniqueness checked).
+            date_of_birth: New date of birth.
+            street_address: New street address.
+            city: New city.
+            state: New state.
+            zip_code: New ZIP code.
+            vendor: Whether user is a vendor.
+            renter: Whether user is a renter.
+            picture: Relative path to profile picture.
+
+        Returns:
+            The updated User instance.
+
+        Raises:
+            ValueError: If user not found or email/phone already taken.
+        """
         user = User.query.get(user_id)
         if not user:
             raise ValueError("User not found")
@@ -118,6 +176,14 @@ class UserService:
     
     @staticmethod
     def upload_user_picture(userPicture):
+        """Save an uploaded user profile picture to disk with a unique filename.
+
+        Args:
+            userPicture: A Werkzeug FileStorage object from the request.
+
+        Returns:
+            The relative file path where the picture was saved.
+        """
         # Getting the picture's filename
         pictureFilename = secure_filename(userPicture.filename)
         pictureExtension = os.path.splitext(pictureFilename)[1]
@@ -133,6 +199,14 @@ class UserService:
     
     @staticmethod
     def delete_user_picture(filepath):
+        """Delete a user profile picture from disk.
+
+        Args:
+            filepath: Relative path to the picture file.
+
+        Returns:
+            JSON response with success or error message.
+        """
         # Creating a directory
         pictureFilepath = os.path.join(current_app.root_path, filepath)
 

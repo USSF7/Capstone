@@ -1,3 +1,20 @@
+"""
+User routes module.
+
+Provides CRUD endpoints for user management, profile picture upload/delete,
+and fetching a user's messages.
+
+Routes:
+    GET    /api/users/            -- List all users (JWT required).
+    GET    /api/users/<id>        -- Get a user by ID.
+    POST   /api/users/            -- Create a new user.
+    PUT    /api/users/<id>        -- Update a user.
+    DELETE /api/users/<id>        -- Delete a user (JWT required).
+    GET    /api/users/<id>/messages -- Get all messages for a user.
+    POST   /api/users/picture     -- Upload a profile picture.
+    DELETE /api/users/picture/delete -- Delete a profile picture.
+"""
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from services import UserService
@@ -5,10 +22,15 @@ from PIL import Image
 
 user_bp = Blueprint('users', __name__, url_prefix='/api/users')
 
+
 @user_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_users():
-    """Get all users"""
+    """Get all users.
+
+    Returns:
+        200: List of user dicts.
+    """
     try:
         users = UserService.get_all_users()
         return jsonify([user.to_dict() for user in users]), 200
@@ -17,7 +39,15 @@ def get_users():
 
 @user_bp.route('/<int:user_id>', methods=['GET'])
 def get_user(user_id):
-    """Get a user by ID"""
+    """Get a single user by their ID.
+
+    Args:
+        user_id: The user's primary key.
+
+    Returns:
+        200: User dict.
+        404: User not found.
+    """
     try:
         user = UserService.get_user(user_id)
         if not user:
@@ -28,7 +58,14 @@ def get_user(user_id):
 
 @user_bp.route('/', methods=['POST'])
 def create_user():
-    """Create a new user"""
+    """Create a new user.
+
+    Expects JSON body with name, email, and optional profile fields.
+
+    Returns:
+        201: Created user dict.
+        400: Validation error.
+    """
     try:
         data = request.get_json()
         user = UserService.create_user(data.get('name'), data.get('email'), data.get('password'), data.get('phone'), data.get('date_of_birth'), data.get('street_address'), data.get('city'), data.get('state'), data.get('zip_code'), data.get('vendor'), data.get('renter'), data.get('picture'))
@@ -40,7 +77,15 @@ def create_user():
 
 @user_bp.route('/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
-    """Update a user"""
+    """Update an existing user's profile fields.
+
+    Args:
+        user_id: The user's primary key.
+
+    Returns:
+        200: Updated user dict.
+        400: Validation error (e.g. duplicate email).
+    """
     try:
         data = request.get_json()
         user = UserService.update_user(user_id, data.get('name'), data.get('email'), data.get('phone'), data.get('date_of_birth'), data.get('street_address'), data.get('city'), data.get('state'), data.get('zip_code'), data.get('vendor'), data.get('renter'), data.get('picture'))
@@ -53,7 +98,15 @@ def update_user(user_id):
 @user_bp.route('/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def delete_user(user_id):
-    """Delete a user"""
+    """Delete a user by ID. Requires JWT authentication.
+
+    Args:
+        user_id: The user's primary key.
+
+    Returns:
+        200: Success message.
+        404: User not found.
+    """
     try:
         UserService.delete_user(user_id)
         return jsonify({'message': 'User deleted'}), 200
@@ -62,10 +115,17 @@ def delete_user(user_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# route to view a user's messages
 @user_bp.route('/<int:user_id>/messages', methods=['GET'])
 def get_user_messages(user_id):
-    """Get messages for a user"""
+    """Get all sent and received messages for a user.
+
+    Args:
+        user_id: The user's primary key.
+
+    Returns:
+        200: Combined list of sent and received message dicts.
+        404: User not found.
+    """
     try:
         user = UserService.get_user(user_id)
         if not user:
@@ -84,6 +144,15 @@ def get_user_messages(user_id):
 
 @user_bp.route('/picture', methods=['POST'])
 def upload_user_picture():
+    """Upload a user profile picture.
+
+    Expects a multipart form with a ``picture_file`` field containing
+    a JPEG, PNG, or WebP image.
+
+    Returns:
+        200: Success message with the stored file path.
+        400: Missing file or invalid image type.
+    """
     try:
         # Checking if the file exists in the request
         if 'picture_file' not in request.files:
@@ -140,6 +209,15 @@ def upload_user_picture():
 
 @user_bp.route('/picture/delete', methods=['DELETE'])
 def delete_user_picture():
+    """Delete a user profile picture from disk.
+
+    Expects JSON body with a ``filepath`` field.
+
+    Returns:
+        200: Success message.
+        400: Missing filepath.
+        404: File not found.
+    """
     try:
         # Get the filepath to the picture
         data = request.get_json()

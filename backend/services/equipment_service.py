@@ -1,3 +1,11 @@
+"""
+Equipment service module.
+
+Business logic for equipment CRUD, picture management, proximity-based
+search with fuzzy name matching, and owner inventory queries with
+active rental details.
+"""
+
 import json
 import os
 import uuid
@@ -15,7 +23,16 @@ from flask import current_app, jsonify
 EQUIPMENT_PICTURES_FOLDER = 'images/equipment'
 os.makedirs(EQUIPMENT_PICTURES_FOLDER, exist_ok=True)
 
+
 def load_equipment_names_from_config():
+    """Load the predefined equipment name list from ``.config`` JSON file.
+
+    Falls back to a hardcoded default list if the config file is missing
+    or does not contain an ``EQUIPMENT_NAMES`` key.
+
+    Returns:
+        List of equipment name strings.
+    """
     # .config is mounted in the app directory in Docker
     config_path = Path(__file__).resolve().parents[1] / '.config'
     if config_path.exists():
@@ -33,11 +50,29 @@ def load_equipment_names_from_config():
 
 
 class EquipmentService:
-    """Service layer for Equipment business logic"""
+    """Business logic for Equipment management.
+
+    All methods are static — no instance state is needed.
+    """
 
     @staticmethod
     def create_equipment(owner_id, name, price, description=None, picture=None, condition=None):
-        """Create new equipment"""
+        """Create a new equipment listing.
+
+        Args:
+            owner_id: Primary key of the vendor User who owns this equipment.
+            name: Display name / title.
+            price: Daily rental price in USD.
+            description: Optional free-text description.
+            picture: Optional relative path to the equipment image.
+            condition: Optional condition label.
+
+        Returns:
+            The created Equipment instance.
+
+        Raises:
+            ValueError: If owner_id, name, or price are missing.
+        """
         if not owner_id or not name:
             raise ValueError("Owner ID and name are required")
         if price is None:
@@ -77,7 +112,18 @@ class EquipmentService:
 
     @staticmethod
     def get_equipment_by_owner_with_rentals(owner_id):
-        """Get all equipment owned by a user with active rental details"""
+        """Get all equipment owned by a vendor with active rental details.
+
+        For each equipment item, queries for an active rental and includes
+        the renter name and rental dates if one exists.
+
+        Args:
+            owner_id: Primary key of the vendor User.
+
+        Returns:
+            List of equipment dicts, each with an ``active_rental`` key
+            (dict with rental_id, renter_name, start_date, end_date, or None).
+        """
         equipment_list = Equipment.query.filter_by(owner_id=owner_id).all()
         result = []
 
@@ -169,7 +215,25 @@ class EquipmentService:
 
     @staticmethod
     def update_equipment(equipment_id, name=None, owner_id=None, price=None, description=None, picture=None, condition=None):
-        """Update equipment"""
+        """Update an existing equipment listing.
+
+        Only non-None arguments are applied.
+
+        Args:
+            equipment_id: The equipment's primary key.
+            name: New display name.
+            owner_id: New owner ID (for ownership transfer).
+            price: New daily rental price.
+            description: New description.
+            picture: New picture path.
+            condition: New condition label.
+
+        Returns:
+            The updated Equipment instance.
+
+        Raises:
+            ValueError: If equipment not found.
+        """
         equipment = Equipment.query.get(equipment_id)
         if not equipment:
             raise ValueError("Equipment not found")
@@ -192,6 +256,14 @@ class EquipmentService:
     
     @staticmethod
     def upload_equipment_picture(equipmentPicture):
+        """Save an uploaded equipment picture to disk with a unique filename.
+
+        Args:
+            equipmentPicture: A Werkzeug FileStorage object from the request.
+
+        Returns:
+            The relative file path where the picture was saved.
+        """
         # Getting the picture's filename
         pictureFilename = secure_filename(equipmentPicture.filename)
         pictureExtension = os.path.splitext(pictureFilename)[1]
@@ -207,6 +279,14 @@ class EquipmentService:
     
     @staticmethod
     def delete_equipment_picture(filepath):
+        """Delete an equipment picture from disk.
+
+        Args:
+            filepath: Relative path to the picture file.
+
+        Returns:
+            JSON response with success or error message.
+        """
         # Creating a directory
         pictureFilepath = os.path.join(current_app.root_path, filepath)
 
@@ -221,7 +301,17 @@ class EquipmentService:
 
     @staticmethod
     def delete_equipment(equipment_id):
-        """Delete equipment"""
+        """Delete an equipment listing and its associated picture.
+
+        Args:
+            equipment_id: The equipment's primary key.
+
+        Returns:
+            True on success.
+
+        Raises:
+            ValueError: If equipment not found.
+        """
         equipment = Equipment.query.get(equipment_id)
         if not equipment:
             raise ValueError("Equipment not found")

@@ -1,3 +1,22 @@
+"""
+Equipment routes module.
+
+Provides CRUD endpoints for equipment management, picture upload/delete,
+owner-based queries, equipment name listing, and owner authorization checks.
+
+Routes:
+    GET    /api/equipment/                         -- List all equipment.
+    GET    /api/equipment/<id>                     -- Get equipment by ID.
+    GET    /api/equipment/owner/<id>               -- Get equipment by owner.
+    GET    /api/equipment/owner/<id>/with-rentals  -- Get owner's equipment with active rental info.
+    GET    /api/equipment/names                    -- Get static equipment name list from config.
+    POST   /api/equipment/                         -- Create new equipment.
+    PUT    /api/equipment/<id>                     -- Update equipment (owner only, JWT required).
+    DELETE /api/equipment/<id>                     -- Delete equipment.
+    POST   /api/equipment/picture                  -- Upload an equipment picture.
+    DELETE /api/equipment/picture/delete            -- Delete an equipment picture.
+"""
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from services import EquipmentService
@@ -5,9 +24,14 @@ from PIL import Image
 
 equipment_bp = Blueprint('equipment', __name__, url_prefix='/api/equipment')
 
+
 @equipment_bp.route('/', methods=['GET'])
 def get_all_equipment():
-    """Get all equipment"""
+    """Get all equipment listings.
+
+    Returns:
+        200: List of equipment dicts.
+    """
     try:
         equipment_list = EquipmentService.get_all_equipment()
         return jsonify([e.to_dict() for e in equipment_list]), 200
@@ -16,7 +40,15 @@ def get_all_equipment():
 
 @equipment_bp.route('/<int:equipment_id>', methods=['GET'])
 def get_equipment(equipment_id):
-    """Get equipment by ID"""
+    """Get a single equipment listing by ID.
+
+    Args:
+        equipment_id: The equipment's primary key.
+
+    Returns:
+        200: Equipment dict.
+        404: Equipment not found.
+    """
     try:
         equipment = EquipmentService.get_equipment(equipment_id)
         if not equipment:
@@ -27,7 +59,14 @@ def get_equipment(equipment_id):
 
 @equipment_bp.route('/owner/<int:owner_id>', methods=['GET'])
 def get_equipment_by_owner(owner_id):
-    """Get all equipment owned by a user"""
+    """Get all equipment owned by a specific vendor.
+
+    Args:
+        owner_id: The owner User's primary key.
+
+    Returns:
+        200: List of equipment dicts.
+    """
     try:
         equipment_list = EquipmentService.get_equipment_by_owner(owner_id)
         return jsonify([e.to_dict() for e in equipment_list]), 200
@@ -36,7 +75,17 @@ def get_equipment_by_owner(owner_id):
 
 @equipment_bp.route('/owner/<int:owner_id>/with-rentals', methods=['GET'])
 def get_equipment_by_owner_with_rentals(owner_id):
-    """Get all equipment owned by a user with active rental details"""
+    """Get all equipment owned by a vendor with active rental details.
+
+    Each equipment dict includes an ``active_rental`` object (or null)
+    with the renter name and rental dates.
+
+    Args:
+        owner_id: The owner User's primary key.
+
+    Returns:
+        200: List of equipment dicts with active rental info.
+    """
     try:
         result = EquipmentService.get_equipment_by_owner_with_rentals(owner_id)
         return jsonify(result), 200
@@ -46,7 +95,11 @@ def get_equipment_by_owner_with_rentals(owner_id):
 
 @equipment_bp.route('/names', methods=['GET'])
 def get_equipment_names():
-    """Get static set of equipment names from .config"""
+    """Get the predefined list of equipment names from the .config file.
+
+    Returns:
+        200: Dict with an ``equipment_names`` list.
+    """
     try:
         names = EquipmentService.get_equipment_names()
         return jsonify({'equipment_names': names}), 200
@@ -55,7 +108,15 @@ def get_equipment_names():
 
 @equipment_bp.route('/', methods=['POST'])
 def create_equipment():
-    """Create new equipment"""
+    """Create a new equipment listing.
+
+    Expects JSON body with ``owner_id``, ``name``, ``price``, and optional
+    ``description``, ``picture``, ``condition``.
+
+    Returns:
+        201: Created equipment dict.
+        400: Validation error.
+    """
     try:
         data = request.get_json()
         equipment = EquipmentService.create_equipment(
@@ -75,7 +136,19 @@ def create_equipment():
 @equipment_bp.route('/<int:equipment_id>', methods=['PUT'])
 @jwt_required()
 def update_equipment(equipment_id):
-    """Update equipment"""
+    """Update an existing equipment listing. Only the owner may update.
+
+    Requires JWT authentication. Verifies the authenticated user is the
+    equipment's owner before applying changes.
+
+    Args:
+        equipment_id: The equipment's primary key.
+
+    Returns:
+        200: Updated equipment dict.
+        403: Not authorized (not the owner).
+        404: Equipment not found.
+    """
     try:
         current_user_id = int(get_jwt_identity())
         equipment = EquipmentService.get_equipment(equipment_id)
@@ -101,6 +174,15 @@ def update_equipment(equipment_id):
     
 @equipment_bp.route('/picture', methods=['POST'])
 def upload_equipment_picture():
+    """Upload an equipment picture.
+
+    Expects a multipart form with a ``picture_file`` field containing
+    a JPEG, PNG, or WebP image.
+
+    Returns:
+        200: Success message with the stored file path.
+        400: Missing file or invalid image type.
+    """
     try:
         # Checking if the file exists in the request
         if 'picture_file' not in request.files:
@@ -157,6 +239,15 @@ def upload_equipment_picture():
 
 @equipment_bp.route('/picture/delete', methods=['DELETE'])
 def delete_equipment_picture():
+    """Delete an equipment picture from disk.
+
+    Expects JSON body with a ``filepath`` field.
+
+    Returns:
+        200: Success message.
+        400: Missing filepath.
+        404: File not found.
+    """
     try:
         # Get the filepath to the picture
         data = request.get_json()
@@ -180,7 +271,15 @@ def delete_equipment_picture():
 
 @equipment_bp.route('/<int:equipment_id>', methods=['DELETE'])
 def delete_equipment(equipment_id):
-    """Delete equipment"""
+    """Delete an equipment listing and its associated picture.
+
+    Args:
+        equipment_id: The equipment's primary key.
+
+    Returns:
+        200: Success message.
+        404: Equipment not found.
+    """
     try:
         EquipmentService.delete_equipment(equipment_id)
         return jsonify({'message': 'Equipment deleted'}), 200

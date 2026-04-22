@@ -1,3 +1,10 @@
+"""
+Route blueprint package.
+
+Imports all Flask blueprints and exposes ``register_blueprints()`` to
+attach them to the application in the factory.
+"""
+
 from flask import Blueprint
 from .user_routes import user_bp
 from .equipment_routes import equipment_bp
@@ -9,8 +16,13 @@ from .ai_routes import ai_bp
 from .location_routes import location_bp
 from .images_routes import images_bp
 
+
 def register_blueprints(app):
-    """Register all route blueprints"""
+    """Register all route blueprints with the Flask application.
+
+    Args:
+        app: The Flask application instance.
+    """
     app.register_blueprint(user_bp)
     app.register_blueprint(equipment_bp)
     app.register_blueprint(review_bp)

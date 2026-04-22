@@ -1,8 +1,43 @@
+"""
+Rental model module.
+
+Defines the ``Rental`` ORM model representing a rental transaction between
+a renter and a vendor. Tracks status lifecycle (requesting -> active ->
+returned), mutual approval, meeting location, and review flags.
+"""
+
 from datetime import datetime, timezone
 
 from database import db
 
+
 class Rental(db.Model):
+    """A rental transaction between a renter and a vendor.
+
+    Rentals progress through a status lifecycle:
+    requesting -> active -> returned (happy path), or may be denied,
+    cancelled, or disputed. Both parties must approve before a rental
+    becomes active.
+
+    Attributes:
+        id: Primary key.
+        renter_id: Foreign key to the User renting the equipment.
+        vendor_id: Foreign key to the User who owns the equipment.
+        location: Text description of the meeting location.
+        meeting_lat: Latitude of the agreed meeting point.
+        meeting_lng: Longitude of the agreed meeting point.
+        agreed_price: Negotiated rental price in USD.
+        start_date: When the rental period begins.
+        end_date: When the rental period ends.
+        status: Current lifecycle status ('requesting', 'active', 'returned',
+            'disputed', 'denied', 'cancelled').
+        renter_approved: Whether the renter has approved the current terms.
+        vendor_approved: Whether the vendor has approved the current terms.
+        renter_reviewed: Whether the renter has submitted their review.
+        vendor_reviewed: Whether the vendor has submitted their review.
+        deleted: Soft-delete flag.
+    """
+
     __tablename__ = 'rentals'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -90,6 +125,16 @@ class Rental(db.Model):
         return "Rental status updated"
 
     def to_dict(self, viewer_id=None):
+        """Serialize the rental to a JSON-compatible dictionary.
+
+        Args:
+            viewer_id: If provided, includes a contextualized ``status_text``
+                describing the rental from this user's perspective.
+
+        Returns:
+            Dict with all rental fields, dates in ISO 8601 UTC format,
+            and the computed ``mutual_approved`` and ``status_text`` fields.
+        """
         def to_utc_iso(value):
             if value is None:
                 return None

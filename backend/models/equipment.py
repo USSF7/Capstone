@@ -1,9 +1,32 @@
+"""
+Equipment model module.
+
+Defines the ``Equipment`` ORM model representing items that vendors list
+for rent. Each piece of equipment belongs to a single owner (User) and
+can be associated with rentals through the ``RentalHasEquipment`` link table.
+"""
+
 from database import db
 from sqlalchemy import func
 
 from models.review import Review
 
+
 class Equipment(db.Model):
+    """A piece of equipment listed for rent on the marketplace.
+
+    Attributes:
+        id: Primary key.
+        owner_id: Foreign key to the vendor User who owns this equipment.
+        name: Display name / title of the equipment listing.
+        price: Daily rental price in USD.
+        description: Free-text description of the equipment.
+        picture: Relative path to the equipment image.
+        condition: Condition label (e.g. 'Mint', 'Above Average', 'Average', 'Below Average').
+        ai_review_summary: Cached AI-generated summary of reviews for this equipment.
+        ai_review_summary_updated_at: Timestamp when the AI summary was last refreshed.
+    """
+
     __tablename__ = 'equipment'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -21,6 +44,15 @@ class Equipment(db.Model):
     rentals = db.relationship('RentalHasEquipment', backref='equipment')
 
     def to_dict(self):
+        """Serialize the equipment to a JSON-compatible dictionary.
+
+        Computes the average rating and review count on the fly by querying
+        the ``reviews`` table filtered to this equipment's ID.
+
+        Returns:
+            Dict with equipment fields plus computed ``average_rating``,
+            ``rating_count``, ``status``, and ``transaction_id``.
+        """
         avg_rating, rating_count = (
             db.session.query(func.avg(Review.rating), func.count(Review.id))
             .filter(

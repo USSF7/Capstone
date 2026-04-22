@@ -1,13 +1,33 @@
+"""
+Location service module.
+
+Provides geocoding (structured and freeform addresses), Haversine distance
+calculation, geographic midpoint computation, and Google Places searches
+for suggesting safe, balanced meeting locations between renter and vendor.
+"""
+
 import math
 import googlemaps
 from flask import current_app
 
 
 class LocationService:
-    """Service layer for geocoding, distance, midpoint, and places."""
+    """Business logic for geocoding, distance, midpoint, and places.
+
+    Uses the Google Maps API for geocoding and places lookups. Distance
+    and midpoint calculations use the Haversine formula.
+    """
 
     @staticmethod
     def _get_gmaps_client():
+        """Create a Google Maps API client.
+
+        Returns:
+            A ``googlemaps.Client`` instance.
+
+        Raises:
+            ValueError: If the Google Maps API key is not configured.
+        """
         api_key = current_app.config['GOOGLE_MAPS_API_KEY']
         if not api_key:
             raise ValueError("Google Maps API key is not configured")
@@ -38,7 +58,19 @@ class LocationService:
 
     @staticmethod
     def haversine_distance(lat1, lng1, lat2, lng2):
-        """Distance in miles between two points."""
+        """Calculate the great-circle distance in miles between two points.
+
+        Uses the Haversine formula with Earth's radius of 3958.8 miles.
+
+        Args:
+            lat1: Latitude of the first point (degrees).
+            lng1: Longitude of the first point (degrees).
+            lat2: Latitude of the second point (degrees).
+            lng2: Longitude of the second point (degrees).
+
+        Returns:
+            Distance in miles as a float.
+        """
         R = 3958.8  # Earth radius in miles
         dlat = math.radians(lat2 - lat1)
         dlng = math.radians(lng2 - lng1)
@@ -49,7 +81,19 @@ class LocationService:
 
     @staticmethod
     def compute_midpoint(lat1, lng1, lat2, lng2):
-        """Geographic midpoint between two points. Returns (lat, lng)."""
+        """Compute the geographic midpoint between two points.
+
+        Uses the spherical midpoint formula for accuracy on a globe.
+
+        Args:
+            lat1: Latitude of the first point (degrees).
+            lng1: Longitude of the first point (degrees).
+            lat2: Latitude of the second point (degrees).
+            lng2: Longitude of the second point (degrees).
+
+        Returns:
+            Tuple of (latitude, longitude) in degrees.
+        """
         lat1_r, lng1_r = math.radians(lat1), math.radians(lng1)
         lat2_r, lng2_r = math.radians(lat2), math.radians(lng2)
         x = math.cos(lat2_r) * math.cos(lng2_r - lng1_r)
@@ -63,8 +107,22 @@ class LocationService:
 
     @staticmethod
     def find_nearby_places(lat, lng, radius_meters=5000, place_types=None):
-        """Find safe public meeting places near a point.
-        Returns list of dicts: {name, address, lat, lng, place_type, place_id}.
+        """Find safe public meeting places near a point using Google Places.
+
+        Searches for places of specified types (libraries, parks, police
+        stations, etc.) within the given radius, deduplicates by place_id,
+        and sorts by distance from the center point.
+
+        Args:
+            lat: Latitude of the search center (degrees).
+            lng: Longitude of the search center (degrees).
+            radius_meters: Search radius in meters (default 5000).
+            place_types: List of Google place types to search for.
+                Defaults to ['library', 'park', 'police', 'fire_station', 'post_office'].
+
+        Returns:
+            List of dicts with name, address, lat, lng, place_type, place_id,
+            sorted by distance from the center point.
         """
         if place_types is None:
             place_types = ['library', 'park', 'police', 'fire_station', 'post_office']
@@ -95,10 +153,25 @@ class LocationService:
 
     @staticmethod
     def find_balanced_meeting_places(renter_lat, renter_lng, vendor_lat, vendor_lng, max_results=8):
-        """Find a smaller set of meeting locations that are fair for both parties.
+        """Find meeting locations that are fair for both renter and vendor.
 
-        Prioritizes places near the midpoint and with similar travel distances
-        for renter and vendor.
+        Searches near the midpoint between both parties, then scores and
+        filters results based on distance balance (similar travel for each
+        party), proximity to the midpoint, and detour distance. Falls back
+        to the full unfiltered list if fewer than 3 places pass the balance
+        criteria.
+
+        Args:
+            renter_lat: Renter's latitude (degrees).
+            renter_lng: Renter's longitude (degrees).
+            vendor_lat: Vendor's latitude (degrees).
+            vendor_lng: Vendor's longitude (degrees).
+            max_results: Maximum number of suggestions to return (default 8).
+
+        Returns:
+            List of place dicts with additional distance metrics:
+            renter_distance_miles, vendor_distance_miles, midpoint_distance_miles,
+            distance_imbalance_miles, total_party_distance_miles, detour_distance_miles.
         """
         mid_lat, mid_lng = LocationService.compute_midpoint(
             renter_lat, renter_lng, vendor_lat, vendor_lng

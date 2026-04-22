@@ -1,3 +1,12 @@
+"""
+Rental service module.
+
+Business logic for the full rental lifecycle: creating requests, mutual
+approval, term renegotiation, status transitions (active, returned,
+cancelled, denied, disputed), equipment availability checking, review
+flag management, and average price computation.
+"""
+
 from datetime import date, datetime, time, timedelta, timezone
 from models import Rental
 from database import db
@@ -5,19 +14,46 @@ from sqlalchemy import func
 from models import Equipment
 from models import RentalHasEquipment
 
-
+# Valid status values for the rental lifecycle.
 VALID_RENTAL_STATUSES = {'requesting', 'active', 'returned', 'disputed', 'denied', 'cancelled'}
+
+# Statuses that block equipment from being rented by others.
 BLOCKING_STATUSES = {'requesting', 'active'}
 
 
 class RentalService:
-    """Service layer for Rental business logic"""
+    """Business logic for Rental management.
+
+    Enforces rules like minimum lead times, mutual approval, ownership
+    checks, and date conflict detection.
+
+    Class Attributes:
+        MIN_REQUEST_LEAD_TIME: Minimum time between now and the rental start
+            date when creating a new request (2 hours).
+        MIN_RENEGOTIATION_LEAD_TIME: Minimum time before start date to allow
+            renegotiation of an active rental (7 days).
+    """
 
     MIN_REQUEST_LEAD_TIME = timedelta(hours=2)
     MIN_RENEGOTIATION_LEAD_TIME = timedelta(days=7)
 
     @staticmethod
     def _normalize_datetime(date_value, field_name):
+        """Parse and normalize a date/datetime value to a naive UTC datetime.
+
+        Accepts datetime objects, date objects, and ISO 8601 strings.
+        Timezone-aware values are converted to UTC and made naive.
+
+        Args:
+            date_value: The value to normalize.
+            field_name: Name of the field (for error messages).
+
+        Returns:
+            A naive datetime in UTC, or None if date_value is None.
+
+        Raises:
+            ValueError: If the value cannot be parsed.
+        """
         if date_value is None:
             return None
 
@@ -45,6 +81,14 @@ class RentalService:
 
     @staticmethod
     def _format_datetime(value):
+        """Format a datetime as a human-readable UTC string.
+
+        Args:
+            value: A datetime to format.
+
+        Returns:
+            String like "Apr 21, 2026, 2:30 PM UTC".
+        """
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
         else:
@@ -56,6 +100,19 @@ class RentalService:
 
     @staticmethod
     def _equipment_has_conflict(equipment_id, start_date, end_date):
+        """Check if an equipment item has a date conflict with existing rentals.
+
+        Looks for non-deleted rentals in blocking statuses (requesting or active)
+        that overlap the given date range.
+
+        Args:
+            equipment_id: The equipment's primary key.
+            start_date: Start of the proposed date range.
+            end_date: End of the proposed date range.
+
+        Returns:
+            The conflicting Rental instance, or None if no conflict.
+        """
         conflict = (
             db.session.query(Rental)
             .join(RentalHasEquipment, Rental.id == RentalHasEquipment.rental_id)
@@ -84,7 +141,31 @@ class RentalService:
         meeting_lat=None,
         meeting_lng=None,
     ):
-        """Create a new rental"""
+        """Create a new rental request with equipment.
+
+        Validates participants, dates, equipment ownership, and availability.
+        The renter is auto-approved; the vendor must separately approve.
+
+        Args:
+            renter_id: Primary key of the renter User.
+            vendor_id: Primary key of the vendor User.
+            agreed_price: Negotiated price in USD.
+            start_date: Rental start (ISO string or datetime, min 2 hours ahead).
+            end_date: Rental end (ISO string or datetime, must be after start).
+            location: Meeting location text.
+            status: Initial status (default 'requesting').
+            deleted: Soft-delete flag.
+            equipment_ids: List of Equipment primary keys to include.
+            meeting_lat: Latitude of meeting point.
+            meeting_lng: Longitude of meeting point.
+
+        Returns:
+            The created Rental instance.
+
+        Raises:
+            ValueError: If validation fails (missing fields, self-rental,
+                date conflicts, equipment not found or not owned by vendor).
+        """
         if not all([renter_id, vendor_id, agreed_price]):
             raise ValueError("renter_id, vendor_id, and agreed_price are required")
         if renter_id == vendor_id:
@@ -174,7 +255,18 @@ class RentalService:
     
     @staticmethod
     def get_rental_with_equipment(rental_id):
-        """Get a rental by ID with equipment"""
+        """Get a rental dict with its attached equipment list.
+
+        Queries the RentalHasEquipment link table to include each
+        equipment item's details and review status.
+
+        Args:
+            rental_id: The rental's primary key.
+
+        Returns:
+            Rental dict with an ``equipment`` key containing a list of
+            equipment dicts (each with ``equipment_reviewed`` flag).
+        """
         rental = Rental.query.get(rental_id).to_dict()
 
         """Query the rental_has_equipment table and the equipment table to get the rental's equipment"""
@@ -211,7 +303,14 @@ class RentalService:
     
     @staticmethod
     def get_rentals_by_renter_with_equipment(renter_id):
-        """Get all rentals by a renter with the corresponding attached equipment"""
+        """Get all rentals by a renter with the corresponding attached equipment.
+
+        Args:
+            renter_id: The renter User's primary key.
+
+        Returns:
+            List of rental dicts, each with an ``equipment`` list.
+        """
         result = Rental.query.filter_by(renter_id=renter_id).all()
         rentals = [row.to_dict() for row in result]
 
@@ -240,6 +339,20 @@ class RentalService:
 
     @staticmethod
     def get_vendor_equipment_with_availability(vendor_id, start_date, end_date):
+        """Check availability of all vendor equipment for a date range.
+
+        Args:
+            vendor_id: The vendor User's primary key.
+            start_date: Start of the proposed date range (ISO string or datetime).
+            end_date: End of the proposed date range (ISO string or datetime).
+
+        Returns:
+            List of equipment dicts, each with ``available`` (bool) and
+            ``unavailable_reason`` (string or None).
+
+        Raises:
+            ValueError: If dates are missing or invalid.
+        """
         start_date = RentalService._normalize_datetime(start_date, 'start_date')
         end_date = RentalService._normalize_datetime(end_date, 'end_date')
         if not start_date or not end_date:
@@ -277,7 +390,18 @@ class RentalService:
 
     @staticmethod
     def switch_renter_review_status(rental_id, status):
-        """Switch the renter review status"""
+        """Toggle the renter_reviewed flag on a rental.
+
+        Args:
+            rental_id: The rental's primary key.
+            status: Boolean-ish value (True, "true", 1 -> True, else False).
+
+        Returns:
+            The updated Rental instance.
+
+        Raises:
+            ValueError: If rental not found.
+        """
         rental = Rental.query.get(rental_id)
         if not rental:
             raise ValueError("Rental not found")
@@ -290,7 +414,18 @@ class RentalService:
     
     @staticmethod
     def switch_vendor_review_status(rental_id, status):
-        """Switch the vendor review status"""
+        """Toggle the vendor_reviewed flag on a rental.
+
+        Args:
+            rental_id: The rental's primary key.
+            status: Boolean-ish value (True, "true", 1 -> True, else False).
+
+        Returns:
+            The updated Rental instance.
+
+        Raises:
+            ValueError: If rental not found.
+        """
         rental = Rental.query.get(rental_id)
         if not rental:
             raise ValueError("Rental not found")
@@ -303,7 +438,19 @@ class RentalService:
     
     @staticmethod
     def switch_equipment_review_status(rental_id, equipment_id, status):
-        """Switch the equipment review status"""
+        """Toggle the equipment_reviewed flag for a specific equipment in a rental.
+
+        Args:
+            rental_id: The rental's primary key.
+            equipment_id: The equipment's primary key.
+            status: Boolean-ish value (True, "true", 1 -> True, else False).
+
+        Returns:
+            The updated RentalHasEquipment instance.
+
+        Raises:
+            ValueError: If the rental-equipment association not found.
+        """
         rentalHasEquipment = RentalHasEquipment.query.filter_by(equipment_id=equipment_id, rental_id=rental_id).first()
         if not rentalHasEquipment:
             raise ValueError("Rental not found")
@@ -328,7 +475,34 @@ class RentalService:
         actor_user_id=None,
         approve=False,
     ):
-        """Update a rental"""
+        """Update a rental's status, terms, and/or approval.
+
+        Handles the full spectrum of rental updates: status transitions,
+        term changes (price, dates, location), and approval management.
+        When terms change, both parties must re-approve. Enforces business
+        rules like cancellation permissions, return timing, and
+        renegotiation lead time.
+
+        Args:
+            rental_id: The rental's primary key.
+            status: New status value.
+            location: New meeting location text.
+            agreed_price: New agreed price.
+            deleted: New soft-delete flag.
+            meeting_lat: New meeting latitude.
+            meeting_lng: New meeting longitude.
+            start_date: New start date (ISO string or datetime).
+            end_date: New end date (ISO string or datetime).
+            actor_user_id: Primary key of the user performing the update.
+            approve: If True, record the actor's approval.
+
+        Returns:
+            The updated Rental instance.
+
+        Raises:
+            ValueError: If validation fails (unauthorized, invalid status
+                transition, date conflicts, etc.).
+        """
         rental = Rental.query.get(rental_id)
         if not rental:
             raise ValueError("Rental not found")
@@ -460,7 +634,18 @@ class RentalService:
 
     @staticmethod
     def get_average_price_by_equipment_and_location(equipment_name, location):
-        """Get average price for equipment in a specific city/state"""
+        """Get the average rental price for a type of equipment in a location.
+
+        Extracts city and state from the location string and queries
+        for matching rentals.
+
+        Args:
+            equipment_name: The equipment name to search for.
+            location: A location string containing city and state.
+
+        Returns:
+            Average price as a float, or None if no matching data.
+        """
         if not equipment_name or not location:
             return None
         
@@ -486,7 +671,17 @@ class RentalService:
 
     @staticmethod
     def _extract_city_state(location):
-        """Extract city and state from location string"""
+        """Extract city and state from a location string.
+
+        Handles both comma-separated ("Street, City, State ZIP") and
+        newline-separated ("Street\\nCity, State ZIP") formats.
+
+        Args:
+            location: The location string to parse.
+
+        Returns:
+            Tuple of (city, state), or None if parsing fails.
+        """
         # Handle both comma-separated and newline-separated formats
         if '\n' in location:
             # Multi-line format: "Street\nCity, State ZIP"
