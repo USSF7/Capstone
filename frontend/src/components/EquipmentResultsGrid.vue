@@ -6,13 +6,12 @@
 
 import { FwbCard, FwbBadge } from 'flowbite-vue'
 import { useRouter } from 'vue-router'
+import { BACKEND_URL } from '../config/runtime'
 
 /**
  * Base URL for backend assets.
  * @type {string}
  */
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-
 /**
  * Vue Router instance for navigation.
  */

@@ -12,12 +12,11 @@
     import { useAuthStore } from '../../stores/auth'
     import EquipmentService from '../../services/equipmentService'
     import UserService from '../../services/userService'
+    import { BACKEND_URL } from '../../config/runtime'
 
     /**
      * Base URL for backend assets (used for image rendering).
      */
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-
     /**
      * Auth store containing user identity and session data.
      */

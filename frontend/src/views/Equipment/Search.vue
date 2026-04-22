@@ -10,6 +10,7 @@ import { useAuthStore } from '../../stores/auth'
 import locationService from '../../services/locationService'
 import GoogleMap from '../../components/GoogleMap.vue'
 import EquipmentResultsGrid from '../../components/EquipmentResultsGrid.vue'
+import { BACKEND_URL } from '../../config/runtime'
 
 /**
  * Auth store containing user location data.
@@ -20,8 +21,6 @@ const auth = useAuthStore()
  * Backend base URL for serving images.
  * @type {string}
  */
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-
 /**
  * Equipment name input for searching for specific equipment.
  */

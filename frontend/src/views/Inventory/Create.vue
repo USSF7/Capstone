@@ -148,6 +148,7 @@ import { FwbInput, FwbSelect, FwbFileInput, FwbButton, FwbSpinner, FwbImg } from
 import { useAuthStore } from '../../stores/auth'
 import equipmentService from '../../services/equipmentService'
 import { DocumentArrowUpIcon } from '@heroicons/vue/24/solid'
+import { BACKEND_URL } from '../../config/runtime'
 
 /**
  * Available equipment condition options.
@@ -162,8 +163,6 @@ const conditions = [
 /**
  * Backend base URL used for uploaded images.
  */
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-
 /**
  * Maximum allowed file size (2MB).
  */

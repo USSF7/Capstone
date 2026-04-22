@@ -6,12 +6,11 @@
 
 import { ref, computed, watch } from 'vue'
 import { FwbCard, FwbImg, FwbRating, FwbListGroup, FwbListGroupItem, FwbBadge, FwbButton } from 'flowbite-vue'
+import { BACKEND_URL } from '../../../config/runtime'
 
 /**
  * Base URL for loading equipment images from backend
  */
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-
 /**
  * Component props
  * @property {Object} rentalData - Rental object containing equipment list and metadata

@@ -9,6 +9,7 @@ import { FwbAvatar, FwbButton, FwbTextarea } from 'flowbite-vue'
 import ReviewService from '../../services/reviewService'
 import RentalService from '../../services/rentalService'
 import UserService from '../../services/userService'
+import { BACKEND_URL } from '../../config/runtime'
 
 export default {
     components: {
@@ -80,7 +81,7 @@ export default {
              * Backend base URL for loading user images
              * @type {string}
              */
-            BACKEND_URL: import.meta.env.VITE_BACKEND_URL
+            BACKEND_URL
         }
     },
     methods: {
