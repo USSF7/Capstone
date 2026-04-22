@@ -1,18 +1,53 @@
+"""
+AI service module.
+
+Provides AI-powered review summarization using Google Gemini. Summaries
+are cached on the reviewed entity (Equipment or User) and invalidated
+when reviews are created, updated, or deleted.
+"""
+
 from flask import current_app
 from google import genai
 from datetime import datetime
 from database import db
 from models import Review, Equipment, User
 
+
 class AIService:
+    """Business logic for AI-powered features.
+
+    Currently supports review summarization via Google Gemini with
+    caching on the target model (Equipment or User).
+    """
 
     @staticmethod
     def _validate_model_ref(model_type, model_id):
+        """Validate that model_type and model_id are present.
+
+        Args:
+            model_type: 'equipment' or 'user'.
+            model_id: Primary key of the entity.
+
+        Raises:
+            ValueError: If either argument is missing.
+        """
         if not model_type or model_id is None:
             raise ValueError("model_type and model_id are required")
 
     @staticmethod
     def _get_target_model(model_type, model_id):
+        """Look up the Equipment or User instance for a model reference.
+
+        Args:
+            model_type: 'equipment' or 'user'.
+            model_id: Primary key of the entity.
+
+        Returns:
+            The Equipment or User instance, or None if not found.
+
+        Raises:
+            ValueError: If model_type is not 'equipment' or 'user'.
+        """
         AIService._validate_model_ref(model_type, model_id)
         normalized = str(model_type).strip().lower()
 
@@ -25,6 +60,15 @@ class AIService:
 
     @staticmethod
     def get_cached_summary(model_type, model_id):
+        """Retrieve a previously cached AI review summary.
+
+        Args:
+            model_type: 'equipment' or 'user'.
+            model_id: Primary key of the entity.
+
+        Returns:
+            The cached summary string, or None if not cached.
+        """
         target = AIService._get_target_model(model_type, model_id)
         if not target:
             return None
@@ -32,6 +76,13 @@ class AIService:
 
     @staticmethod
     def set_cached_summary(model_type, model_id, summary):
+        """Store an AI review summary on the target entity.
+
+        Args:
+            model_type: 'equipment' or 'user'.
+            model_id: Primary key of the entity.
+            summary: The summary text to cache.
+        """
         if not summary:
             return
 
@@ -45,6 +96,15 @@ class AIService:
 
     @staticmethod
     def invalidate_cached_summary(model_type, model_id):
+        """Clear the cached AI review summary for an entity.
+
+        Called after reviews are created, updated, or deleted to ensure
+        the next summary request generates a fresh one.
+
+        Args:
+            model_type: 'equipment' or 'user'.
+            model_id: Primary key of the entity.
+        """
         target = AIService._get_target_model(model_type, model_id)
         if not target:
             return
@@ -55,6 +115,14 @@ class AIService:
 
     @staticmethod
     def _get_gemini_client():
+        """Create a Google Gemini API client.
+
+        Returns:
+            A ``genai.Client`` instance.
+
+        Raises:
+            ValueError: If the Gemini API key is not configured.
+        """
         api_key = current_app.config['GEMINI_API_KEY']
         if not api_key:
             raise ValueError("Gemini API key is not configured")
@@ -62,6 +130,15 @@ class AIService:
 
     @staticmethod
     def _generate_text(prompt, model='gemini-2.5-flash'):
+        """Generate text using Google Gemini.
+
+        Args:
+            prompt: The prompt string to send to the model.
+            model: The Gemini model ID to use.
+
+        Returns:
+            The generated text response.
+        """
         client = AIService._get_gemini_client()
 
         response = client.models.generate_content(model=model, contents=prompt)
@@ -70,6 +147,20 @@ class AIService:
 
     @staticmethod
     def summarize_reviews(model_type, model_id):
+        """Generate a natural-language summary of reviews for an entity.
+
+        Returns a cached summary if one exists. Otherwise, fetches all
+        reviews for the entity, builds a prompt with the review data,
+        calls Google Gemini to generate a summary, caches it, and returns it.
+
+        Args:
+            model_type: 'equipment' or 'user'.
+            model_id: Primary key of the entity.
+
+        Returns:
+            Summary text string. Returns a fallback message if there are
+            no reviews or if the AI call fails.
+        """
         AIService._validate_model_ref(model_type, model_id)
 
         cached_summary = AIService.get_cached_summary(model_type, model_id)

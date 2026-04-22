@@ -1,14 +1,41 @@
+"""
+Review service module.
+
+Business logic for review CRUD operations. Creating, updating, or deleting
+a review automatically invalidates the cached AI review summary for the
+reviewed entity.
+"""
+
 from flask import jsonify
 from models import Review, User
 from database import db
 from sqlalchemy.orm import joinedload
 
+
 class ReviewService:
-    """Service layer for Review business logic"""
+    """Business logic for Review management.
+
+    All methods are static — no instance state is needed.
+    """
 
     @staticmethod
     def create_review(submitter_id, model_type, model_id, rating, review=None, deleted=False):
-        """Create a new review"""
+        """Create a new review and invalidate the AI summary cache.
+
+        Args:
+            submitter_id: Primary key of the User writing the review.
+            model_type: 'equipment' or 'user'.
+            model_id: Primary key of the reviewed entity.
+            rating: Integer rating from 1 to 5.
+            review: Optional free-text review body.
+            deleted: Initial soft-delete flag (default False).
+
+        Returns:
+            The created Review instance.
+
+        Raises:
+            ValueError: If required fields missing or rating out of range.
+        """
         if not all([submitter_id, model_type, model_id, rating]):
             raise ValueError("submitter_id, model_type, model_id, and rating are required")
         if rating < 1 or rating > 5:
@@ -45,7 +72,23 @@ class ReviewService:
 
     @staticmethod
     def update_review(review_id, rating=None, review=None, deleted=None):
-        """Update a review"""
+        """Update a review's rating, text, or deleted status.
+
+        Only non-None arguments are applied. Invalidates the AI summary
+        cache after changes.
+
+        Args:
+            review_id: The review's primary key.
+            rating: New rating (1-5).
+            review: New review text.
+            deleted: New soft-delete flag.
+
+        Returns:
+            The updated Review instance.
+
+        Raises:
+            ValueError: If review not found or rating out of range.
+        """
         rev = Review.query.get(review_id)
         if not rev:
             raise ValueError("Review not found")
@@ -68,7 +111,17 @@ class ReviewService:
 
     @staticmethod
     def delete_review(review_id):
-        """Delete a review"""
+        """Permanently delete a review and invalidate the AI summary cache.
+
+        Args:
+            review_id: The review's primary key.
+
+        Returns:
+            True on success.
+
+        Raises:
+            ValueError: If review not found.
+        """
         rev = Review.query.get(review_id)
         if not rev:
             raise ValueError("Review not found")

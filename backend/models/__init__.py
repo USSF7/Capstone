@@ -1,3 +1,10 @@
+"""
+SQLAlchemy model package.
+
+Re-exports all ORM model classes so they can be imported directly from
+``models`` (e.g. ``from models import User, Equipment``).
+"""
+
 from .user import User
 from .equipment import Equipment
 from .review import Review

@@ -1,3 +1,11 @@
+"""
+Service layer package.
+
+Re-exports all service classes so they can be imported directly from
+``services`` (e.g. ``from services import UserService``). Each service
+encapsulates the business logic for its domain, keeping routes thin.
+"""
+
 from .user_service import UserService
 from .equipment_service import EquipmentService
 from .review_service import ReviewService

@@ -1,3 +1,11 @@
+"""
+Flask application factory module.
+
+Creates and configures the Flask application, initializes extensions
+(SQLAlchemy, JWT, CORS), registers route blueprints, and runs schema
+migrations to add any missing columns on startup.
+"""
+
 import re
 
 from flask import Flask, jsonify
@@ -8,12 +16,25 @@ from config import config
 from database import db
 from routes import register_blueprints
 
-# Whitelist pattern for column names used in DDL statements
+# Whitelist patterns for column names and types used in DDL statements
+# to prevent SQL injection in dynamic ALTER TABLE commands.
 _SAFE_COL_NAME = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
 _SAFE_COL_TYPE = re.compile(r'^[A-Z()0-9, ]+$')
 
+
 def create_app(config_name='development'):
-    """Application factory"""
+    """Create and configure the Flask application.
+
+    Initializes the database, JWT authentication, CORS, and route blueprints.
+    Runs incremental schema migrations to add any missing columns to existing
+    tables so the app can start without a full migration tool.
+
+    Args:
+        config_name: Configuration profile to load ('development' or 'production').
+
+    Returns:
+        A fully configured Flask application instance.
+    """
     app = Flask(__name__)
 
     app.url_map.strict_slashes = False

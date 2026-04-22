@@ -1,8 +1,47 @@
+"""
+User model module.
+
+Defines the ``User`` ORM model representing application users who can act
+as renters, vendors, or both. Handles password hashing, profile completeness
+checks, and JSON serialization.
+"""
+
 from database import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
+
 class User(db.Model):
+    """A registered user of the equipment rental marketplace.
+
+    Users may be vendors (list equipment for rent), renters (rent equipment
+    from others), or both. Authentication is either local (email + password)
+    or via Google OAuth. Latitude/longitude are geocoded from the user's
+    address for proximity-based equipment search.
+
+    Attributes:
+        id: Primary key.
+        name: Display name.
+        email: Unique email address used for login.
+        password_hash: Bcrypt hash of the user's password (None for Google-only accounts).
+        phone: Contact phone number.
+        google_id: Google account ID for OAuth users.
+        auth_provider: 'local' or 'google'.
+        created_at: Account creation timestamp.
+        date_of_birth: Date of birth string (YYYY-MM-DD).
+        street_address: Street address component.
+        city: City name.
+        state: State name.
+        zip_code: ZIP / postal code.
+        latitude: Geocoded latitude of the user's address.
+        longitude: Geocoded longitude of the user's address.
+        vendor: Whether the user lists equipment for rent.
+        renter: Whether the user rents equipment from others.
+        picture: Relative path to the user's profile picture.
+        ai_review_summary: Cached AI-generated summary of reviews about this user.
+        ai_review_summary_updated_at: Timestamp when the AI summary was last refreshed.
+    """
+
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -35,9 +74,22 @@ class User(db.Model):
     messages_received = db.relationship('Message', foreign_keys='Message.receiver_id', backref='receiver')
 
     def set_password(self, password):
+        """Hash and store a plaintext password.
+
+        Args:
+            password: The plaintext password to hash.
+        """
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
+        """Verify a plaintext password against the stored hash.
+
+        Args:
+            password: The plaintext password to check.
+
+        Returns:
+            True if the password matches, False otherwise (or if no hash is stored).
+        """
         if not self.password_hash:
             return False
         return check_password_hash(self.password_hash, password)
@@ -56,6 +108,12 @@ class User(db.Model):
         ])
 
     def to_dict(self):
+        """Serialize the user to a JSON-compatible dictionary.
+
+        Returns:
+            Dict with all public user fields including the computed
+            ``profile_complete`` flag.
+        """
         return {
             'id': self.id,
             'name': self.name,

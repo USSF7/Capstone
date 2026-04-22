@@ -1,12 +1,36 @@
+"""
+Message service module.
+
+Business logic for message CRUD operations. Messages are always scoped
+to a rental conversation between two users.
+"""
+
 from models import Message
 from database import db
 
+
 class MessageService:
-    """Service layer for Message business logic"""
+    """Business logic for Message management.
+
+    All methods are static — no instance state is needed.
+    """
 
     @staticmethod
     def create_message(sender_id, receiver_id, data, rental_id=None):
-        """Create a new message"""
+        """Send a new message within a rental conversation.
+
+        Args:
+            sender_id: Primary key of the sending User.
+            receiver_id: Primary key of the receiving User.
+            data: The message text content.
+            rental_id: Primary key of the associated Rental (required).
+
+        Returns:
+            The created Message instance.
+
+        Raises:
+            ValueError: If required fields missing, self-message, or no rental_id.
+        """
         if not all([sender_id, receiver_id, data]):
             raise ValueError("sender_id, receiver_id, and data are required")
         if sender_id == receiver_id:
@@ -46,7 +70,21 @@ class MessageService:
 
     @staticmethod
     def get_conversation(user_id1, user_id2, rental_id=None):
-        """Get conversation between two users"""
+        """Get the conversation thread between two users for a rental.
+
+        Messages are returned in chronological order (ascending send_time).
+
+        Args:
+            user_id1: First participant's User ID.
+            user_id2: Second participant's User ID.
+            rental_id: Rental ID to scope the conversation (required).
+
+        Returns:
+            List of Message instances ordered by send_time.
+
+        Raises:
+            ValueError: If rental_id is not provided.
+        """
         if rental_id is None:
             raise ValueError("rental_id is required")
 
@@ -61,12 +99,29 @@ class MessageService:
 
     @staticmethod
     def get_messages_by_rental(rental_id):
-        """Get all messages associated with a rental"""
+        """Get all messages associated with a rental, ordered chronologically.
+
+        Args:
+            rental_id: The rental's primary key.
+
+        Returns:
+            List of Message instances ordered by send_time ascending.
+        """
         return Message.query.filter_by(rental_id=rental_id).order_by(Message.send_time.asc()).all()
 
     @staticmethod
     def delete_message(message_id):
-        """Delete a message"""
+        """Permanently delete a message.
+
+        Args:
+            message_id: The message's primary key.
+
+        Returns:
+            True on success.
+
+        Raises:
+            ValueError: If message not found.
+        """
         message = Message.query.get(message_id)
         if not message:
             raise ValueError("Message not found")
