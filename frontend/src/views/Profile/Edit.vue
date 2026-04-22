@@ -13,12 +13,11 @@ import { useAuthStore } from '../../stores/auth'
 import UserService from '../../services/userService'
 import AuthService from '../../services/authService'
 import router from '../../router'
+import { BACKEND_URL } from '../../config/runtime'
 
 /**
  * Backend base URL for serving uploaded profile images.
  */
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-
 /**
  * Maximum allowed profile picture size (2MB).
  */

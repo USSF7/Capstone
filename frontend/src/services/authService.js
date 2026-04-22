@@ -1,4 +1,5 @@
 import api from './api'
+import { API_BASE_URL } from '../config/runtime'
 
 /**
  * Service responsible for authentication-related API calls.
@@ -61,7 +62,7 @@ class AuthService {
    * @returns {string} OAuth login URL
    */
   getGoogleLoginUrl() {
-    return 'http://localhost:5000/api/auth/google'
+    return `${API_BASE_URL}/auth/google`
   }
 }
 

@@ -15,6 +15,7 @@ import UserService from '../../services/userService'
 import ReviewService from '../../services/reviewService'
 import aiService from '../../services/aiService'
 import ReviewEquipmentEdit from '../Rental/ReviewEquipmentEdit.vue'
+import { BACKEND_URL } from '../../config/runtime'
 
 /**
  * Month lookup table used for formatting review dates.
@@ -37,8 +38,6 @@ const months = [
 /**
  * Backend base URL used for serving uploaded images.
  */
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-
 /**
  * Route instance for navigation.
  */

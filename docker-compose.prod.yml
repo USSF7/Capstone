@@ -1,0 +1,41 @@
+services:
+  db:
+    ports: !override
+      - "5433:5432"
+
+  web:
+    ports: !override
+      - "5001:5000"
+    volumes: !override
+      - ./.config:/app/.config:ro
+      - capstone_backend_images:/app/images
+    environment:
+      FRONTEND_URL: ${PRODUCTION_URL:-https://sera.example.com}
+      GOOGLE_REDIRECT_URI: ${PRODUCTION_URL:-https://sera.example.com}/api/auth/google/callback
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_BACKEND_URL: ""
+    ports: !override
+      - "8090:80"
+    volumes:
+      - ./frontend/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+
+  frontend-dev:
+    profiles:
+      - dev
+
+  cloudflared:
+    profiles:
+      - tunnel
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://frontend:80
+    restart: "no"
+    depends_on:
+      - frontend
+      - web
+
+volumes:
+  capstone_backend_images:

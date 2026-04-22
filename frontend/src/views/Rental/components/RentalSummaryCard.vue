@@ -5,6 +5,7 @@
  */
 
 import { FwbCard, FwbProgress } from 'flowbite-vue'
+import { BACKEND_URL } from '../../../config/runtime'
 
 /**
  * Month names used for human-readable date formatting.
@@ -65,8 +66,6 @@ const emit = defineEmits(['select'])
 /**
  * Backend base URL for serving uploaded equipment images.
  */
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-
 /**
  * Formats an ISO date string into a human-readable format.
  *

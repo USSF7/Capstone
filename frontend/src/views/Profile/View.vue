@@ -17,6 +17,7 @@ import authService from '../../services/authService'
 import aiService from '../../services/aiService'
 import router from '../../router'
 import ReviewUserEdit from '../Rental/ReviewUserEdit.vue'
+import { BACKEND_URL } from '../../config/runtime'
 
 /**
  * Month names used for custom date formatting.
@@ -39,8 +40,6 @@ const months = [
 /**
  * Backend base URL for loading user images.
  */
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-
 /**
  * Route instance for navigation.
  */

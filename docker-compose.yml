@@ -41,11 +41,12 @@ services:
       GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:5000}
     ports:
       - "8080:80"
-    environment:
-      VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:5000}
 
   frontend-dev:
     image: node:18
