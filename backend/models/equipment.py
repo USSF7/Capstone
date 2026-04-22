@@ -41,7 +41,7 @@ class Equipment(db.Model):
 
     # Relationships
     # Note: reviews are accessed via query filter on model_type='equipment' and model_id=equipment.id
-    rentals = db.relationship('RentalHasEquipment', backref='equipment')
+    rentals = db.relationship('RentalHasEquipment', backref='equipment', cascade='all, delete-orphan')
 
     def to_dict(self):
         """Serialize the equipment to a JSON-compatible dictionary.
