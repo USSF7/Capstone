@@ -137,3 +137,11 @@ Capstone/
 - **Database**: PostgreSQL 13
 - **Containerization**: Docker & Docker Compose
 - **Testing Data**: Faker 18.13.0
+
+## Code Documentation
+
+- Located in `docs/`
+- Used pdoc to generate the backend documentation
+- Used JSDoc to generate the frontend documentation
+- Created a basic home page to direct the user to the backend documentation or the frontend documentation
+- Link to the code documentation: https://ussf7.github.io/Capstone/
